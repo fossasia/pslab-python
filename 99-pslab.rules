@@ -1,0 +1,4 @@
+#Rules for TestBench 
+
+SUBSYSTEM=="tty",ATTRS{idVendor}=="04d8", ATTRS{idProduct}=="00df", MODE="666",SYMLINK+="TestBench"
+ATTRS{idVendor}=="04d8", ATTRS{idProduct}=="00df", ENV{ID_MM_DEVICE_IGNORE}="1"
