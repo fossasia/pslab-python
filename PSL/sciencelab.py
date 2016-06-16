@@ -117,7 +117,7 @@ class ScienceLab():
 
 	def __runInitSequence__(self,**kwargs):
 		self.aboutArray=[]
-		from SEEL.Peripherals import I2C,SPI,NRF24L01,MCP4728,RadioLink
+		from PSL.Peripherals import I2C,SPI,NRF24L01,MCP4728,RadioLink
 		self.connected = self.H.connected
 		if not self.H.connected:
 			self.__print__('Check hardware connections. Not connected')
@@ -2194,7 +2194,7 @@ class ScienceLab():
 		.. seealso::
 
 			Use :func:`fetch_long_data_from_LA` (points to read,x) to get data acquired from channel x.
-			The read data can be accessed from :class:`~Interface.dchans` [x-1]
+			The read data can be accessed from :class:`~ScienceLab.dchans` [x-1]
 		"""
 		self.clear_buffer(0,self.MAX_SAMPLES);
 		prescale = 0

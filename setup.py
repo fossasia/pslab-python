@@ -39,7 +39,7 @@ class CustomInstall(install):
 
 setup(name='PSL',
     version='1.0.0',
-    description='Open Source Pocket Science Lab from FOSSASIA - inspired by ExpEYES http://expeyes.in',
+    description='Pocket Science Lab from FOSSASIA - inspired by ExpEYES http://expeyes.in',
     author='Praveen Patil and Jithin B.P.',
     author_email='praveenkumar103@gmail.com',
     url='http://fossasia.github.io/pslab.fossasia.org/',

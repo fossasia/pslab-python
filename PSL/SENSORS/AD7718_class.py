@@ -239,8 +239,8 @@ class AD7718:
 
 
 if __name__ == "__main__":
-	from SEEL import interface
-	I= interface.connect()
+	from PSL import sciencelab
+	I= sciencelab.connect()
 	calibs={
 	'AIN6AINCOM':[6.993123e-07,-1.563294e-06,9.994211e-01,-4.596018e-03], 
 	'AIN7AINCOM':[3.911521e-07,-1.706405e-06,1.002294e+00,-1.286302e-02], 
