@@ -49,3 +49,4 @@ setup(name='PSL',
     package_data={'': ['*.css','*.png','*.gif','*.html','*.css','*.js','*.png','*.jpg','*.jpeg','*.htm','99-pslab.rules']},
     cmdclass={'install': CustomInstall},
 )
+

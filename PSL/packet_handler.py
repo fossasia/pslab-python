@@ -67,7 +67,7 @@ class Handler():
 		try:
 			import socket
 			self.blockingSocket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-			self.blockingSocket.bind('\0PSLab%s'%portname) 
+			self.blockingSocket.bind('\0PSghhhLab%s'%portname) 
 			self.blockingSocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 		except socket.error as e:
 			self.occupiedPorts.add(portname)
