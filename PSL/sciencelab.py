@@ -78,7 +78,7 @@ class ScienceLab():
 	def __init__(self,timeout=1.0,**kwargs):
 		self.verbose=kwargs.get('verbose',False)
 		self.initialArgs = kwargs
-		self.generic_name = 'PSLab'
+		self.generic_name = 'FOSSASIA PSLab'
 		self.DDS_CLOCK = 0
 		self.timebase = 40
 		self.MAX_SAMPLES = CP.MAX_SAMPLES
