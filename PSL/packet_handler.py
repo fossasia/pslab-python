@@ -24,7 +24,7 @@ class Handler():
 			try:
 				self.fd,self.version_string,self.connected=self.connectToPort(self.portname)
 				if self.connected:return
-			except Exception,ex:
+			except Exception as ex:
 				print('Failed to connect to ',self.portname,ex.message)
 				
 		else:	#Scan and pick a port	
