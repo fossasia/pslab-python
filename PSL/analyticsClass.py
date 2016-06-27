@@ -1,5 +1,3 @@
-
-
 from __future__ import print_function
 import time
 
@@ -37,6 +35,14 @@ class analyticsClass():
 			self.signal = None
 		else:
 			self.signal = signal
+
+		try:
+			from PSL.commands_proto import applySIPrefix as applySIPrefix
+		except ImportError:
+			self.applySIPrefix = None
+		else:
+			self.applySIPrefix = applySIPrefix
+
 
 
 	def sineFunc(self,x, a1, a2, a3,a4):
@@ -242,4 +248,65 @@ class analyticsClass():
 		x = frq.reshape(2,ns/2)
 		y = tr.reshape(2,ns/2)
 		return x[0], y[0]    
+
+
+	def sineFitAndDisplay(self,chan,displayObject):
+		'''
+		chan : an object containing a get_xaxis, and a get_yaxis method.
+		displayObject : an object containing a setValue method
+		
+		Fits against a sine function, and writes to the object
+		'''
+		fitres=None;fit=''
+		try:
+			fitres = self.sineFit(chan.get_xaxis(),chan.get_yaxis())
+			if fitres:
+				amp,freq,offset,phase = fitres
+				if amp>0.05: fit = 'Voltage=%s\nFrequency=%s'%(self.applySIPrefix(amp,'V'),self.applySIPrefix(freq,'Hz'))
+		except Exception,e:
+			fires=None
+
+		if not fitres or len(fit)==0: fit = 'Voltage=%s\n'%(self.applySIPrefix(np.average(chan.get_yaxis()),'V'))
+		displayObject.setValue(fit)
+		if fitres: return fitres
+		else: return 0,0,0,0
+
+
+	def rmsAndDisplay(self,data,displayObject):
+		'''
+		data : an array of numbers
+		displayObject : an object containing a setValue method
+		
+		Fits against a sine function, and writes to the object
+		'''
+		rms = self.RMS(data)
+		displayObject.setValue('Voltage=%s'%(self.applySIPrefix(rms,'V')))
+		return rms
+
+	def RMS(self,data):
+		data = np.array(data)
+		return np.sqrt(np.average(data*data))
+
+
+
+
+	def butter_notch(self,lowcut, highcut, fs, order=5):
+		from scipy.signal import butter
+		nyq = 0.5 * fs
+		low = lowcut / nyq
+		high = highcut / nyq
+		b, a = butter(order, [low, high], btype='bandstop')
+		return b, a
+
+
+	def butter_notch_filter(self,data, lowcut, highcut, fs, order=5):
+		from scipy.signal import lfilter
+		b, a = self.butter_notch(lowcut, highcut, fs, order=order)
+		y = lfilter(b, a, data)
+		return y
+
+
+
+
+
 
