@@ -33,7 +33,7 @@ class ScienceLab():
 	"""
 	**Communications library.**
 
-	This class contains methods that can be used to interact with the PSLab
+	This class contains methods that can be used to interact with the vLabtool
 
 	Initialization does the following
 
@@ -78,7 +78,7 @@ class ScienceLab():
 	def __init__(self,timeout=1.0,**kwargs):
 		self.verbose=kwargs.get('verbose',False)
 		self.initialArgs = kwargs
-		self.generic_name = 'FOSSASIA PSLab'
+		self.generic_name = 'PSLab'
 		self.DDS_CLOCK = 0
 		self.timebase = 40
 		self.MAX_SAMPLES = CP.MAX_SAMPLES
@@ -103,15 +103,15 @@ class ScienceLab():
 		#--------------------------Initialize communication handler, and subclasses-----------------
 		try:
 			self.H = packet_handler.Handler(**kwargs)
-		except Exception,ex:
+		except Exception as ex:
 			self.errmsg = "failed to Connect. Please check connections/arguments\n"+ex.message
 			self.connected = False
 			print(self.errmsg)#raise RuntimeError(msg)
 		
 		try:
 			self.__runInitSequence__(**kwargs)
-		except Exception,ex:
-			self.errmsg = "failed to run init sequence. Check device connections\n"+ex.message
+		except Exception as ex:
+			self.errmsg = "failed to run init sequence. Check device connections\n"+str(ex)
 			self.connected = False
 			print(self.errmsg)#raise RuntimeError(msg)
 
@@ -126,7 +126,7 @@ class ScienceLab():
 		self.achans=[analogAcquisitionChannel(a) for a in ['CH1','CH2','CH3','MIC']]        
 		self.gain_values=gains
 		self.buff=np.zeros(10000)
-		self.SOCKET_CAPACITANCE = 0# 42e-12 is typical for the PSLab. Actual values will be updated during calibration loading
+		self.SOCKET_CAPACITANCE = 0# 42e-12 is typical for the SEElablet. Actual values will be updated during calibration loading
 		self.resistanceScaling = 1.
 
 		self.digital_channel_names=digital_channel_names
@@ -143,6 +143,7 @@ class ScienceLab():
 		self.hexid=''    
 		if self.H.connected:
 			for a in ['CH1','CH2']: self.set_gain(a,0)
+			for a in ['W1','W2']:self.load_equation(a,'sine')
 			self.SPI.set_parameters(1,7,1,0)
 			self.hexid=hex(self.device_id())
 		
@@ -234,7 +235,19 @@ class ScienceLab():
 					fitvals = fits[2:]
 					if NAME in ['PV1','PV2','PV3']:
 						'''
-						add info
+						DACs have inherent non-linear behaviour, and the following algorithm generates a correction
+						array from the calibration data that contains information about the offset(in codes) of each DAC code.
+						
+						The correction array defines for each DAC code, the number of codes to skip forwards or backwards
+						in order to output the most accurate voltage value.
+						
+						E.g. if Code 1024 was found to output a voltage corresponding to code 1030 , and code 1020 was found to output a voltage corresponding to code 1024,
+						then correction array[1024] = -4 , correction_array[1030]=-6. Adding -4 to the code 1024 will give code 1020 which will output the
+						correct voltage value expected from code 1024.
+						
+						The variables LOOKAHEAD and LOOKBEHIND define the range of codes to search around a particular DAC code in order to 
+						find the code with the minimum deviation from the expected value.
+						
 						'''
 						DACX=np.linspace(self.DAC.CHANS[NAME].range[0],self.DAC.CHANS[NAME].range[1],4096)
 						if NAME=='PV1':OFF=self.read_bulk_flash(self.DAC_SHIFTS_PV1A,2048)+self.read_bulk_flash(self.DAC_SHIFTS_PV1B,2048)
@@ -257,7 +270,7 @@ class ScienceLab():
 
 	def get_resistance(self):
 		V = self.get_average_voltage('SEN')
-		if V==3.3 or V==0:return None
+		if V>3.295:return 'Open'
 		I = (3.3-V)/5.1e3
 		res = V/I
 		return res*self.resistanceScaling
@@ -290,13 +303,13 @@ class ScienceLab():
 		"""
 		try:
 			return self.H.get_version(self.H.fd)
-		except Exception, ex:
+		except Exception as ex:
 			self.raiseException(ex, "Communication Error , Function : "+inspect.currentframe().f_code.co_name)
 
 	def getRadioLinks(self):
 		try:
 			return self.NRF.get_nodelist()
-		except Exception, ex:
+		except Exception as ex:
 			self.raiseException(ex, "Communication Error , Function : "+inspect.currentframe().f_code.co_name)
 
 	def newRadioLink(self,**args):
@@ -320,7 +333,7 @@ class ScienceLab():
 		from PSL.Peripherals import RadioLink
 		try:
 			return RadioLink(self.NRF,**args)
-		except Exception, ex:
+		except Exception as ex:
 			self.raiseException(ex, "Communication Error , Function : "+inspect.currentframe().f_code.co_name)
 
 	#-------------------------------------------------------------------------------------------------------------------#
@@ -337,13 +350,13 @@ class ScienceLab():
 		try:
 			self.H.reconnect(**kwargs)
 			self.__runInitSequence__(**kwargs)
-		except Exception, ex:
-			self.errmsg = ex.message
+		except Exception as ex:
+			self.errmsg = str(ex)
 			self.H.disconnect()
 			print(self.errmsg)
 			raise RuntimeError(self.errmsg)
 		
-	def capture1(self,ch,ns,tg,*args):
+	def capture1(self,ch,ns,tg,*args,**kwargs):
 		"""
 		Blocking call that fetches an oscilloscope trace from the specified input channel
 		
@@ -368,7 +381,7 @@ class ScienceLab():
 		Example
 		
 		>>> from pylab import *
-		>>> from PSL import isciencelab
+		>>> from PSL import sciencelab
 		>>> I=sciencelab.connect()
 		>>> x,y = I.capture1('CH1',3200,1)
 		>>> plot(x,y)
@@ -378,7 +391,7 @@ class ScienceLab():
 		:return: Arrays X(timestamps),Y(Corresponding Voltage values)
 		
 		"""
-		return self.capture_fullspeed(ch,ns,tg,*args)
+		return self.capture_fullspeed(ch,ns,tg,*args,**kwargs)
 
 	def capture2(self,ns,tg,TraceOneRemap='CH1'):
 		"""
@@ -405,7 +418,7 @@ class ScienceLab():
 		Example 
 
 		>>> from pylab import *
-		>>> from PSL import isciencelab
+		>>> from PSL import sciencelab
 		>>> I=sciencelab.connect()
 		>>> x,y1,y2 = I.capture2(1600,2,'MIC')  #Chan1 remapped to MIC. Chan2 reads CH2
 		>>> plot(x,y1)              #Plot of analog input MIC
@@ -424,7 +437,7 @@ class ScienceLab():
 			self.__fetch_channel__(1)
 			self.__fetch_channel__(2)
 
-		except Exception, ex:
+		except Exception as ex:
 			self.raiseException(ex, "Communication Error , Function : "+inspect.currentframe().f_code.co_name)
 
 		x=self.achans[0].get_xaxis()
@@ -478,7 +491,7 @@ class ScienceLab():
 			x,y2=self.fetch_trace(2)
 			x,y3=self.fetch_trace(3)
 			x,y4=self.fetch_trace(4)
-		except Exception, ex:
+		except Exception as ex:
 			self.raiseException(ex, "Communication Error , Function : "+inspect.currentframe().f_code.co_name)
 		
 		return x,y,y2,y3,y4     
@@ -500,7 +513,7 @@ class ScienceLab():
 		Example
 
 		>>> from pylab import *
-		>>> I=sciencelab.connect()
+		>>> I=sciencelab.ScienceLab()
 		>>> x,y1,y2,y3,y4 = I.capture_multiple(800,1.75,'CH1','CH2','MIC','SEN')
 		>>> plot(x,y1)              
 		>>> plot(x,y2)              
@@ -566,7 +579,7 @@ class ScienceLab():
 			yield np.linspace(0,tg*(samples-1),samples)
 			for a in range(int(total_chans)):
 				yield self.buff[a:total_samples][::total_chans]
-		except Exception, ex:
+		except Exception as ex:
 			self.raiseException(ex, "Communication Error , Function : "+inspect.currentframe().f_code.co_name)
 
 	def __capture_fullspeed__(self,chan,samples,tg,*args, **kwargs):
@@ -596,10 +609,11 @@ class ScienceLab():
 			self.H.__sendInt__(int(tg*8))       #Timegap between samples.  8MHz timer clock
 			if 'FIRE_PULSES' in args:
 				t = kwargs.get('interval',1000)
+				print ('Firing for',t,'uS')
 				self.H.__sendInt__(t)
 				time.sleep(t*1e-6)    #Wait for hardware to free up from firing pulses(blocking call). Background capture starts immediately after this
 			self.H.__get_ack__()
-		except Exception, ex:
+		except Exception as ex:
 			self.raiseException(ex, "Communication Error , Function : "+inspect.currentframe().f_code.co_name)
 
 	def capture_fullspeed(self,chan,samples,tg,*args,**kwargs):
@@ -680,7 +694,7 @@ class ScienceLab():
 			self.H.__sendInt__(samples)         #total number of samples to record
 			self.H.__sendInt__(int(tg*8))       #Timegap between samples.  8MHz timer clock
 			self.H.__get_ack__()
-		except Exception, ex:
+		except Exception as ex:
 			self.raiseException(ex, "Communication Error , Function : "+inspect.currentframe().f_code.co_name)
 
 	def capture_fullspeed_hr(self,chan,samples,tg,*args):
@@ -688,7 +702,7 @@ class ScienceLab():
 			self.__capture_fullspeed_hr__(chan,samples,tg,*args)
 			time.sleep(1e-6*self.samples*self.timebase+.01)
 			x,y =  self.__retrieveBufferData__(chan,self.samples,self.timebase)
-		except Exception, ex:
+		except Exception as ex:
 			self.raiseException(ex, "Communication Error , Function : "+inspect.currentframe().f_code.co_name)
 
 		return x,self.analogInputSources[chan].calPoly12(y)
@@ -700,7 +714,7 @@ class ScienceLab():
 			self.H.__sendByte__(state)
 			self.H.__sendInt__(t)
 			self.H.__get_ack__()
-		except Exception, ex:
+		except Exception as ex:
 			self.raiseException(ex, "Communication Error , Function : "+inspect.currentframe().f_code.co_name)
 		
 	def __capture_capacitance__(self,samples,tg):
@@ -709,7 +723,7 @@ class ScienceLab():
 		self.__charge_cap__(1,50000)
 		try:
 			x,y=self.capture_fullspeed_hr('CAP',samples,tg,'READ_CAP')
-		except Exception, ex:
+		except Exception as ex:
 			self.raiseException(ex, "Communication Error , Function : "+inspect.currentframe().f_code.co_name)
 		try:
 			fitres =  self.AC.fit_exp(x,y)
@@ -718,7 +732,7 @@ class ScienceLab():
 				return x,y,newy,cVal
 			else:
 				return None
-		except Exception, ex:
+		except Exception as ex:
 			raise RuntimeError(" Fit Failed ")
 
 	def capacitance_via_RC_discharge(self,samples,tg):
@@ -748,11 +762,11 @@ class ScienceLab():
 				data += self.H.fd.read(int(2*(samples%self.data_splitting)))         #reading int by int may cause packets to be dropped. this works better.
 				self.H.__get_ack__()
 
-		except Exception, ex:
+		except Exception as ex:
 			self.raiseException(ex, "Communication Error , Function : "+inspect.currentframe().f_code.co_name)
 		try:
 			for a in range(int(samples)): self.buff[a] = CP.ShortInt.unpack(data[a*2:a*2+2])[0]
-		except Exception, ex:
+		except Exception as ex:
 			msg = "Incorrect Number of Bytes Received\n"
 			raise RuntimeError(msg)
 
@@ -833,6 +847,7 @@ class ScienceLab():
 		triggerornot=0x80 if kwargs.get('trigger',True) else 0
 		self.timebase=tg
 		self.timebase = int(self.timebase*8)/8.  # Round off the timescale to 1/8uS units
+		if channel_one_input not in self.analogInputSources:raise RuntimeError('Invalid input %s, not in %s'%(channel_one_input,str(self.analogInputSources.keys() )))
 		CHOSA = self.analogInputSources[channel_one_input].CHOSA
 		try:
 			self.H.__sendByte__(CP.ADC)
@@ -875,7 +890,7 @@ class ScienceLab():
 			self.H.__sendInt__(int(self.timebase*8))        #Timegap between samples.  8MHz timer clock
 			self.H.__get_ack__()
 			self.channels_in_buffer=num
-		except Exception, ex:
+		except Exception as ex:
 			self.raiseException(ex, "Communication Error , Function : "+inspect.currentframe().f_code.co_name)
 
 
@@ -921,7 +936,7 @@ class ScienceLab():
 			self.H.__sendInt__(int(self.timebase*8))        #Timegap between samples.  8MHz timer clock
 			self.H.__get_ack__()
 			self.channels_in_buffer=1
-		except Exception, ex:
+		except Exception as ex:
 			self.raiseException(ex, "Communication Error , Function : "+inspect.currentframe().f_code.co_name)
 
 	def fetch_trace(self,channel_number):
@@ -972,7 +987,7 @@ class ScienceLab():
 			conversion_done = self.H.__getByte__()
 			samples = self.H.__getInt__()
 			self.H.__get_ack__()
-		except Exception, ex:
+		except Exception as ex:
 			self.raiseException(ex, "Communication Error , Function : "+inspect.currentframe().f_code.co_name)
 		return conversion_done,samples
 
@@ -1013,13 +1028,13 @@ class ScienceLab():
 				self.H.__sendInt__(samples-samples%self.data_splitting)
 				data += self.H.fd.read(int(2*(samples%self.data_splitting)))         #reading int by int may cause packets to be dropped.
 				self.H.__get_ack__()
-		except Exception, ex:
+		except Exception as ex:
 			self.raiseException(ex, "Communication Error , Function : "+inspect.currentframe().f_code.co_name)
 
 		try:
 			for a in range(int(samples)): self.buff[a] = CP.ShortInt.unpack(data[a*2:a*2+2])[0]
 			self.achans[channel_number-1].yaxis = self.achans[channel_number-1].fix_value(self.buff[:samples])
-		except Exception, ex:
+		except Exception as ex:
 			msg = "Incorrect Number of bytes received.\n"
 			raise RuntimeError(msg)
 
@@ -1053,7 +1068,7 @@ class ScienceLab():
 			self.H.__get_ack__()
 			for a in range(int(samples)): self.buff[a] = CP.ShortInt.unpack(data[a*2:a*2+2])[0]
 			self.achans[channel_number-1].yaxis = self.achans[channel_number-1].fix_value(self.buff[:samples])
-		except Exception, ex:
+		except Exception as ex:
 			self.raiseException(ex, "Communication Error , Function : "+inspect.currentframe().f_code.co_name)
 
 		return True
@@ -1109,7 +1124,7 @@ class ScienceLab():
 
 			self.H.__sendInt__(int(level))  #Trigger
 			self.H.__get_ack__()
-		except Exception, ex:
+		except Exception as ex:
 			self.raiseException(ex, "Communication Error , Function : "+inspect.currentframe().f_code.co_name)
 
 	def set_gain(self,channel,gain):
@@ -1153,8 +1168,41 @@ class ScienceLab():
 			self.H.__sendByte__(gain) #send the gain
 			self.H.__get_ack__()
 			return self.gain_values[gain]
-		except Exception, ex:
+		except Exception as ex:
 			self.raiseException(ex, "Communication Error , Function : "+inspect.currentframe().f_code.co_name)
+
+
+	def select_range(self,channel,voltage_range):
+		"""
+		set the gain of the selected PGA
+		
+		.. tabularcolumns:: |p{3cm}|p{11cm}|
+		
+		==============  ============================================================================================
+		**Arguments** 
+		==============  ============================================================================================
+		channel         'CH1','CH2'
+		voltage_range   choose from [16,8,4,3,2,1.5,1,.5,160]
+		==============  ============================================================================================
+		
+		.. note::
+			Setting the right voltage range will result in better resolution.			
+			in case the range specified is 160 , an external 10MOhm resistor must be connected in series with the device. 
+			
+			Note : this function internally calls set_gain with the appropriate gain value
+		
+		>>> I.select_range('CH1',8)  #gain set to 2x on CH1. Voltage range +/-8V
+
+		"""
+		ranges = [16,8,4,3,2,1.5,1,.5,160]
+		if voltage_range in ranges:
+			g = ranges.index(voltage_range)
+			return self.set_gain( channel, g)
+		else:
+			print ('not a valid range. try : ',ranges)
+			return None
+
+
 
 	def __calcCHOSA__(self,name):
 		name=name.upper()
@@ -1167,7 +1215,29 @@ class ScienceLab():
 		return source.CHOSA
 
 	def get_voltage(self,channel_name,**kwargs):
+		self.voltmeter_autorange(channel_name)
 		return self.get_average_voltage(channel_name,**kwargs)
+
+	def voltmeter_autorange(self,channel_name):
+		if self.analogInputSources[channel_name].gainPGA==None:return None
+		self.set_gain(channel_name,0)
+		V = self.get_average_voltage(channel_name)
+		return self.__autoSelectRange__(channel_name,V)
+
+	def __autoSelectRange__(self,channel_name,V):
+		keys = [8,4,3,2,1.5,1,.5,0]
+		cutoffs = {8:0,4:1,3:2,2:3,1.5:4,1.:5,.5:6,0:7}
+		for a in keys:
+			if abs(V)>a:
+				g=cutoffs[a]
+				break
+		self.set_gain(channel_name,g)
+		return g
+
+	def __autoRangeScope__(self,tg):
+		x,y1,y2 = self.capture2(1000,tg)
+		self.__autoSelectRange__('CH1',max(abs(y1)))
+		self.__autoSelectRange__('CH2',max(abs(y2)))
 
 	def get_average_voltage(self,channel_name,**kwargs):
 		""" 
@@ -1196,8 +1266,8 @@ class ScienceLab():
 		"""
 		try:
 			poly = self.analogInputSources[channel_name].calPoly12
-		except Exception, ex:
-			msg = "Invalid Channel"+ex
+		except Exception as ex:
+			msg = "Invalid Channel"+str(ex)
 			raise RuntimeError(msg)
 		vals = [self.__get_raw_average_voltage__(channel_name,**kwargs) for a in range(int(kwargs.get('samples',1)))]
 		#if vals[0]>2052:print (vals)
@@ -1226,7 +1296,7 @@ class ScienceLab():
 			V_sum = self.H.__getInt__()
 			self.H.__get_ack__()
 			return  V_sum/16. #sum(V)/16.0  #
-		except Exception, ex:
+		except Exception as ex:
 			self.raiseException(ex, "Communication Error , Function : "+inspect.currentframe().f_code.co_name)
 
 	def fetch_buffer(self,starting_position=0,total_points=100):
@@ -1240,7 +1310,7 @@ class ScienceLab():
 			self.H.__sendInt__(total_points)
 			for a in range(int(total_points)): self.buff[a]=self.H.__getInt__()
 			self.H.__get_ack__()
-		except Exception, ex:
+		except Exception as ex:
 			self.raiseException(ex, "Communication Error , Function : "+inspect.currentframe().f_code.co_name)
 
 
@@ -1254,7 +1324,7 @@ class ScienceLab():
 			self.H.__sendInt__(starting_position)
 			self.H.__sendInt__(total_points)
 			self.H.__get_ack__()
-		except Exception, ex:
+		except Exception as ex:
 			self.raiseException(ex, "Communication Error , Function : "+inspect.currentframe().f_code.co_name)
 
 	def fill_buffer(self,starting_position,point_array):
@@ -1269,7 +1339,7 @@ class ScienceLab():
 			for a in point_array:
 				self.H.__sendInt__(int(a))
 			self.H.__get_ack__()
-		except Exception, ex:
+		except Exception as ex:
 			self.raiseException(ex, "Communication Error , Function : "+inspect.currentframe().f_code.co_name)
 
 	def start_streaming(self,tg,channel='CH1'):
@@ -1293,7 +1363,7 @@ class ScienceLab():
 			self.H.__sendByte__(self.__calcCHOSA__(channel))
 			self.H.__sendInt__(tg)      #Timegap between samples.  8MHz timer clock
 			self.streaming=True
-		except Exception, ex:
+		except Exception as ex:
 			self.raiseException(ex, "Communication Error , Function : "+inspect.currentframe().f_code.co_name)
 
 	def stop_streaming(self):
@@ -1336,7 +1406,7 @@ class ScienceLab():
 			val = self.H.__getLong__()
 			self.H.__get_ack__()
 			return scale*(val)/1.0e-1 #100mS sampling
-		except Exception, ex:
+		except Exception as ex:
 			self.raiseException(ex, "Communication Error , Function : "+inspect.currentframe().f_code.co_name)
 
 	def get_high_freq(self,pin):
@@ -1372,7 +1442,7 @@ class ScienceLab():
 			self.H.__get_ack__()
 			#self.__print__(hex(val))
 			return scale*(val)/1.0e-1 #100mS sampling
-		except Exception, ex:
+		except Exception as ex:
 			self.raiseException(ex, "Communication Error , Function : "+inspect.currentframe().f_code.co_name)
 
 	def get_freq(self,channel='CNTR',timeout=2):
@@ -1431,7 +1501,7 @@ class ScienceLab():
 			self.H.__get_ack__()
 			freq = lambda t: 16*64e6/t if(t) else 0
 			#self.__print__(x,tmt,timeout_msb)
-		except Exception, ex:
+		except Exception as ex:
 			self.raiseException(ex, "Communication Error , Function : "+inspect.currentframe().f_code.co_name)
 		if(tmt):return 0
 		return freq(x[1]-x[0])
@@ -1504,7 +1574,7 @@ class ScienceLab():
 					return [1e-6*(self.dchans[0].timestamps[skip_cycle+1]-self.dchans[0].timestamps[0])]
 				time.sleep(0.1)
 			return []
-		except Exception, ex:
+		except Exception as ex:
 			self.raiseException(ex, "Communication Error , Function : "+inspect.currentframe().f_code.co_name)
 
 	def f2f_time(self,channel,skip_cycle=0,timeout=5):
@@ -1539,7 +1609,7 @@ class ScienceLab():
 					return [1e-6*(self.dchans[0].timestamps[skip_cycle+1]-self.dchans[0].timestamps[0])]
 				time.sleep(0.1)
 			return []
-		except Exception, ex:
+		except Exception as ex:
 			self.raiseException(ex, "Communication Error , Function : "+inspect.currentframe().f_code.co_name)
 
 	def MeasureInterval(self,channel1,channel2,edge1,edge2,timeout=0.1):
@@ -1604,7 +1674,7 @@ class ScienceLab():
 			if(tmt >= timeout_msb or B==0):return np.NaN
 			rtime = lambda t: t/64e6
 			return rtime(B-A+20)
-		except Exception, ex:
+		except Exception as ex:
 			self.raiseException(ex, "Communication Error , Function : "+inspect.currentframe().f_code.co_name)
 
 	def DutyCycle(self,channel='ID1',timeout=1.):
@@ -1646,7 +1716,7 @@ class ScienceLab():
 				return params
 			else:
 				return -1,-1
-		except Exception, ex:
+		except Exception as ex:
 			self.raiseException(ex, "Communication Error , Function : "+inspect.currentframe().f_code.co_name)
 
 	def PulseTime(self,channel='ID1',PulseType='LOW',timeout=0.1):
@@ -1683,7 +1753,7 @@ class ScienceLab():
 					if PulseType=='HIGH': return y[1]
 					elif PulseType=='LOW': return abs(y[0])
 			return -1,-1
-		except Exception, ex:
+		except Exception as ex:
 			self.raiseException(ex, "Communication Error , Function : "+inspect.currentframe().f_code.co_name)
 
 	def MeasureMultipleDigitalEdges(self,channel1,channel2,edgeType1,edgeType2,points1,points2,timeout=0.1,**kwargs):
@@ -1768,7 +1838,7 @@ class ScienceLab():
 				return rtime(A-A[0]),rtime(B-A[0])
 			else:
 				return rtime(A),rtime(B)
-		except Exception, ex:
+		except Exception as ex:
 			self.raiseException(ex, "Communication Error , Function : "+inspect.currentframe().f_code.co_name)
 
 	def capture_edges1(self,waiting_time=1.,**args):
@@ -1824,7 +1894,7 @@ class ScienceLab():
 			tmp = self.fetch_long_data_from_LA(data[0],1)
 			#data[4][0] -> initial state
 			return tmp/64e6     
-		except Exception, ex:
+		except Exception as ex:
 			self.raiseException(ex, "Communication Error , Function : "+inspect.currentframe().f_code.co_name)
 
 	def start_one_channel_LA_backup__(self,trigger=1,channel='ID1',maximum_time=67,**args):
@@ -1883,7 +1953,7 @@ class ScienceLab():
 				a.maximum_time = maximum_time*1e6 #conversion to uS
 				a.mode = EVERY_EDGE
 
-		except Exception, ex:
+		except Exception as ex:
 			self.raiseException(ex, "Communication Error , Function : "+inspect.currentframe().f_code.co_name)
 
 		#def start_one_channel_LA(self,**args):
@@ -2022,7 +2092,7 @@ class ScienceLab():
 				a.initial_state_override = 2
 			elif trmode == 2:
 				a.initial_state_override = 1
-		except Exception, ex:
+		except Exception as ex:
 			self.raiseException(ex, "Communication Error , Function : "+inspect.currentframe().f_code.co_name)
 
 	def start_two_channel_LA(self,**args):
@@ -2094,7 +2164,7 @@ class ScienceLab():
 				a.name = strchans[n]
 				n+=1
 			self.digital_channels_in_buffer = 2
-		except Exception, ex:
+		except Exception as ex:
 			self.raiseException(ex, "Communication Error , Function : "+inspect.currentframe().f_code.co_name)
 
 	def start_three_channel_LA(self,**args):
@@ -2155,7 +2225,7 @@ class ScienceLab():
 				elif trmode == 2:
 					a.initial_state_override = 1
 				n+=1
-		except Exception, ex:
+		except Exception as ex:
 			self.raiseException(ex, "Communication Error , Function : "+inspect.currentframe().f_code.co_name)
 
 	def start_four_channel_LA(self,trigger=1,maximum_time=0.001,mode=[1,1,1,1],**args):
@@ -2234,7 +2304,7 @@ class ScienceLab():
 				a.maximum_time = maximum_time*1e6 #conversion to uS
 				a.mode=mode[n]
 				n+=1
-		except Exception, ex:
+		except Exception as ex:
 			self.raiseException(ex, "Communication Error , Function : "+inspect.currentframe().f_code.co_name)
 
 	def get_LA_initial_states(self):
@@ -2264,7 +2334,7 @@ class ScienceLab():
 			if B<0: B=0
 			if C<0: C=0
 			if D<0: D=0
-		except Exception, ex:
+		except Exception as ex:
 			self.raiseException(ex, "Communication Error , Function : "+inspect.currentframe().f_code.co_name)
 
 		return A,B,C,D,{'ID1':(s&1!=0),'ID2':(s&2!=0),'ID3':(s&4!=0),'ID4':(s&8!=0),'SEN':(s&16!=16)}  #SEN is inverted comparator output.
@@ -2277,7 +2347,7 @@ class ScienceLab():
 			self.H.__sendByte__(CP.TIMING)
 			self.H.__sendByte__(CP.STOP_LA)
 			self.H.__get_ack__()
-		except Exception, ex:
+		except Exception as ex:
 			self.raiseException(ex, "Communication Error , Function : "+inspect.currentframe().f_code.co_name)
 		
 	def fetch_int_data_from_LA(self,bytes,chan=1):
@@ -2305,7 +2375,7 @@ class ScienceLab():
 				t[a] = CP.ShortInt.unpack(ss[a*2:a*2+2])[0]
 
 			self.H.__get_ack__()
-		except Exception, ex:
+		except Exception as ex:
 			self.raiseException(ex, "Communication Error , Function : "+inspect.currentframe().f_code.co_name)
 
 		t=np.trim_zeros(t)
@@ -2342,7 +2412,7 @@ class ScienceLab():
 				tmp[a] = CP.Integer.unpack(ss[a*4:a*4+4])[0]
 			tmp = np.trim_zeros(tmp) 
 			return tmp
-		except Exception, ex:
+		except Exception as ex:
 			self.raiseException(ex, "Communication Error , Function : "+inspect.currentframe().f_code.co_name)
 
 	def fetch_LA_channels(self):
@@ -2356,7 +2426,7 @@ class ScienceLab():
 			for a in range(4):
 				if(self.dchans[a].channel_number<self.digital_channels_in_buffer):self.__fetch_LA_channel__(a,data)
 			return True
-		except Exception, ex:
+		except Exception as ex:
 			self.raiseException(ex, "Communication Error , Function : "+inspect.currentframe().f_code.co_name)
 
 	def __fetch_LA_channel__(self,channel_number,initial_states):
@@ -2379,7 +2449,7 @@ class ScienceLab():
 			#a.timestamps -= offset
 			a.generate_axes()
 			return True
-		except Exception, ex:
+		except Exception as ex:
 			self.raiseException(ex, "Communication Error , Function : "+inspect.currentframe().f_code.co_name)
 
 	def get_states(self):
@@ -2396,7 +2466,7 @@ class ScienceLab():
 			s=self.H.__getByte__()
 			self.H.__get_ack__()
 			return {'ID1':(s&1!=0),'ID2':(s&2!=0),'ID3':(s&4!=0),'ID4':(s&8!=0)}
-		except Exception, ex:
+		except Exception as ex:
 			self.raiseException(ex, "Communication Error , Function : "+inspect.currentframe().f_code.co_name)
 
 	def get_state(self,input_id):
@@ -2451,7 +2521,7 @@ class ScienceLab():
 			self.H.__sendByte__(CP.SET_STATE)
 			self.H.__sendByte__(data)
 			self.H.__get_ack__()
-		except Exception, ex:
+		except Exception as ex:
 			self.raiseException(ex, "Communication Error , Function : "+inspect.currentframe().f_code.co_name)
 
 	def countPulses(self,channel='SEN'):
@@ -2472,7 +2542,7 @@ class ScienceLab():
 			self.H.__sendByte__(CP.START_COUNTING)
 			self.H.__sendByte__(self.__calcDChan__(channel))
 			self.H.__get_ack__()
-		except Exception, ex:
+		except Exception as ex:
 			self.raiseException(ex, "Communication Error , Function : "+inspect.currentframe().f_code.co_name)
 
 	def readPulseCount(self):
@@ -2493,7 +2563,7 @@ class ScienceLab():
 			count = self.H.__getInt__()
 			self.H.__get_ack__()
 			return count
-		except Exception, ex:
+		except Exception as ex:
 			self.raiseException(ex, "Communication Error , Function : "+inspect.currentframe().f_code.co_name)
 
 	def __get_capacitor_range__(self,ctime):
@@ -2507,7 +2577,7 @@ class ScienceLab():
 			V=V_sum*3.3/16/4095
 			C = -ctime*1e-6/1e4/np.log(1-V/3.3)
 			return  V,C
-		except Exception, ex:
+		except Exception as ex:
 			self.raiseException(ex, "Communication Error , Function : "+inspect.currentframe().f_code.co_name)
 
 	def get_capacitor_range(self):
@@ -2580,14 +2650,14 @@ class ScienceLab():
 				elif CR==3:
 					self.__print__('Constant voltage mode ')
 					return self.get_capacitor_range()[1]
-		except Exception, ex:
+		except Exception as ex:
 			self.raiseException(ex, "Communication Error , Function : "+inspect.currentframe().f_code.co_name)
 
 	def __calibrate_ctmu__(self,scalers):
 		#self.currents=[0.55e-3/scalers[0],0.55e-6/scalers[1],0.55e-5/scalers[2],0.55e-4/scalers[3]]
 		self.currents=[0.55e-3,0.55e-6,0.55e-5,0.55e-4]
 		self.currentScalers = scalers
-		print (self.currentScalers,scalers,self.SOCKET_CAPACITANCE)
+		#print (self.currentScalers,scalers,self.SOCKET_CAPACITANCE)
 
 	def __get_capacitance__(self,current_range,trim, Charge_Time):  #time in uS
 		try:
@@ -2609,7 +2679,7 @@ class ScienceLab():
 			else: C = 0
 			#self.__print__('Current if C=470pF :',V*(470e-12+self.SOCKET_CAPACITANCE)/(Charge_Time*1e-6))
 			return V,C
-		except Exception, ex:
+		except Exception as ex:
 			self.raiseException(ex, "Communication Error , Function : "+inspect.currentframe().f_code.co_name)
 
 	def get_temperature(self):
@@ -2657,7 +2727,7 @@ class ScienceLab():
 			V=3.3*v/16/4095.
 			#print(V)
 			return V
-		except Exception, ex:
+		except Exception as ex:
 			self.raiseException(ex, "Communication Error , Function : "+inspect.currentframe().f_code.co_name)
 
 	def __start_ctmu__(self,Crange,trim,tgen=1):
@@ -2667,7 +2737,7 @@ class ScienceLab():
 			self.H.__sendByte__((Crange)|(tgen<<7))
 			self.H.__sendByte__(trim)
 			self.H.__get_ack__()
-		except Exception, ex:
+		except Exception as ex:
 			self.raiseException(ex, "Communication Error , Function : "+inspect.currentframe().f_code.co_name)
 
 	def __stop_ctmu__(self):
@@ -2675,7 +2745,7 @@ class ScienceLab():
 			self.H.__sendByte__(CP.COMMON)
 			self.H.__sendByte__(CP.STOP_CTMU)
 			self.H.__get_ack__()
-		except Exception, ex:
+		except Exception as ex:
 			self.raiseException(ex, "Communication Error , Function : "+inspect.currentframe().f_code.co_name)
 		
 	def resetHardware(self):
@@ -2685,7 +2755,7 @@ class ScienceLab():
 		try:
 			self.H.__sendByte__(CP.COMMON)
 			self.H.__sendByte__(CP.RESTORE_STANDALONE)
-		except Exception, ex:
+		except Exception as ex:
 			self.raiseException(ex, "Communication Error , Function : "+inspect.currentframe().f_code.co_name)
 
 	def read_flash(self,page,location):
@@ -2711,7 +2781,7 @@ class ScienceLab():
 			ss=self.H.fd.read(16)
 			self.H.__get_ack__()
 			return ss
-		except Exception, ex:
+		except Exception as ex:
 			self.raiseException(ex, "Communication Error , Function : "+inspect.currentframe().f_code.co_name)
 
 	def __stoa__(self,s):
@@ -2747,7 +2817,7 @@ class ScienceLab():
 			self.__print__('Read from ',page,',',bytes_to_read,' :',self.__stoa__(ss[:40]),'...')
 			if numbytes%2: return ss[:-1]   #Kill the extra character we read. Don't surprise the user with extra data
 			return ss
-		except Exception, ex:
+		except Exception as ex:
 			self.raiseException(ex, "Communication Error , Function : "+inspect.currentframe().f_code.co_name)
 
 	def write_flash(self,page,location,string_to_write):
@@ -2779,7 +2849,7 @@ class ScienceLab():
 			self.H.fd.write(string_to_write)
 			time.sleep(0.1)
 			self.H.__get_ack__()
-		except Exception, ex:
+		except Exception as ex:
 			self.raiseException(ex, "Communication Error , Function : "+inspect.currentframe().f_code.co_name)
 
 	def write_bulk_flash(self,location,data):
@@ -2813,7 +2883,7 @@ class ScienceLab():
 				self.H.__sendByte__(data[n])
 				#Printer('Bytes written: %d'%(n+1))
 			self.H.__get_ack__()
-		except Exception, ex:
+		except Exception as ex:
 			self.raiseException(ex, "Communication Error , Function : "+inspect.currentframe().f_code.co_name)
 
 			#verification by readback
@@ -2937,7 +3007,7 @@ class ScienceLab():
 			if self.sine1freq == None: time.sleep(0.2)
 			self.sine1freq = freq
 			return freq
-		except Exception, ex:
+		except Exception as ex:
 			self.raiseException(ex, "Communication Error , Function : "+inspect.currentframe().f_code.co_name)
 
 	def set_w2(self,freq,waveType=None):
@@ -2991,7 +3061,7 @@ class ScienceLab():
 			self.H.__get_ack__()
 			if self.sine1freq == None: time.sleep(0.2)
 			self.sine2freq = freq
-		except Exception, ex:
+		except Exception as ex:
 			self.raiseException(ex, "Communication Error , Function : "+inspect.currentframe().f_code.co_name)
 
 		return freq
@@ -3082,10 +3152,10 @@ class ScienceLab():
 			self.sine2freq = retfreq2
 
 			return retfreq
-		except Exception, ex:
+		except Exception as ex:
 			self.raiseException(ex, "Communication Error , Function : "+inspect.currentframe().f_code.co_name)
 
-	def load_equation(self,chan,function,span=None):
+	def load_equation(self,chan,function,span=None,**kwargs):
 		'''
 		Load an arbitrary waveform to the waveform generators
 		
@@ -3122,9 +3192,9 @@ class ScienceLab():
 		self.__print__('reloaded wave equation for %s : %s'%( chan, self.WType[chan]) )
 		x1=np.linspace(span[0],span[1],512+1)[:-1]
 		y1=function(x1)
-		self.load_table(chan,y1,self.WType[chan])
+		self.load_table(chan,y1,self.WType[chan],**kwargs)
 
-	def load_table(self,chan,points,mode='arbit'):
+	def load_table(self,chan,points,mode='arbit',**kwargs):
 		'''
 		Load an arbitrary waveform table to the waveform generators
 		
@@ -3157,8 +3227,9 @@ class ScienceLab():
 		# y1 = array with 512 points between 0 and 512
 		# y2 = array with 32 points between 0 and 64
 
-		LARGE_MAX = 511*.95  # A form of amplitude control. This decides the max PWM duty cycle out of 512 clocks
-		SMALL_MAX = 63 *.95  # Max duty cycle out of 64 clocks
+		amp = kwargs.get('amp',0.95)
+		LARGE_MAX = 511*amp  # A form of amplitude control. This decides the max PWM duty cycle out of 512 clocks
+		SMALL_MAX = 63 *amp  # Max duty cycle out of 64 clocks
 		y1=np.array(points)
 		y1-=min(y1)
 		y1=y1/float(max(y1))
@@ -3185,7 +3256,7 @@ class ScienceLab():
 				#time.sleep(0.001)
 			time.sleep(0.01)
 			self.H.__get_ack__()        
-		except Exception, ex:
+		except Exception as ex:
 			self.raiseException(ex, "Communication Error , Function : "+inspect.currentframe().f_code.co_name)
 
 	def sqr1(self,freq,duty_cycle=50,onlyPrepare=False):
@@ -3226,7 +3297,7 @@ class ScienceLab():
 			if onlyPrepare: prescaler |= 0x4   # Instruct hardware to prepare the square wave, but do not connect it to the output.
 			self.H.__sendByte__(prescaler)
 			self.H.__get_ack__()
-		except Exception, ex:
+		except Exception as ex:
 			self.raiseException(ex, "Communication Error , Function : "+inspect.currentframe().f_code.co_name)
 
 		return 64e6/wavelength/p[prescaler&0x3]
@@ -3256,7 +3327,7 @@ class ScienceLab():
 			self.H.__sendInt__(len(timing_array))
 			time.sleep(sum(timing_array)*1e-6) #Sleep for the whole duration
 			self.H.__get_ack__()
-		except Exception, ex:
+		except Exception as ex:
 			self.raiseException(ex, "Communication Error , Function : "+inspect.currentframe().f_code.co_name)
 		return True
 
@@ -3291,7 +3362,7 @@ class ScienceLab():
 			self.H.__sendInt__(int(round(high_time)))
 			self.H.__sendByte__(prescaler)
 			self.H.__get_ack__()
-		except Exception, ex:
+		except Exception as ex:
 			self.raiseException(ex, "Communication Error , Function : "+inspect.currentframe().f_code.co_name)
 
 	def set_sqrs(self,wavelength,phase,high_time1,high_time2,prescaler=1):
@@ -3320,7 +3391,7 @@ class ScienceLab():
 			self.H.__sendInt__(high_time2)
 			self.H.__sendByte__(prescaler)
 			self.H.__get_ack__()
-		except Exception, ex:
+		except Exception as ex:
 			self.raiseException(ex, "Communication Error , Function : "+inspect.currentframe().f_code.co_name)
 
 	def sqrPWM(self,freq,h0,p1,h1,p2,h2,p3,h3,**kwargs):
@@ -3382,7 +3453,7 @@ class ScienceLab():
 			self.H.__sendInt__(max(1,B3-1))
 			self.H.__sendByte__(prescaler)
 			self.H.__get_ack__()
-		except Exception, ex:
+		except Exception as ex:
 			self.raiseException(ex, "Communication Error , Function : "+inspect.currentframe().f_code.co_name)
 
 		return 64e6/wavelength/p[prescaler&0x3]
@@ -3427,7 +3498,7 @@ class ScienceLab():
 			self.H.__sendByte__(scaler)
 			if 'WAVEGEN' in args: self.DDS_CLOCK = 128e6/(1<<scaler)
 			self.H.__get_ack__()
-		except Exception, ex:
+		except Exception as ex:
 			self.raiseException(ex, "Communication Error , Function : "+inspect.currentframe().f_code.co_name)
 
 	#-------------------------------------------------------------------------------------------------------------------#
@@ -3526,7 +3597,7 @@ class ScienceLab():
 			time.sleep(0.001)
 			self.H.__get_ack__()
 			return B,R,G    
-		except Exception, ex:
+		except Exception as ex:
 			self.raiseException(ex, "Communication Error , Function : "+inspect.currentframe().f_code.co_name)
 
 	def WS2812B(self,cols,output='CS1'):
@@ -3567,7 +3638,7 @@ class ScienceLab():
 				self.H.__sendByte__(G); self.H.__sendByte__(R);self.H.__sendByte__(B)
 				#print(col)
 			self.H.__get_ack__()
-		except Exception, ex:
+		except Exception as ex:
 			self.raiseException(ex, "Communication Error , Function : "+inspect.currentframe().f_code.co_name)
 
 	#-------------------------------------------------------------------------------------------------------------------#
@@ -3596,7 +3667,7 @@ class ScienceLab():
 			v=self.H.__getInt__()
 			self.H.__get_ack__()
 			return v
-		except Exception, ex:
+		except Exception as ex:
 			self.raiseException(ex, "Communication Error , Function : "+inspect.currentframe().f_code.co_name)
 
 	def device_id(self):
@@ -3608,7 +3679,7 @@ class ScienceLab():
 			val = d|(c<<16)|(b<<32)|(a<<48)
 			self.__print__(a,b,c,d,hex(val))
 			return val
-		except Exception, ex:
+		except Exception as ex:
 			self.raiseException(ex, "Communication Error , Function : "+inspect.currentframe().f_code.co_name)
 
 	def __write_program_address__(self,address,value):
@@ -3630,7 +3701,7 @@ class ScienceLab():
 			self.H.__sendInt__((address>>16)&0xFFFF)
 			self.H.__sendInt__(value)
 			self.H.__get_ack__()
-		except Exception, ex:
+		except Exception as ex:
 			self.raiseException(ex, "Communication Error , Function : "+inspect.currentframe().f_code.co_name)
 
 	def read_data_address(self,address):
@@ -3652,7 +3723,7 @@ class ScienceLab():
 			v=self.H.__getInt__()
 			self.H.__get_ack__()
 			return v
-		except Exception, ex:
+		except Exception as ex:
 			self.raiseException(ex, "Communication Error , Function : "+inspect.currentframe().f_code.co_name)
 		
 	def write_data_address(self,address,value):
@@ -3673,7 +3744,7 @@ class ScienceLab():
 			self.H.__sendInt__(address&0xFFFF)
 			self.H.__sendInt__(value)
 			self.H.__get_ack__()
-		except Exception, ex:
+		except Exception as ex:
 			self.raiseException(ex, "Communication Error , Function : "+inspect.currentframe().f_code.co_name)
 
 	#-------------------------------------------------------------------------------------------------------------------#
@@ -3704,7 +3775,7 @@ class ScienceLab():
 			self.H.__sendInt__(int(angle*1900/180))
 			self.H.__sendByte__(2)
 			self.H.__get_ack__()
-		except Exception, ex:
+		except Exception as ex:
 			self.raiseException(ex, "Communication Error , Function : "+inspect.currentframe().f_code.co_name)
 
 	def __stepperMotor__(self,steps,delay,direction):
@@ -3713,7 +3784,7 @@ class ScienceLab():
 			self.H.__sendByte__(CP.STEPPER_MOTOR)
 			self.H.__sendInt__((steps<<1)|direction)
 			self.H.__sendInt__(delay)
-		except Exception, ex:
+		except Exception as ex:
 			self.raiseException(ex, "Communication Error , Function : "+inspect.currentframe().f_code.co_name)
 
 		t=time.time()
@@ -3768,7 +3839,7 @@ class ScienceLab():
 			self.H.__sendInt__(750+int(a4*1900/180))
 			self.H.__sendByte__(params)
 			self.H.__get_ack__()
-		except Exception, ex:
+		except Exception as ex:
 			self.raiseException(ex, "Communication Error , Function : "+inspect.currentframe().f_code.co_name)
 
 	def enableUartPassthrough(self,baudrate,persist=False):
@@ -3799,7 +3870,7 @@ class ScienceLab():
 			self.__print__('BRGVAL:',int( round(((64e6/baudrate)/4)-1) ))
 			time.sleep(0.1)
 			self.__print__('junk bytes read:',len(self.H.fd.read(100)))
-		except Exception, ex:
+		except Exception as ex:
 			self.raiseException(ex, "Communication Error , Function : "+inspect.currentframe().f_code.co_name)
 
 	def estimateDistance(self):
@@ -3837,7 +3908,7 @@ class ScienceLab():
 			if(tmt >= timeout_msb or B==0):return 0
 			rtime = lambda t: t/64e6
 			return 330.*rtime(B-A+20)/2.
-		except Exception, ex:
+		except Exception as ex:
 			self.raiseException(ex, "Communication Error , Function : "+inspect.currentframe().f_code.co_name)
 
 	def TemperatureAndHumidity(self):
@@ -3850,32 +3921,35 @@ class ScienceLab():
 			self.H.__sendByte__(CP.AM2302_HEADER)
 
 			self.H.__get_ack__()
-		except Exception, ex:
+		except Exception as ex:
 			self.raiseException(ex, "Communication Error , Function : "+inspect.currentframe().f_code.co_name)
 		self.digital_channels_in_buffer=1
 
-	def opticalArray(self,tg,delay,tp):
+	def opticalArray(self,SS,delay,channel = 'CH3'):
 		'''
-		read from 3648 element optical sensor array TCD3648P from Toshiba
+		read from 3648 element optical sensor array TCD3648P from Toshiba. Experimental feature.
+		Neither Sine waves will be available.
+		Connect SQR1 to MS , SQR2 to MS , A0 to CHannel , and CS1(on the expansion slot) to ICG
 
-		see :ref:`tcd_video`
+		delay : ICG low duration
+		tp : clock wavelength=tp*15nS,  SS=clock/4
 
 		'''
 		samples=3694
 		try:
 			self.H.__sendByte__(CP.NONSTANDARD_IO)
 			self.H.__sendByte__(CP.TCD1304_HEADER)
-			self.H.__sendByte__(self.__calcCHOSA__('CH3'))
-			self.H.__sendByte__(int(tg*8))
+			self.H.__sendByte__(self.__calcCHOSA__(channel)|0x80) #12-bit
+			self.H.__sendByte__(8) #Firmware changed. This doesn't do anything.
 			self.H.__sendInt__(delay)
-			
-			self.H.__sendInt__(tp)
-			self.achans[0].set_params(channel='CH3',length=samples,timebase=self.timebase,resolution=12,source=self.analogInputSources['CH3'])
+			self.H.__sendInt__(int(SS*64))
+			self.timebase = SS
+			self.achans[0].set_params(channel=0,length=samples,timebase=self.timebase,resolution=12,source=self.analogInputSources[channel])
 			self.samples=samples
 			self.channels_in_buffer=1
-			time.sleep(0.005)
+			time.sleep(2*SS*1e-6)
 			self.H.__get_ack__()
-		except Exception, ex:
+		except Exception as ex:
 			self.raiseException(ex, "Communication Error , Function : "+inspect.currentframe().f_code.co_name)
 
 	def setUARTBAUD(self,BAUD):
@@ -3885,7 +3959,7 @@ class ScienceLab():
 			self.H.__sendInt__(int( round(((64e6/BAUD)/4)-1) ))
 			self.__print__('BRG2VAL:',int( round(((64e6/BAUD)/4)-1) ))
 			self.H.__get_ack__()
-		except Exception, ex:
+		except Exception as ex:
 			self.raiseException(ex, "Communication Error , Function : "+inspect.currentframe().f_code.co_name)
 
 	def writeUART(self,character):
@@ -3894,7 +3968,7 @@ class ScienceLab():
 			self.H.__sendByte__(CP.SEND_BYTE)
 			self.H.__sendByte__(character)
 			self.H.__get_ack__()
-		except Exception, ex:
+		except Exception as ex:
 			self.raiseException(ex, "Communication Error , Function : "+inspect.currentframe().f_code.co_name)
 
 	def readUART(self):
@@ -3902,7 +3976,7 @@ class ScienceLab():
 			self.H.__sendByte__(CP.UART_2)
 			self.H.__sendByte__(CP.READ_BYTE)
 			return self.H.__getByte__()
-		except Exception, ex:
+		except Exception as ex:
 			self.raiseException(ex, "Communication Error , Function : "+inspect.currentframe().f_code.co_name)
 
 	def readUARTStatus(self):
@@ -3913,7 +3987,7 @@ class ScienceLab():
 			self.H.__sendByte__(CP.UART_2)
 			self.H.__sendByte__(CP.READ_UART2_STATUS)
 			return self.H.__getByte__()
-		except Exception, ex:
+		except Exception as ex:
 			self.raiseException(ex, "Communication Error , Function : "+inspect.currentframe().f_code.co_name)
 
 	def readLog(self):
@@ -3926,11 +4000,11 @@ class ScienceLab():
 			log  = self.H.fd.readline().strip()
 			self.H.__get_ack__()
 			return log
-		except Exception, ex:
+		except Exception as ex:
 			self.raiseException(ex, "Communication Error , Function : "+inspect.currentframe().f_code.co_name)
 	
 	def raiseException(self,ex, msg):
-			msg += '\n' + ex.message
+			msg += '\n' + str(ex)
 			self.H.disconnect()
 			raise RuntimeError(msg)
 
@@ -3945,5 +4019,3 @@ if __name__ == "__main__":
 	#from PSL import sciencelab
 	#I=sciencelab.connect()
 	#for a in range(10000):I.get_average_voltage('CH1')
-    
-    
