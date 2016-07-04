@@ -61,6 +61,8 @@ class ScienceLab():
 		
 	"""
 
+	"""
+
 	CAP_AND_PCS=0
 	ADC_SHIFTS_LOCATION1=1
 	ADC_SHIFTS_LOCATION2=2
@@ -78,7 +80,7 @@ class ScienceLab():
 	def __init__(self,timeout=1.0,**kwargs):
 		self.verbose=kwargs.get('verbose',False)
 		self.initialArgs = kwargs
-		self.generic_name = 'FOSSASIA PSLab'
+		self.generic_name = 'PSLab'
 		self.DDS_CLOCK = 0
 		self.timebase = 40
 		self.MAX_SAMPLES = CP.MAX_SAMPLES
@@ -96,8 +98,8 @@ class ScienceLab():
 		self.analogInputSources={}
 		for a in allAnalogChannels:self.analogInputSources[a]=analogInputSource(a)
 
-		self.sine1freq = None
-		self.sine2freq = None
+		self.sine1freq = None;self.sine2freq = None
+		self.sqrfreq = {'SQR1':None,'SQR2':None,'SQR3':None,'SQR4':None}
 		self.aboutArray=[]
 		self.errmsg = ''
 		#--------------------------Initialize communication handler, and subclasses-----------------
@@ -126,11 +128,12 @@ class ScienceLab():
 		self.achans=[analogAcquisitionChannel(a) for a in ['CH1','CH2','CH3','MIC']]        
 		self.gain_values=gains
 		self.buff=np.zeros(10000)
-		self.SOCKET_CAPACITANCE = 0# 42e-12 is typical for the PSLab. Actual values will be updated during calibration loading
+		self.SOCKET_CAPACITANCE = 0# 42e-12 is typical for the SEElablet. Actual values will be updated during calibration loading
 		self.resistanceScaling = 1.
 
 		self.digital_channel_names=digital_channel_names
 		self.allDigitalChannels = self.digital_channel_names
+		self.gains = {'CH1':0,'CH2':0}
 
 		#This array of four instances of digital_channel is used to store data retrieved from the
 		#logic analyzer section of the device.  It also contains methods to generate plottable data
@@ -142,7 +145,7 @@ class ScienceLab():
 		self.SPI = SPI(self.H)
 		self.hexid=''    
 		if self.H.connected:
-			for a in ['CH1','CH2']: self.set_gain(a,0)
+			for a in ['CH1','CH2']: self.set_gain(a,0,True) #Force load gain
 			for a in ['W1','W2']:self.load_equation(a,'sine')
 			self.SPI.set_parameters(1,7,1,0)
 			self.hexid=hex(self.device_id())
@@ -262,11 +265,6 @@ class ScienceLab():
 						OFF=np.array([np.argmin(np.fabs(YDATA[max(B-LOOKBEHIND,0):min(4095,B+LOOKAHEAD)]-DACX[B]) )- (B-max(B-LOOKBEHIND,0)) for B in range(0,4096)])
 						self.aboutArray.append(['Err min:',min(OFF),'Err max:',max(OFF)])
 						self.DAC.CHANS[NAME].load_calibration_table(OFF)
-
-				
-				
-		
-		time.sleep(0.001)
 
 	def get_resistance(self):
 		V = self.get_average_voltage('SEN')
@@ -1127,7 +1125,7 @@ class ScienceLab():
 		except Exception as ex:
 			self.raiseException(ex, "Communication Error , Function : "+inspect.currentframe().f_code.co_name)
 
-	def set_gain(self,channel,gain):
+	def set_gain(self,channel,gain,Force=False):
 		"""
 		set the gain of the selected PGA
 		
@@ -1138,6 +1136,7 @@ class ScienceLab():
 		==============  ============================================================================================
 		channel         'CH1','CH2'
 		gain            (0-8) -> (1x,2x,4x,5x,8x,10x,16x,32x,1/11x)
+		Force			If True, the amplifier gain will be set even if it was previously set to the same value.
 		==============  ============================================================================================
 		
 		.. note::
@@ -1157,20 +1156,26 @@ class ScienceLab():
 			return
 		if self.analogInputSources[channel].gainPGA==None:
 			self.__print__('No amplifier exists on this channel :',channel)
-			return
-		try:
-			self.analogInputSources[channel].setGain(self.gain_values[gain])
-			if gain>7: gain = 0   # external attenuator mode. set gain 1x
-				
-			self.H.__sendByte__(CP.ADC)
-			self.H.__sendByte__(CP.SET_PGA_GAIN)
-			self.H.__sendByte__(self.analogInputSources[channel].gainPGA) #send the channel. SPI, not multiplexer
-			self.H.__sendByte__(gain) #send the gain
-			self.H.__get_ack__()
-			return self.gain_values[gain]
-		except Exception as ex:
-			self.raiseException(ex, "Communication Error , Function : "+inspect.currentframe().f_code.co_name)
+			return False
+		
+		refresh = False
+		if	self.gains[channel] != gain:
+			self.gains[channel] = gain
+			refresh = True
+		if refresh or Force:
+			try:
+				self.analogInputSources[channel].setGain(self.gain_values[gain])
+				if gain>7: gain = 0   # external attenuator mode. set gain 1x
+				self.H.__sendByte__(CP.ADC)
+				self.H.__sendByte__(CP.SET_PGA_GAIN)
+				self.H.__sendByte__(self.analogInputSources[channel].gainPGA) #send the channel. SPI, not multiplexer
+				self.H.__sendByte__(gain) #send the gain
+				self.H.__get_ack__()
+				return self.gain_values[gain]
+			except Exception as ex:
+				self.raiseException(ex, "Communication Error , Function : "+inspect.currentframe().f_code.co_name)
 
+		return refresh
 
 	def select_range(self,channel,voltage_range):
 		"""
@@ -2962,6 +2967,7 @@ class ScienceLab():
 		**Arguments** 
 		==============  ============================================================================================
 		frequency       Frequency to set on wave generator 1. 
+		waveType		'sine','tria' . Default : Do not reload table. and use last set table
 		==============  ============================================================================================
 		
 		
@@ -3004,7 +3010,7 @@ class ScienceLab():
 			self.H.__sendByte__(HIGHRES|(prescaler<<1))    #use larger table for low frequencies
 			self.H.__sendInt__(wavelength-1)        
 			self.H.__get_ack__()
-			if self.sine1freq == None: time.sleep(0.2)
+			#if self.sine1freq == None: time.sleep(0.2)
 			self.sine1freq = freq
 			return freq
 		except Exception as ex:
@@ -3059,12 +3065,31 @@ class ScienceLab():
 			self.H.__sendByte__(HIGHRES|(prescaler<<1))    #use larger table for low frequencies
 			self.H.__sendInt__(wavelength-1)        
 			self.H.__get_ack__()
-			if self.sine1freq == None: time.sleep(0.2)
+			#if self.sine2freq == None: time.sleep(0.2)
 			self.sine2freq = freq
 		except Exception as ex:
 			self.raiseException(ex, "Communication Error , Function : "+inspect.currentframe().f_code.co_name)
 
 		return freq
+
+	def readbackWaveform(self,chan):
+		"""
+		Set the frequency of wavegen 1
+		
+		.. tabularcolumns:: |p{3cm}|p{11cm}|
+		
+		==============  ============================================================================================
+		**Arguments** 
+		==============  ============================================================================================
+		chan            Any of W1,W2,SQR1,SQR2,SQR3,SQR4
+		==============  ============================================================================================
+		
+		
+		:return: frequency
+		"""
+		if chan=='W1':return self.sine1freq
+		elif chan=='W2':return self.sine2freq
+		elif chan[:3]=='SQR':return self.sqrfreq.get(chan,None)
 
 	def set_waves(self,freq,phase,f2=None):
 		"""
@@ -3147,7 +3172,7 @@ class ScienceLab():
 			self.H.__sendByte__((prescaler2<<4)|(prescaler1<<2)|(HIGHRES2<<1)|(HIGHRES))     #use larger table for low frequencies
 			self.H.__get_ack__()
 			#print ( phase_coarse,phase_fine)
-			if self.sine1freq == None or self.sine2freq==None : time.sleep(0.2)
+			#if self.sine1freq == None or self.sine2freq==None : time.sleep(0.2)
 			self.sine1freq = retfreq
 			self.sine2freq = retfreq2
 
@@ -3287,7 +3312,7 @@ class ScienceLab():
 			self.__print__('out of range')
 			return 0
 		high_time = wavelength*duty_cycle/100.
-		self.__print__(wavelength,high_time,prescaler)
+		self.__print__(wavelength,':',high_time,':',prescaler)
 		if onlyPrepare: self.set_state(SQR1=False)
 		try:
 			self.H.__sendByte__(CP.WAVEGEN)
@@ -3300,7 +3325,8 @@ class ScienceLab():
 		except Exception as ex:
 			self.raiseException(ex, "Communication Error , Function : "+inspect.currentframe().f_code.co_name)
 
-		return 64e6/wavelength/p[prescaler&0x3]
+		self.sqrfreq['SQR1']=64e6/wavelength/p[prescaler&0x3]
+		return self.sqrfreq['SQR1']
 
 	def sqr1_pattern(self,timing_array):
 		"""
@@ -3350,9 +3376,10 @@ class ScienceLab():
 			wavelength = 64e6/freq/p[prescaler]
 			if wavelength<65525: break
 			prescaler+=1
-		if prescaler==4:
+
+		if prescaler==4 or wavelength==0:
 			self.__print__('out of range')
-			return
+			return 0
 		try:
 			high_time = wavelength*duty_cycle/100.
 			self.__print__(wavelength,high_time,prescaler)
@@ -3364,6 +3391,9 @@ class ScienceLab():
 			self.H.__get_ack__()
 		except Exception as ex:
 			self.raiseException(ex, "Communication Error , Function : "+inspect.currentframe().f_code.co_name)
+
+		self.sqrfreq['SQR2']=64e6/wavelength/p[prescaler&0x3]
+		return self.sqrfreq['SQR2']
 
 	def set_sqrs(self,wavelength,phase,high_time1,high_time2,prescaler=1):
 		"""
@@ -3430,10 +3460,6 @@ class ScienceLab():
 			return 0
 
 		if not kwargs.get('pulse',False):prescaler|= (1<<5)
-		self.H.__sendByte__(CP.WAVEGEN)
-		self.H.__sendByte__(CP.SQR4)
-		self.H.__sendInt__(wavelength-1)
-		self.H.__sendInt__(int(wavelength*h0)-1)
 
 		A1 = int(p1%1*wavelength)
 		B1 = int((h1+p1)%1*wavelength)
@@ -3441,9 +3467,14 @@ class ScienceLab():
 		B2 = int((h2+p2)%1*wavelength)
 		A3 = int(p3%1*wavelength)
 		B3 = int((h3+p3)%1*wavelength)
-
 		#self.__print__(p1,h1,p2,h2,p3,h3)
 		#print(wavelength,int(wavelength*h0),A1,B1,A2,B2,A3,B3,prescaler)
+
+
+		self.H.__sendByte__(CP.WAVEGEN)
+		self.H.__sendByte__(CP.SQR4)
+		self.H.__sendInt__(wavelength-1)
+		self.H.__sendInt__(int(wavelength*h0)-1)
 		try:
 			self.H.__sendInt__(max(0,A1-1))
 			self.H.__sendInt__(max(1,B1-1))
@@ -3456,6 +3487,7 @@ class ScienceLab():
 		except Exception as ex:
 			self.raiseException(ex, "Communication Error , Function : "+inspect.currentframe().f_code.co_name)
 
+		for a in ['SQR1','SQR2','SQR3','SQR4']:self.sqrfreq[a]=64e6/wavelength/p[prescaler&0x3]
 		return 64e6/wavelength/p[prescaler&0x3]
 
 	def map_reference_clock(self,scaler,*args):
@@ -3480,7 +3512,7 @@ class ScienceLab():
 		outputs 32 MHz on SQR1, SQR2 pins
 		
 		.. note::
-			if you change the reference clock for 'wavegen' , the waveform generator resolution and range will also change.
+			if you change the reference clock for 'wavegen' , the external waveform generator(AD9833) resolution and range will also change.
 			default frequency for 'wavegen' is 16MHz. Setting to 1MHz will give you 16 times better resolution, but a usable range of
 			0Hz to about 100KHz instead of the original 2MHz.
 		
@@ -3500,7 +3532,6 @@ class ScienceLab():
 			self.H.__get_ack__()
 		except Exception as ex:
 			self.raiseException(ex, "Communication Error , Function : "+inspect.currentframe().f_code.co_name)
-
 	#-------------------------------------------------------------------------------------------------------------------#
 
 	#|===============================================ANALOG OUTPUTS ====================================================|   
@@ -3571,6 +3602,21 @@ class ScienceLab():
 		:return: value attempted to set on pcs
 		"""
 		return self.DAC.setCurrent(val)
+
+	def get_pv1(self):
+		"""
+		get the last set voltage on PV1
+		12-bit DAC...  -5V to 5V
+		"""
+		return self.DAC.getVoltage('PV1')
+	def get_pv2(self):
+		return self.DAC.getVoltage('PV2')
+	def get_pv3(self):
+		return self.DAC.getVoltage('PV3')
+	def get_pcs(self):
+		return self.DAC.getVoltage('PCS')
+
+
 		
 	def setOnboardLED(self,R,G,B):
 		"""
@@ -3726,7 +3772,7 @@ class ScienceLab():
 		except Exception as ex:
 			self.raiseException(ex, "Communication Error , Function : "+inspect.currentframe().f_code.co_name)
 		
-	def write_data_address(self,address,value):
+	def __write_data_address__(self,address,value):
 		"""
 		Writes a value to the specified address in RAM
 
@@ -3753,30 +3799,6 @@ class ScienceLab():
 	#|Set servo motor angles via SQ1-4. Control one stepper motor using SQ1-4											|
 	#-------------------------------------------------------------------------------------------------------------------#
 
-	def servo(self,chan,angle):
-		'''
-		Output A PWM waveform on SQR1/SQR2 corresponding to the angle specified in the arguments.
-		This is used to operate servo motors.  Tested with 9G SG-90 Servo motor.
-		
-		.. tabularcolumns:: |p{3cm}|p{11cm}|
-		
-		==============  ============================================================================================
-		**Arguments** 
-		==============  ============================================================================================
-		chan            1 or 2. Whether to use SQ1 or SQ2 to output the PWM waveform used by the servo 
-		angle           0-180. Angle corresponding to which the PWM waveform is generated.
-		==============  ============================================================================================
-		'''
-		try:
-			self.H.__sendByte__(CP.WAVEGEN)
-			if chan==1:self.H.__sendByte__(CP.SET_SQR1)
-			else:self.H.__sendByte__(CP.SET_SQR2)
-			self.H.__sendInt__(10000)
-			self.H.__sendInt__(int(angle*1900/180))
-			self.H.__sendByte__(2)
-			self.H.__get_ack__()
-		except Exception as ex:
-			self.raiseException(ex, "Communication Error , Function : "+inspect.currentframe().f_code.co_name)
 
 	def __stepperMotor__(self,steps,delay,direction):
 		try:
@@ -3807,6 +3829,23 @@ class ScienceLab():
 		
 		"""
 		self.__stepperMotor__(steps,delay,0)
+
+	def servo(self,angle,chan='SQR1'):
+		'''
+		Output A PWM waveform on SQR1/SQR2 corresponding to the angle specified in the arguments.
+		This is used to operate servo motors.  Tested with 9G SG-90 Servo motor.
+		
+		.. tabularcolumns:: |p{3cm}|p{11cm}|
+		
+		==============  ============================================================================================
+		**Arguments** 
+		==============  ============================================================================================
+		angle           0-180. Angle corresponding to which the PWM waveform is generated.
+		chan            'SQR1' or 'SQR2'. Whether to use SQ1 or SQ2 to output the PWM waveform used by the servo 
+		==============  ============================================================================================
+		'''
+		if chan=='SQR1':self.sqr1(100,7.5+19.*angle/180)#100Hz
+		elif chan=='SQR2':self.sqr2(100,7.5+19.*angle/180)#100Hz
 
 	def servo4(self,a1,a2,a3,a4):
 		"""
@@ -3889,7 +3928,7 @@ class ScienceLab():
 		If the reflecting object is either too far away or absorbs sound, less than 8 pulses may be received, and this
 		can cause a measurement error of 25uS which corresponds to 8mm.
 		
-		Ensure 5V supply.
+		Ensure 5V supply.  You may set SQR2 to HIGH [ I.set_state(SQR2=True) ] , and use that as the power supply.
 		
 		returns 0 upon timeout
 		'''
@@ -3925,7 +3964,7 @@ class ScienceLab():
 			self.raiseException(ex, "Communication Error , Function : "+inspect.currentframe().f_code.co_name)
 		self.digital_channels_in_buffer=1
 
-	def opticalArray(self,SS,delay,channel = 'CH3'):
+	def opticalArray(self,SS,delay,channel = 'CH3',**kwargs):
 		'''
 		read from 3648 element optical sensor array TCD3648P from Toshiba. Experimental feature.
 		Neither Sine waves will be available.
@@ -3936,18 +3975,22 @@ class ScienceLab():
 
 		'''
 		samples=3694
+		res = kwargs.get('resolution',10)
+		tweak = kwargs.get('tweak',1)
+		
 		try:
 			self.H.__sendByte__(CP.NONSTANDARD_IO)
 			self.H.__sendByte__(CP.TCD1304_HEADER)
-			self.H.__sendByte__(self.__calcCHOSA__(channel)|0x80) #12-bit
-			self.H.__sendByte__(8) #Firmware changed. This doesn't do anything.
+			if res==10:self.H.__sendByte__(self.__calcCHOSA__(channel)) #10-bit
+			else:self.H.__sendByte__(self.__calcCHOSA__(channel)|0x80) #12-bit
+			self.H.__sendByte__(tweak) #Tweak the SH lwo to ICG high space. =tweak*delay
 			self.H.__sendInt__(delay)
 			self.H.__sendInt__(int(SS*64))
 			self.timebase = SS
-			self.achans[0].set_params(channel=0,length=samples,timebase=self.timebase,resolution=12,source=self.analogInputSources[channel])
+			self.achans[0].set_params(channel=0,length=samples,timebase=self.timebase,resolution=12 if res!=10 else 10,source=self.analogInputSources[channel])
 			self.samples=samples
 			self.channels_in_buffer=1
-			time.sleep(2*SS*1e-6)
+			time.sleep(2*delay*1e-6)
 			self.H.__get_ack__()
 		except Exception as ex:
 			self.raiseException(ex, "Communication Error , Function : "+inspect.currentframe().f_code.co_name)
@@ -4004,8 +4047,8 @@ class ScienceLab():
 			self.raiseException(ex, "Communication Error , Function : "+inspect.currentframe().f_code.co_name)
 	
 	def raiseException(self,ex, msg):
-			msg += '\n' + str(ex)
-			self.H.disconnect()
+			msg += '\n' + ex.message
+			#self.H.disconnect()
 			raise RuntimeError(msg)
 
 
@@ -4016,6 +4059,6 @@ if __name__ == "__main__":
 	eg.
 	I.get_average_voltage('CH1')
 	""")
-	#from PSL import sciencelab
-	#I=sciencelab.connect()
-	#for a in range(10000):I.get_average_voltage('CH1')
+	#I=connect(verbose=True,load_calibration=False)
+    
+    

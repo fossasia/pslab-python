@@ -764,6 +764,9 @@ class MCP4728:
 		v = int(round(chan.VToCode(v)))		
 		return  self.__setRawVoltage__(name,v)
 
+	def getVoltage(self,name):
+		return self.values[name]
+
 	def setCurrent(self,v):
 		chan = self.CHANS['PCS']
 		v = int(round(chan.VToCode(v)))		
