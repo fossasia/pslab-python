@@ -78,7 +78,7 @@ class AD7718:
 	'AIN6AINCOM','AIN7AINCOM','AIN8AINCOM']
 
 	def __init__(self,I,calibs):
-		self.cs=9
+		self.cs='CS1'
 		self.I = I
 		self.calibs =calibs
 		self.I.SPI.set_parameters(2,1,0,1)
