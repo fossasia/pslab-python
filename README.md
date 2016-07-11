@@ -1,6 +1,5 @@
 # pslab-fossasia
 
-=========
 The Pocket Science Lab from FOSSASIA
 
 
