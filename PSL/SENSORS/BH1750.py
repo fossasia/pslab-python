@@ -1,4 +1,4 @@
-rom __future__  import print_function
+from __future__  import print_function
 from numpy import int16
 def connect(route,**args):
 	return BRIDGE(route,**args)

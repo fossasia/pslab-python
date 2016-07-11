@@ -1,4 +1,4 @@
-lass ComplementaryFilter:
+class ComplementaryFilter:
 	def __init__(self,):
 		self.pitch=0
 		self.roll=0
