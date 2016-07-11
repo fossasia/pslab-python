@@ -263,7 +263,7 @@ class analyticsClass():
 			if fitres:
 				amp,freq,offset,phase = fitres
 				if amp>0.05: fit = 'Voltage=%s\nFrequency=%s'%(self.applySIPrefix(amp,'V'),self.applySIPrefix(freq,'Hz'))
-		except Exception,e:
+		except Exception as e:
 			fires=None
 
 		if not fitres or len(fit)==0: fit = 'Voltage=%s\n'%(self.applySIPrefix(np.average(chan.get_yaxis()),'V'))
