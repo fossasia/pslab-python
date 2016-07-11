@@ -1,6 +1,6 @@
 DESTDIR =
 all:
-	make -C docs html
+	#make -C docs html
 	#make -C docs/misc all
 	# make in subdirectory PSLab-apps-master if it is there
 	[ ! -d PSLab-apps-master ] || make -C PSLab-apps-master $@ DESTDIR=$(DESTDIR)
