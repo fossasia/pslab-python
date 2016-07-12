@@ -7,7 +7,7 @@ The Pocket Science Lab from FOSSASIA
 
 * The project is inspired from ExpEYES  http://expeyes.in
 * FOSSASIA is supporting development and promotion of ExpEYES project since 2014 mainly through Google Summer of Code
-* the current work is a part of my GSoC-16 project
+* The current work is a part of my GSoC-16 project
 
 
 To install PSLab
@@ -19,9 +19,11 @@ now, cd into the directories , and run
 
 sudo make clean
 
+sudo make 
+
 sudo make install
 
 
 Now you should find an 'Experiments' item in the education menu
 
-Else run Experiments.py from terminal
+Else run Experiments from the terminal
