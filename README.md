@@ -2,6 +2,7 @@
 
 The Pocket Science Lab from FOSSASIA
 
+This repository hosts the python library for communicating with PSLab. This can be installed on a linux pc/raspberry pi. With this one can communicate with the hardware using simple python code. 
 
 <http://pslab.fossasia.org>
 
