@@ -1,30 +1,64 @@
-# pslab-fossasia
+# PSLab 
 
-The Pocket Science Lab from FOSSASIA
+The Pocket Science Lab from FOSSASIA <http://pslab.fossasia.org>
 
-This repository hosts the python library for communicating with PSLab. This can be installed on a linux pc/raspberry pi. With this one can communicate with the hardware using simple python code. 
+This repository hosts the python library for communicating with PSLab. This can be installed on a linux pc/raspberry pi. With this, one can communicate with the hardware using simple python code. 
 
-<http://pslab.fossasia.org>
 
 * The project is inspired from ExpEYES  http://expeyes.in
 * FOSSASIA is supporting development and promotion of ExpEYES project since 2014 mainly through Google Summer of Code
 * The current work is a part of my GSoC-16 project
 
+----------------
 
-To install PSLab
-=================
-Clone both  the repositories fossasia-pslab-apps and fossasia-pslab
+Installation
+------------
+
+To install PSLab on Debian based Gnu/Linux system, the following dependencies must be installed.
+
+####Dependencies
+
+* PyQt 4.7+, PySide, or PyQt5
+* python 2.6, 2.7, or 3.x
+* NumPy, Scipy
+* pyqt4-dev-tools         &nbsp;   #for pyuic4
+* Pyqtgraph               &nbsp;  #Plotting library
+* pyopengl and qt-opengl  &nbsp;   #for 3D graphics
+* iPython-qtconsole       &nbsp;   #optional
 
 
-now, cd into the directories , and run
-
-sudo make clean
-
-sudo make 
-
-sudo make install
+#####Now clone both the repositories [pslab-apps](https://github.com/fossasia/pslab-apps)  and [pslab](https://github.com/fossasia/pslab).
 
 
-Now you should find an 'Experiments' item in the education menu
+#####Libraries must be installed in the following order
 
-Else run Experiments from the terminal
+1. pslab-apps
+2. pslab
+
+**Note**
+*If user is only interested in using PSLab as an acquisition device without a display/GUI, only [pslab](https://github.com/fossasia/pslab) needs to be installed*
+
+
+#####To install, cd into the directories
+
+`$ cd <SOURCE_DIR>`
+
+and run the following (for both the repos)
+
+`$ sudo make clean`
+
+`$ sudo make` 
+
+`$ sudo make install`
+
+Now you are ready with the PSLab software on your machine :)
+
+For the main GUI (Control panel), you can run Experiments from the terminal.
+
+`$ Experiments`
+
+-----------------------
+
+####Development Environment
+
+To set up the development environment, install the packages mentioned in dependencies. For building GUI's Qt Designer is used.
