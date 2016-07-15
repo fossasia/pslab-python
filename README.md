@@ -1,10 +1,9 @@
-# pslab-fossasia
+# PSLab 
 
-The Pocket Science Lab from FOSSASIA
+The Pocket Science Lab from FOSSASIA <http://pslab.fossasia.org>
 
 This repository hosts the python library for communicating with PSLab. This can be installed on a linux pc/raspberry pi. With this, one can communicate with the hardware using simple python code. 
 
-<http://pslab.fossasia.org>
 
 * The project is inspired from ExpEYES  http://expeyes.in
 * FOSSASIA is supporting development and promotion of ExpEYES project since 2014 mainly through Google Summer of Code
@@ -16,17 +15,17 @@ Installation
 To install PSLab on Debian based Gnu/Linux system, the following dependencies must be installed.
 
 Dependencies
-============
-PyQt 4.7+, PySide, or PyQt5
-python 2.6, 2.7, or 3.x
-NumPy, Scipy
-pyqt4-dev-tools          #for pyuic4
-Pyqtgraph                #Plotting library
-pyopengl and qt-opengl   #for 3D graphics
-iPython-qtconsole        #optional
+------------
+* PyQt 4.7+, PySide, or PyQt5
+* python 2.6, 2.7, or 3.x
+* NumPy, Scipy
+* pyqt4-dev-tools             #for pyuic4
+* Pyqtgraph                   #Plotting library
+* pyopengl and qt-opengl      #for 3D graphics
+* iPython-qtconsole           #optional
 
 
-Now clone both the repositories pslab-apps <https://github.com/fossasia/pslab-apps>  and pslab <https://github.com/fossasia/pslab> .
+Now clone both the repositories [pslab-apps](https://github.com/fossasia/pslab-apps)  and [pslab](https://github.com/fossasia/pslab) .
 
 Libraries must be installed in the following order
 
@@ -35,18 +34,18 @@ Libraries must be installed in the following order
 
 To install, cd into the directories
 
-$ cd <SOURCE_DIR>
+`$ cd <SOURCE_DIR>`
 
 and run the following (for both the repos)
 
-$ sudo make clean
+`$ sudo make clean`
 
-$ sudo make 
+`$ sudo make` 
 
-$ sudo make install
+`$ sudo make install`
 
 Now you are ready with the PSLab software on your machine :)
 
 For the main GUI (Control panel), you can run Experiments from the terminal.
 
-$ Experiments
+`$ Experiments`
