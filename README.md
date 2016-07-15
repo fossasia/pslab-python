@@ -10,7 +10,7 @@ This repository hosts the python library for communicating with PSLab. This can 
 * The current work is a part of my GSoC-16 project
 
 Installation
-============
+------------
 
 To install PSLab on Debian based Gnu/Linux system, the following dependencies must be installed.
 
@@ -49,3 +49,8 @@ Now you are ready with the PSLab software on your machine :)
 For the main GUI (Control panel), you can run Experiments from the terminal.
 
 `$ Experiments`
+
+
+Development Environment
+-----------------------
+To set up the development environment, install the packages mentioned in dependencies. For building GUI's Qt Designer is used.
