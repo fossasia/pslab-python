@@ -9,6 +9,8 @@ This repository hosts the python library for communicating with PSLab. This can 
 * FOSSASIA is supporting development and promotion of ExpEYES project since 2014 mainly through Google Summer of Code
 * The current work is a part of my GSoC-16 project
 
+----------------
+
 Installation
 ------------
 
@@ -51,7 +53,8 @@ For the main GUI (Control panel), you can run Experiments from the terminal.
 
 `$ Experiments`
 
+-----------------------
 
 ####Development Environment
------------------------
+
 To set up the development environment, install the packages mentioned in dependencies. For building GUI's Qt Designer is used.
