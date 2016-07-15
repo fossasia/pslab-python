@@ -29,10 +29,14 @@ To install PSLab on Debian based Gnu/Linux system, the following dependencies mu
 
 #####Now clone both the repositories [pslab-apps](https://github.com/fossasia/pslab-apps)  and [pslab](https://github.com/fossasia/pslab).
 
+
 #####Libraries must be installed in the following order
 
 1. pslab-apps
 2. pslab
+
+**Note**
+*If user is only interested in using PSLab as an acquisition device without a display/GUI, only [pslab](https://github.com/fossasia/pslab) needs to be installed*
 
 
 #####To install, cd into the directories
