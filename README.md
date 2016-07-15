@@ -14,8 +14,8 @@ Installation
 
 To install PSLab on Debian based Gnu/Linux system, the following dependencies must be installed.
 
-Dependencies
-------------
+####Dependencies
+
 * PyQt 4.7+, PySide, or PyQt5
 * python 2.6, 2.7, or 3.x
 * NumPy, Scipy
@@ -25,12 +25,13 @@ Dependencies
 * iPython-qtconsole       &nbsp;   #optional
 
 
-Now clone both the repositories [pslab-apps](https://github.com/fossasia/pslab-apps)  and [pslab](https://github.com/fossasia/pslab) .
+#####Now clone both the repositories [pslab-apps](https://github.com/fossasia/pslab-apps)  and [pslab](https://github.com/fossasia/pslab).
 
-Libraries must be installed in the following order
+#####Libraries must be installed in the following order
 
 1. pslab-apps
 2. pslab
+
 
 To install, cd into the directories
 
@@ -51,6 +52,6 @@ For the main GUI (Control panel), you can run Experiments from the terminal.
 `$ Experiments`
 
 
-Development Environment
+####Development Environment
 -----------------------
 To set up the development environment, install the packages mentioned in dependencies. For building GUI's Qt Designer is used.
