@@ -33,7 +33,7 @@ To install PSLab on Debian based Gnu/Linux system, the following dependencies mu
 2. pslab
 
 
-To install, cd into the directories
+#####To install, cd into the directories
 
 `$ cd <SOURCE_DIR>`
 
