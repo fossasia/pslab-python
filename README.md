@@ -36,7 +36,7 @@ To install PSLab on Debian based Gnu/Linux system, the following dependencies mu
 2. pslab
 
 **Note**
-*If user is only interested in using PSLab as an acquisition device without a display/GUI, only [pslab](https://github.com/fossasia/pslab) needs to be installed*
+*If user is only interested in using PSLab as an acquisition device without a display/GUI, only one repository  [pslab](https://github.com/fossasia/pslab) needs to be installed*
 
 
 #####To install, cd into the directories
