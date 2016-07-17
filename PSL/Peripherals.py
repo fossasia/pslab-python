@@ -719,6 +719,7 @@ class DACCHAN:
 		self.calibration_enabled='twopoint'
 		self.slope = slope
 		self.offset = offset
+		#print('########################',slope,offset)
 
 
 	def apply_calibration(self,v):
