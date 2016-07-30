@@ -33,7 +33,7 @@ class ScienceLab():
 	"""
 	**Communications library.**
 
-	This class contains methods that can be used to interact with the vLabtool
+	This class contains methods that can be used to interact with the FOSSASIA PSLab
 
 	Initialization does the following
 
