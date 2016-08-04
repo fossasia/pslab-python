@@ -59,8 +59,6 @@ class ScienceLab():
 
 
 		
-	
-
 	"""
 
 	CAP_AND_PCS=0
@@ -75,6 +73,7 @@ class ScienceLab():
 	DAC_SHIFTS_PV2B=7
 	DAC_SHIFTS_PV3A=8
 	DAC_SHIFTS_PV3B=9
+	LOC_DICT = {'PV1':[4,5],'PV2':[6,7],'PV3':[8,9]}
 	BAUD = 1000000
 	WType={'W1':'sine','W2':'sine'}
 	def __init__(self,timeout=1.0,**kwargs):
@@ -128,7 +127,7 @@ class ScienceLab():
 		self.achans=[analogAcquisitionChannel(a) for a in ['CH1','CH2','CH3','MIC']]        
 		self.gain_values=gains
 		self.buff=np.zeros(10000)
-		self.SOCKET_CAPACITANCE = 0# 42e-12 is typical for the SEElablet. Actual values will be updated during calibration loading
+		self.SOCKET_CAPACITANCE = 42e-12# 42e-12 is typical for the SEElablet. Actual values will be updated during calibration loading
 		self.resistanceScaling = 1.
 
 		self.digital_channel_names=digital_channel_names
@@ -190,7 +189,7 @@ class ScienceLab():
 				self.aboutArray.append(['ADC INL Correction found',adc_shifts[0],adc_shifts[1],adc_shifts[2],'...'])
 				poly_sections = polynomials.split('STOP')  #The 2K array is split into sections containing data for ADC_INL fit, ADC_CHANNEL fit, DAC_CHANNEL fit, PCS, CAP ...
 
-				adc_slopes_offsets		= poly_sections[0]
+				adc_slopes_offsets	= poly_sections[0]
 				dac_slope_intercept = poly_sections[1]
 				inl_slope_intercept = poly_sections[2]
 				#print('COMMON#########',self.__stoa__(slopes_offsets))
@@ -268,7 +267,7 @@ class ScienceLab():
 
 	def get_resistance(self):
 		V = self.get_average_voltage('SEN')
-		if V>3.295:return 'Open'
+		if V>3.295:return np.Inf
 		I = (3.3-V)/5.1e3
 		res = V/I
 		return res*self.resistanceScaling
@@ -705,36 +704,6 @@ class ScienceLab():
 
 		return x,self.analogInputSources[chan].calPoly12(y)
 
-	def __charge_cap__(self,state,t):
-		try:
-			self.H.__sendByte__(CP.ADC)
-			self.H.__sendByte__(CP.SET_CAP)
-			self.H.__sendByte__(state)
-			self.H.__sendInt__(t)
-			self.H.__get_ack__()
-		except Exception as ex:
-			self.raiseException(ex, "Communication Error , Function : "+inspect.currentframe().f_code.co_name)
-		
-	def __capture_capacitance__(self,samples,tg):
-		from PSL.analyticsClass import analyticsClass
-		self.AC = analyticsClass()
-		self.__charge_cap__(1,50000)
-		try:
-			x,y=self.capture_fullspeed_hr('CAP',samples,tg,'READ_CAP')
-		except Exception as ex:
-			self.raiseException(ex, "Communication Error , Function : "+inspect.currentframe().f_code.co_name)
-		try:
-			fitres =  self.AC.fit_exp(x,y)
-			if fitres:
-				cVal,newy = fitres
-				return x,y,newy,cVal
-			else:
-				return None
-		except Exception as ex:
-			raise RuntimeError(" Fit Failed ")
-
-	def capacitance_via_RC_discharge(self,samples,tg):
-		return self.__capture_capacitance__(samples,tg)[3]
 
 	def __retrieveBufferData__(self,chan,samples,tg):
 		'''
@@ -1161,6 +1130,7 @@ class ScienceLab():
 		refresh = False
 		if	self.gains[channel] != gain:
 			self.gains[channel] = gain
+			time.sleep(0.01)
 			refresh = True
 		if refresh or Force:
 			try:
@@ -1281,7 +1251,7 @@ class ScienceLab():
 
 	def __get_raw_average_voltage__(self,channel_name,**kwargs):
 		""" 
-		Return the average of 16 raw 10-bit ADC values of the voltage on the selected channel
+		Return the average of 16 raw 12-bit ADC values of the voltage on the selected channel
 		
 		.. tabularcolumns:: |p{3cm}|p{11cm}|
 		
@@ -2571,6 +2541,55 @@ class ScienceLab():
 		except Exception as ex:
 			self.raiseException(ex, "Communication Error , Function : "+inspect.currentframe().f_code.co_name)
 
+
+
+	def __charge_cap__(self,state,t):
+		try:
+			self.H.__sendByte__(CP.ADC)
+			self.H.__sendByte__(CP.SET_CAP)
+			self.H.__sendByte__(state)
+			self.H.__sendInt__(t)
+			self.H.__get_ack__()
+		except Exception as ex:
+			self.raiseException(ex, "Communication Error , Function : "+inspect.currentframe().f_code.co_name)
+		
+	def __capture_capacitance__(self,samples,tg):
+		from PSL.analyticsClass import analyticsClass
+		self.AC = analyticsClass()
+		self.__charge_cap__(1,50000)
+		try:
+			x,y=self.capture_fullspeed_hr('CAP',samples,tg,'READ_CAP')
+		except Exception as ex:
+			self.raiseException(ex, "Communication Error , Function : "+inspect.currentframe().f_code.co_name)
+		try:
+			fitres =  self.AC.fit_exp(x*1e-6,y)
+			if fitres:
+				cVal,newy = fitres
+				#from pylab import *
+				#plot(x,newy)
+				#show()
+				return x,y,newy,cVal
+			else:
+				return None
+		except Exception as ex:
+			raise RuntimeError(" Fit Failed ")
+
+	def capacitance_via_RC_discharge(self):
+		cap = self.get_capacitor_range()[1]
+		T = 2*cap*20e3*1e6 #uS
+		samples = 500
+		try:
+			if T>5000 and T<10e6:
+				if T>50e3:samples=250
+				RC = self.__capture_capacitance__(samples,int(T/samples))[3][1]
+				return RC/10e3
+			else:
+				return 0
+		except Exception as e:
+			self.__print__(e)
+			return 0
+
+
 	def __get_capacitor_range__(self,ctime):
 		try:
 			self.__charge_cap__(0,30000)
@@ -2632,7 +2651,7 @@ class ScienceLab():
 				#self.__print__('vals',CR,',',CT)
 				if CT>65000:
 					self.__print__('CT too high')
-					return 0
+					return self.capacitance_via_RC_discharge()
 				V,C = self.__get_capacitance__(CR,0,CT)
 				#print(CR,CT,V,C)
 				if CT>30000 and V<0.1:
@@ -2653,10 +2672,12 @@ class ScienceLab():
 				elif V<=0.1 and CR<3:
 					CR+=1
 				elif CR==3:
-					self.__print__('Constant voltage mode ')
-					return self.get_capacitor_range()[1]
+					self.__print__('Capture mode ')
+					return self.capacitance_via_RC_discharge()
 		except Exception as ex:
 			self.raiseException(ex, "Communication Error , Function : "+inspect.currentframe().f_code.co_name)
+
+		
 
 	def __calibrate_ctmu__(self,scalers):
 		#self.currents=[0.55e-3/scalers[0],0.55e-6/scalers[1],0.55e-5/scalers[2],0.55e-4/scalers[3]]
@@ -3983,7 +4004,7 @@ class ScienceLab():
 			self.H.__sendByte__(CP.TCD1304_HEADER)
 			if res==10:self.H.__sendByte__(self.__calcCHOSA__(channel)) #10-bit
 			else:self.H.__sendByte__(self.__calcCHOSA__(channel)|0x80) #12-bit
-			self.H.__sendByte__(tweak) #Tweak the SH lwo to ICG high space. =tweak*delay
+			self.H.__sendByte__(tweak) #Tweak the SH low to ICG high space. =tweak*delay
 			self.H.__sendInt__(delay)
 			self.H.__sendInt__(int(SS*64))
 			self.timebase = SS
@@ -4059,6 +4080,6 @@ if __name__ == "__main__":
 	eg.
 	I.get_average_voltage('CH1')
 	""")
+	#I=connect(verbose = True)
+	#print (I.get_capacitance())
 	#I=connect(verbose=True,load_calibration=False)
-    
-    
