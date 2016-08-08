@@ -32,4 +32,4 @@ install:
 	mkdir -p $(DESTDIR)/lib/udev/rules.d
 	install -m 644 99-pslab.rules $(DESTDIR)/lib/udev/rules.d/99-pslab
 	# fix a few permissions
-	#find $(DESTDIR)/usr/share/pslab/psl_res -name auto.sh -exec chmod -x {} \;
+	find $(DESTDIR)/usr/share/pslab/psl_res -name auto.sh -exec chmod -x {} \;
