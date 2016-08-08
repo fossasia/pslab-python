@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# Software module for  Pocket Science Lab from FOSSASIA 
+# Communication Library for  Pocket Science Lab from FOSSASIA 
 #
 # License : GNU GPL 
 
@@ -54,7 +54,7 @@ class ScienceLab():
 	<sciencelab.ScienceLab instance at 0xb6c0cac>
 
 
-	Once you have instantiated this class,  its various methods will allow access to all the features built
+	Once you have initiated this class,  its various methods will allow access to all the features built
 	into the device.
 
 
