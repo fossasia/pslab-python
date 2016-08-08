@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# Software module for  Pocket Science Lab from FOSSASIA 
+# Communication Library for  Pocket Science Lab from FOSSASIA 
 #
 # License : GNU GPL 
 
@@ -54,7 +54,7 @@ class ScienceLab():
 	<sciencelab.ScienceLab instance at 0xb6c0cac>
 
 
-	Once you have instantiated this class,  its various methods will allow access to all the features built
+	Once you have initiated this class,  its various methods will allow access to all the features built
 	into the device.
 
 
@@ -127,7 +127,7 @@ class ScienceLab():
 		self.achans=[analogAcquisitionChannel(a) for a in ['CH1','CH2','CH3','MIC']]        
 		self.gain_values=gains
 		self.buff=np.zeros(10000)
-		self.SOCKET_CAPACITANCE = 42e-12# 42e-12 is typical for the SEElablet. Actual values will be updated during calibration loading
+		self.SOCKET_CAPACITANCE = 42e-12# 42e-12 is typical for the FOSSASIA PSLab. Actual values will be updated during calibration loading
 		self.resistanceScaling = 1.
 
 		self.digital_channel_names=digital_channel_names
