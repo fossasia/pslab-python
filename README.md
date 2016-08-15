@@ -2,12 +2,18 @@
 
 The Pocket Science Lab from FOSSASIA <http://pslab.fossasia.org>
 
+[![Build Status](https://travis-ci.org/fossasia/pslab-apps.svg?branch=development)](https://travis-ci.org/fossasia/pslab-apps)
+[![Codacy Badge](https://api.codacy.com/project/badge/Grade/ce4af216571846308f66da4b7f26efc7)](https://www.codacy.com/app/mb/pslab?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=fossasia/pslab&amp;utm_campaign=Badge_Grade)
+
 This repository hosts the python library for communicating with PSLab. This can be installed on a linux pc/raspberry pi. With this, one can communicate with the hardware using simple python code. 
 
 
 * The project is inspired from ExpEYES  http://expeyes.in
 * FOSSASIA is supporting development and promotion of ExpEYES project since 2014 mainly through Google Summer of Code
 * The current work is a part of my GSoC-16 project
+
+##Communication
+Chat: [PhimpMe Slack Channel](http://fossasia.slack.com/messages/phimpme/) | [Get a Slack Invite](http://fossasia-slack.herokuapp.com/)
 
 ----------------
 
