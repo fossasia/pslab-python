@@ -13,7 +13,7 @@ This repository hosts the python library for communicating with PSLab. This can 
 * The current work is a part of my GSoC-16 project
 
 ##Communication
-Chat: [PhimpMe Slack Channel](http://fossasia.slack.com/messages/phimpme/) | [Get a Slack Invite](http://fossasia-slack.herokuapp.com/)
+Chat: [Pocket Science Slack Channel](http://fossasia.slack.com/messages/pocketscience/) | [Get an Invite](http://fossasia-slack.herokuapp.com/)
 
 ----------------
 
