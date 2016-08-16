@@ -2,12 +2,18 @@
 
 The Pocket Science Lab from FOSSASIA <http://pslab.fossasia.org>
 
+[![Build Status](https://travis-ci.org/fossasia/pslab.svg?branch=development)](https://travis-ci.org/fossasia/pslab)
+[![Codacy Badge](https://api.codacy.com/project/badge/Grade/ce4af216571846308f66da4b7f26efc7)](https://www.codacy.com/app/mb/pslab?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=fossasia/pslab&amp;utm_campaign=Badge_Grade)
+
 This repository hosts the python library for communicating with PSLab. This can be installed on a linux pc/raspberry pi. With this, one can communicate with the hardware using simple python code. 
 
 
 * The project is inspired from ExpEYES  http://expeyes.in
 * FOSSASIA is supporting development and promotion of ExpEYES project since 2014 mainly through Google Summer of Code
 * The current work is a part of my GSoC-16 project
+
+##Communication
+Chat: [Pocket Science Slack Channel](http://fossasia.slack.com/messages/pocketscience/) | [Get an Invite](http://fossasia-slack.herokuapp.com/)
 
 ----------------
 
@@ -30,7 +36,7 @@ To install PSLab on Debian based Gnu/Linux system, the following dependencies mu
 #####Now clone both the repositories [pslab-apps](https://github.com/fossasia/pslab-apps)  and [pslab](https://github.com/fossasia/pslab).
 
 
-#####Libraries must be installed in the following order
+#####Libraries must be installed in ~~the following~~ any order
 
 1. pslab-apps
 2. pslab
