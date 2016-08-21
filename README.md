@@ -71,3 +71,5 @@ To set up the development environment, install the packages mentioned in depende
 
 ### Blog posts related to PSLab on FOSSASIA blog 
 * [Installation of PSLab](http://blog.fossasia.org/pslab-code-repository-and-installation/)
+* [Communicating with PSLab](http://blog.fossasia.org/communicating-with-pocket-science-lab-via-usb-and-capturing-and-plotting-sine-waves/)
+* [New Tools and Sensors for Fossasia PSLab and ExpEYES](http://blog.fossasia.org/new-tools-and-sensors-fossasia-pslab-and-expeyes/) 
