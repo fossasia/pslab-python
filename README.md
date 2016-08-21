@@ -68,3 +68,6 @@ For the main GUI (Control panel), you can run Experiments from the terminal.
 ####Development Environment
 
 To set up the development environment, install the packages mentioned in dependencies. For building GUI's Qt Designer is used.
+
+### Blog posts related to PSLab on FOSSASIA blog 
+* [Installation of PSLab](http://blog.fossasia.org/pslab-code-repository-and-installation/)
