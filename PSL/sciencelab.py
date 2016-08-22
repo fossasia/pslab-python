@@ -33,7 +33,7 @@ class ScienceLab():
 	"""
 	**Communications library.**
 
-	This class contains methods that can be used to interact with the PSLab
+	This class contains methods that can be used to interact with the FOSSASIA PSLab
 
 	Initialization does the following
 
@@ -54,7 +54,7 @@ class ScienceLab():
 	<sciencelab.ScienceLab instance at 0xb6c0cac>
 
 
-	Once you have instantiated this class,  its various methods will allow access to all the features built
+	Once you have initiated this class,  its various methods will allow access to all the features built
 	into the device.
 
 
