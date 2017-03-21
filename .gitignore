@@ -5,3 +5,4 @@ __PYCACHE__
 build
 _*
 PSL.egg-info
+.idea/
