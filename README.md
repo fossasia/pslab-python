@@ -26,10 +26,10 @@ To install PSLab on Debian based Gnu/Linux system, the following dependencies mu
 * PyQt 4.7+, PySide, or PyQt5
 * python 2.6, 2.7, or 3.x
 * NumPy, Scipy
-* pyqt4-dev-tools         &nbsp;   #for pyuic4
-* Pyqtgraph               &nbsp;  #Plotting library
-* pyopengl and qt-opengl  &nbsp;   #for 3D graphics
-* iPython-qtconsole       &nbsp;   #optional
+* pyqt4-dev-tools         &nbsp;   **For pyuic4**
+* Pyqtgraph               &nbsp;  **For Plotting library**
+* pyopengl and qt-opengl  &nbsp;   **For 3D graphics**
+* iPython-qtconsole       &nbsp;   **optional**
 
 
 ##### Now clone both the repositories [pslab-apps](https://github.com/fossasia/pslab-apps)  and [pslab](https://github.com/fossasia/pslab).
@@ -84,4 +84,5 @@ Then go to pslab/docs and run the following command
 * [Features and Controls of PSLab](http://blog.fossasia.org/features-and-controls-of-pocket-science-lab/)
 * [Design your own Experiments](http://blog.fossasia.org/design-your-own-experiments-with-pslab/)
 * [New Tools and Sensors for Fossasia PSLab and ExpEYES](http://blog.fossasia.org/new-tools-and-sensors-fossasia-pslab-and-expeyes/) 
+
 
