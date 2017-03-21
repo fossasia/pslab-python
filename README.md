@@ -12,7 +12,7 @@ This repository hosts the python library for communicating with PSLab. This can 
 * FOSSASIA is supporting development and promotion of ExpEYES project since 2014 mainly through Google Summer of Code
 * The current work is a part of my GSoC-16 project
 
-##Communication
+## Communication
 Chat: [Pocket Science Slack Channel](http://fossasia.slack.com/messages/pocketscience/) | [Get an Invite](http://fossasia-slack.herokuapp.com/)
 
 ----------------
@@ -22,7 +22,7 @@ Installation
 
 To install PSLab on Debian based Gnu/Linux system, the following dependencies must be installed.
 
-####Dependencies
+#### Dependencies
 
 * PyQt 4.7+, PySide, or PyQt5
 * python 2.6, 2.7, or 3.x
@@ -33,10 +33,10 @@ To install PSLab on Debian based Gnu/Linux system, the following dependencies mu
 * iPython-qtconsole       &nbsp;   #optional
 
 
-#####Now clone both the repositories [pslab-apps](https://github.com/fossasia/pslab-apps)  and [pslab](https://github.com/fossasia/pslab).
+##### Now clone both the repositories [pslab-apps](https://github.com/fossasia/pslab-apps)  and [pslab](https://github.com/fossasia/pslab).
 
 
-#####Libraries must be installed in ~~the following~~ any order
+##### Libraries must be installed in ~~the following~~ any order
 
 1. pslab-apps
 2. pslab
@@ -45,7 +45,7 @@ To install PSLab on Debian based Gnu/Linux system, the following dependencies mu
 *If user is only interested in using PSLab as an acquisition device without a display/GUI, only one repository  [pslab](https://github.com/fossasia/pslab) needs to be installed*
 
 
-#####To install, cd into the directories
+##### To install, cd into the directories
 
 `$ cd <SOURCE_DIR>`
 
@@ -65,7 +65,7 @@ For the main GUI (Control panel), you can run Experiments from the terminal.
 
 -----------------------
 
-####Development Environment
+#### Development Environment
 
 To set up the development environment, install the packages mentioned in dependencies. For building GUI's Qt Designer is used.
 
