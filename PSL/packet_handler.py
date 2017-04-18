@@ -62,14 +62,16 @@ class Handler():
             return glob.glob('/dev/ttyACM*') + glob.glob('/dev/ttyUSB*')
 
     def connectToPort(self, portname):
-        import socket
-        try:
-            self.blockingSocket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-            self.blockingSocket.bind('\0PSghhhLab%s' % portname)
-            self.blockingSocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        except socket.error as e:
-            self.occupiedPorts.add(portname)
-            raise RuntimeError("Another program is using %s (%d)" % (portname))
+        import platform
+        if platform.system() not in ["Windows", "Darwin"]:
+            import socket
+            try:
+                self.blockingSocket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+                self.blockingSocket.bind('\0PSghhhLab%s' % portname)
+                self.blockingSocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            except socket.error as e:
+                self.occupiedPorts.add(portname)
+                raise RuntimeError("Another program is using %s (%d)" % (portname))
 
         fd = serial.Serial(portname, 9600, stopbits=1, timeout=0.02)
         fd.read(100)
