@@ -62,8 +62,8 @@ class Handler():
             return glob.glob('/dev/ttyACM*') + glob.glob('/dev/ttyUSB*')
 
     def connectToPort(self, portname):
+        import socket
         try:
-            import socket
             self.blockingSocket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
             self.blockingSocket.bind('\0PSghhhLab%s' % portname)
             self.blockingSocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -72,7 +72,7 @@ class Handler():
             raise RuntimeError("Another program is using %s (%d)" % (portname))
 
         fd = serial.Serial(portname, 9600, stopbits=1, timeout=0.02)
-        fd.read(100);
+        fd.read(100)
         fd.close()
         fd = serial.Serial(portname, self.BAUD, stopbits=1, timeout=1.0)
         if (fd.inWaiting()):
@@ -172,9 +172,10 @@ class Handler():
         reads a byte from the serial port and returns it
         """
         ss = self.fd.read(1)
-        if len(ss):
-            return CP.Byte.unpack(ss)[0]
-        else:
+        try:
+            if len(ss):
+                return CP.Byte.unpack(ss)[0]
+        except Exception as ex:
             print('byte communication error.', time.ctime())
             self.raiseException(ex, "Communication Error , Function : " + inspect.currentframe().f_code.co_name)
             # sys.exit(1)
@@ -185,9 +186,10 @@ class Handler():
         returns an integer after combining them
         """
         ss = self.fd.read(2)
-        if len(ss) == 2:
-            return CP.ShortInt.unpack(ss)[0]
-        else:
+        try:
+            if len(ss) == 2:
+                return CP.ShortInt.unpack(ss)[0]
+        except Exception as ex:
             print('int communication error.', time.ctime())
             self.raiseException(ex, "Communication Error , Function : " + inspect.currentframe().f_code.co_name)
             # sys.exit(1)

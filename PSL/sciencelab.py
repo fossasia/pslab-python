@@ -1938,7 +1938,7 @@ class ScienceLab():
 
 		"""
         try:
-            self.clear_buffer(0, self.MAX_SAMPLES / 2);
+            self.clear_buffer(0, self.MAX_SAMPLES / 2)
             self.H.__sendByte__(CP.TIMING)
             self.H.__sendByte__(CP.START_ONE_CHAN_LA)
             self.H.__sendInt__(self.MAX_SAMPLES / 4)
@@ -2085,7 +2085,7 @@ class ScienceLab():
         # trigger_mode       same as channel_mode.
         #				   default_value : 3
         try:
-            self.clear_buffer(0, self.MAX_SAMPLES / 2);
+            self.clear_buffer(0, self.MAX_SAMPLES / 2)
             self.H.__sendByte__(CP.TIMING)
             self.H.__sendByte__(CP.START_ALTERNATE_ONE_CHAN_LA)
             self.H.__sendInt__(self.MAX_SAMPLES / 4)
@@ -2167,7 +2167,7 @@ class ScienceLab():
             trigger = 0
 
         try:
-            self.clear_buffer(0, self.MAX_SAMPLES);
+            self.clear_buffer(0, self.MAX_SAMPLES)
             self.H.__sendByte__(CP.TIMING)
             self.H.__sendByte__(CP.START_TWO_CHAN_LA)
             self.H.__sendInt__(self.MAX_SAMPLES / 4)
@@ -2176,13 +2176,13 @@ class ScienceLab():
             self.H.__sendByte__((modes[1] << 4) | modes[0])  # Modes. four bits each
             self.H.__sendByte__((chans[1] << 4) | chans[0])  # Channels. four bits each
             self.H.__get_ack__()
-            n = 0;
+            n = 0
             for a in self.dchans[:2]:
-                a.prescaler = 0;
-                a.length = self.MAX_SAMPLES / 4;
-                a.datatype = 'long';
+                a.prescaler = 0
+                a.length = self.MAX_SAMPLES / 4
+                a.datatype = 'long'
                 a.maximum_time = maximum_time * 1e6  # conversion to uS
-                a.mode = modes[n];
+                a.mode = modes[n]
                 a.channel_number = chans[n]
                 a.name = strchans[n]
                 n += 1
@@ -2221,7 +2221,7 @@ class ScienceLab():
 
 		"""
         try:
-            self.clear_buffer(0, self.MAX_SAMPLES);
+            self.clear_buffer(0, self.MAX_SAMPLES)
             self.H.__sendByte__(CP.TIMING)
             self.H.__sendByte__(CP.START_THREE_CHAN_LA)
             self.H.__sendInt__(self.MAX_SAMPLES / 4)
@@ -2289,7 +2289,7 @@ class ScienceLab():
 			Use :func:`fetch_long_data_from_LA` (points to read,x) to get data acquired from channel x.
 			The read data can be accessed from :class:`~ScienceLab.dchans` [x-1]
 		"""
-        self.clear_buffer(0, self.MAX_SAMPLES);
+        self.clear_buffer(0, self.MAX_SAMPLES)
         prescale = 0
         """
 		if(maximum_time > 0.26):
@@ -2403,7 +2403,7 @@ class ScienceLab():
             self.raiseException(ex, "Communication Error , Function : " + inspect.currentframe().f_code.co_name)
 
         t = np.trim_zeros(t)
-        b = 1;
+        b = 1
         rollovers = 0
         while b < len(t):
             if (t[b] < t[b - 1] and t[b] != 0):
@@ -3277,7 +3277,7 @@ class ScienceLab():
 
 		'''
         if function == 'sine' or function == np.sin:
-            function = np.sin;
+            function = np.sin
             span = [0, 2 * np.pi]
             self.WType[chan] = 'sine'
         elif function == 'tria':
@@ -3759,11 +3759,11 @@ class ScienceLab():
             self.H.__sendByte__(len(cols) * 3)
             for col in cols:
                 # R=reverse_bits(int(col[0]));G=reverse_bits(int(col[1]));B=reverse_bits(int(col[2]))
-                R = col[0];
-                G = col[1];
-                B = col[2];
-                self.H.__sendByte__(G);
-                self.H.__sendByte__(R);
+                R = col[0]
+                G = col[1]
+                B = col[2]
+                self.H.__sendByte__(G)
+                self.H.__sendByte__(R)
                 self.H.__sendByte__(B)
             # print(col)
             self.H.__get_ack__()
@@ -3892,7 +3892,6 @@ class ScienceLab():
         except Exception as ex:
             self.raiseException(ex, "Communication Error , Function : " + inspect.currentframe().f_code.co_name)
 
-        t = time.time()
         time.sleep(steps * delay * 1e-3)  # convert mS to S
 
     def stepForward(self, steps, delay):
