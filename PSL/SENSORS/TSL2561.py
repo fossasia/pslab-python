@@ -99,7 +99,7 @@ class TSL2561:
 
     def wait(self):
         if self.timing == self.INTEGRATIONTIME_13MS:
-            time.sleep(0.14)
+            time.sleep(0.014)
         if self.timing == self.INTEGRATIONTIME_101MS:
             time.sleep(0.102)
         if self.timing == self.INTEGRATIONTIME_402MS:
