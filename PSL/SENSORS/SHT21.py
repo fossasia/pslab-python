@@ -31,10 +31,10 @@ class SHT21():
         except:
             print ('FAILED TO CHANGE BAUD RATE')
         '''
-        self.params = {'selectParameter': ['temperature', 'humidity']}
-        self.init('')
+        self.params = {'selectParameter': ['temperature', 'humidity'],'init':None}
+        self.init()
 
-    def init(self, x):
+    def init(self):
         self.I2C.writeBulk(self.ADDRESS, [self.RESET])  # soft reset
         time.sleep(0.1)
 
