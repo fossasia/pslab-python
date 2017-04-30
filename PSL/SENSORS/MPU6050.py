@@ -34,7 +34,7 @@ class MPU6050():
         self.ADDRESS = args.get('address', self.ADDRESS)
         self.name = 'Accel/gyro'
         self.params = {'powerUp': None, 'setGyroRange': [250, 500, 1000, 2000], 'setAccelRange' : [2, 4, 8, 16],
-                       'KalmanFilter': 'double' }
+                       'KalmanFilter': {'dataType':'double','min':0,'max':1000,'prefix':'value: '} }
         self.setGyroRange(2000)
         self.setAccelRange(16)
         '''
