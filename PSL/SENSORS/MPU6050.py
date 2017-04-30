@@ -43,7 +43,7 @@ class MPU6050():
         except:
             pass
         '''
-        self.powerUp(True)
+        self.powerUp()
         self.K = None
 
     def KalmanFilter(self, opt):
@@ -64,7 +64,7 @@ class MPU6050():
         vals = self.I2C.readBulk(self.ADDRESS, addr, bytes)
         return vals
 
-    def powerUp(self, x):
+    def powerUp(self):
         self.I2C.writeBulk(self.ADDRESS, [0x6B, 0])
 
     def setGyroRange(self, rs):
