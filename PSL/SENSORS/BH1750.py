@@ -37,7 +37,7 @@ class BRIDGE():
         self.ADDRESS = args.get('address', 0x23)
         self.init()
 
-    def init(self): 
+    def init(self):
         self.I2C.writeBulk(self.ADDRESS, [self.RES_500mLx])
 
     def setRange(self, g):
