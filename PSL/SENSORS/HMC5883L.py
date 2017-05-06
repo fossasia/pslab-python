@@ -53,7 +53,7 @@ class HMC5883L():
         '''
         self.init()
 
-    def init(self): 
+    def init(self):
         self.__writeCONFA__()
         self.__writeCONFB__()
         self.I2C.writeBulk(self.ADDRESS, [self.MODE, 0])  # enable continuous measurement mode

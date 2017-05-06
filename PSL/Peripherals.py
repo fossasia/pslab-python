@@ -1,5 +1,5 @@
 from __future__ import print_function
-import PSL.commands_proto as CP
+import commands_proto as CP
 import numpy as np
 import time, inspect
 
@@ -33,7 +33,11 @@ class I2C():
         >>> print (x,y,z)
 
     """
-
+    samples = 0
+    total_bytes=0
+    channels = 0
+    tg=100
+    MAX_SAMPLES = 10000
     def __init__(self, H):
         self.H = H
         from PSL import sensorlist
@@ -374,6 +378,124 @@ class I2C():
                 n += 1
             self.stop()
         return addrs
+
+    def __captureStart__(self,address,location,sample_length,total_samples,tg):
+        """
+        Blocking call that starts fetching data from I2C sensors like an oscilloscope fetches voltage readings
+        You will then have to call `__retrievebuffer__` to fetch this data, and `__dataProcessor` to process and return separate channels
+        
+        refer to `capture` if you want a one-stop solution.
+        
+        .. tabularcolumns:: |p{3cm}|p{11cm}|
+        ==================  ============================================================================================
+        **Arguments**
+        ==================  ============================================================================================
+        address             Address of the I2C sensor
+        location            Address of the register to read from
+        sample_length       Each sample can be made up of multiple bytes startng from <location> . such as 3-axis data
+        total_samples       Total samples to acquire. Total bytes fetched = total_samples*sample_length
+        tg                  timegap between samples (in uS)
+        ==================  ============================================================================================
+
+        :return: Arrays X(timestamps),Y1,Y2 ...
+
+        """
+        if(tg<20):tg=20
+        total_bytes = total_samples*sample_length
+        print ('total bytes calculated : ',total_bytes)
+        if(total_bytes>self.MAX_SAMPLES*2):
+            print ('Sample limit exceeded. 10,000 int / 20000 bytes total')
+            total_bytes = self.MAX_SAMPLES*2
+            total_samples = total_bytes/sample_length  #2* because sample array is in Integers, and we're using it to store bytes
+
+
+        print ('length of each channel : ',sample_length)
+        self.total_bytes = total_bytes
+        self.channels = sample_length
+        self.samples = total_samples
+        self.tg = tg
+
+        self.H.__sendByte__(CP.I2C_HEADER)
+        self.H.__sendByte__(CP.I2C_START_SCOPE)
+        self.H.__sendByte__(address)
+        self.H.__sendByte__(location)
+        self.H.__sendByte__(sample_length)
+        self.H.__sendInt__(total_samples)           #total number of samples to record
+        self.H.__sendInt__(tg)        #Timegap between samples.  1MHz timer clock
+        self.H.__get_ack__()
+        return 1e-6*self.samples*self.tg+.01
+
+    def __retrievebuffer__(self):
+        '''
+        Fetch data acquired by the I2C scope. refer to :func:`__captureStart__`
+        
+        '''
+        total_int_samples = self.total_bytes/2
+        DATA_SPLITTING = 500
+        print ('fetchin samples : ',total_int_samples,'   split',DATA_SPLITTING)
+        data=b''
+        for i in range(int(total_int_samples/DATA_SPLITTING)):
+            self.H.__sendByte__(CP.ADC)
+            self.H.__sendByte__(CP.GET_CAPTURE_CHANNEL)
+            self.H.__sendByte__(0)   #starts with A0 on PIC
+            self.H.__sendInt__(DATA_SPLITTING)
+            self.H.__sendInt__(i*DATA_SPLITTING)
+            rem = DATA_SPLITTING*2+1
+            for a in range(200):
+                partial = self.H.fd.read(rem)       #reading int by int sometimes causes a communication error. this works better.
+                rem -=len(partial)
+                data+=partial
+                #print ('partial: ',len(partial), end=",")
+                if rem<=0:
+                    break
+            data=data[:-1]
+            #print ('Pass : len=',len(data), ' i = ',i)
+
+        if total_int_samples%DATA_SPLITTING:
+            self.H.__sendByte__(CP.ADC)
+            self.H.__sendByte__(CP.GET_CAPTURE_CHANNEL)
+            self.H.__sendByte__(0)   #starts with A0 on PIC
+            self.H.__sendInt__(total_int_samples%DATA_SPLITTING)
+            self.H.__sendInt__(total_int_samples-total_int_samples%DATA_SPLITTING)
+            rem = 2*(total_int_samples%DATA_SPLITTING)+1
+            for a in range(20):
+                partial = self.H.fd.read(rem)       #reading int by int sometimes causes a communication error. this works better.
+                rem -=len(partial)
+                data+=partial
+                #print ('partial: ',len(partial), end="")
+                if rem<=0:
+                    break
+            data=data[:-1]
+        print ('Final Pass : len=',len(data))
+        return data
+
+    def __dataProcessor__(self,data,*args):
+        '''
+        Interpret data acquired by the I2C scope. refer to :func:`__retrievebuffer__` to fetch data
+        
+        ==================  ============================================================================================
+        **Arguments**
+        ==================  ============================================================================================
+        data                byte array returned by :func:`__retrievebuffer__`
+        *args               supply optional argument 'int' if consecutive bytes must be combined to form short integers
+        ==================  ============================================================================================
+
+        '''
+
+        try:
+            data = [ord(a) for a in data]
+            if('int' in args):
+                    for a in range(self.channels*self.samples/2): self.buff[a] = np.int16((data[a*2]<<8)|data[a*2+1])
+            else:
+                    for a in range(self.channels*self.samples): self.buff[a] = data[a]
+
+            yield np.linspace(0,self.tg*(self.samples-1),self.samples)
+            for a in range(int(self.channels/2)):
+                yield self.buff[a:self.samples*self.channels/2][::self.channels/2]
+        except Exception as ex:
+            msg = "Incorrect number of bytes received",ex
+            raise RuntimeError(msg)
+
 
     def capture(self, address, location, sample_length, total_samples, tg, *args):
         """
