@@ -23,7 +23,7 @@ class BRIDGE():
     # for changing various options of this sensor
     # It's a dictionary of the string representations of functions matched with an array
     # of options that each one can accept
-    params = {'init': ['Now'],
+    params = {'init': None,
               'setRange': gain_literal_choices,
               }
 
@@ -35,9 +35,9 @@ class BRIDGE():
     def __init__(self, I2C, **args):
         self.I2C = I2C
         self.ADDRESS = args.get('address', 0x23)
-        self.init('')
+        self.init()
 
-    def init(self, dummy_variable_to_circumvent_framework_limitation):  # I know how to fix this now. remind me.
+    def init(self):
         self.I2C.writeBulk(self.ADDRESS, [self.RES_500mLx])
 
     def setRange(self, g):

@@ -30,7 +30,7 @@ class HMC5883L():
     # for changing various options of this sensor
     # It's a dictionary of the string representations of functions matched with an array
     # of options that each one can accept
-    params = {'init': ['Now'],
+    params = {'init': None,
               'setSamplesToAverage': samplesToAverage_choices,
               'setDataOutputRate': dataOutputRate_choices,
               'setGain': gain_choices,
@@ -51,9 +51,9 @@ class HMC5883L():
         except:
             print 'FAILED TO CHANGE BAUD RATE'
         '''
-        self.init('')
+        self.init()
 
-    def init(self, dummy_variable_to_circumvent_framework_limitation):  # I know how to fix this now. remind me.
+    def init(self):
         self.__writeCONFA__()
         self.__writeCONFB__()
         self.I2C.writeBulk(self.ADDRESS, [self.MODE, 0])  # enable continuous measurement mode

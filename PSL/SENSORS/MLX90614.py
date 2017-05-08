@@ -21,7 +21,7 @@ class MLX90614():
         self.source = self.OBJADDR
 
         self.name = 'Passive IR temperature sensor'
-        self.params = {'readReg': range(0x20),
+        self.params = {'readReg': {'dataType':'integer','min':0,'max':0x20,'prefix':'Addr: '} ,
                        'select_source': ['object temperature', 'ambient temperature']}
 
         try:
