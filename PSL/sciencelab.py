@@ -4143,12 +4143,15 @@ class ScienceLab():
 
 
 if __name__ == "__main__":
-    print("""this is not an executable file
+	print("""this is not an executable file
 	from PSL import sciencelab
 	I=sciencelab.connect()
 	eg.
 	I.get_average_voltage('CH1')
 	""")
-# I=connect(verbose = True)
-# for a in range(20):print (I.get_capacitance())
-# I=connect(verbose=True,load_calibration=False)
+	I=connect(verbose = True)
+	t = time.time()
+	for a in range(100):
+		s =  I.read_flash(3,a) 
+		#print(s.replace('\n','.'),len(s))
+	print (time.time()-t)
