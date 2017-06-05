@@ -294,3 +294,39 @@ class SX1276():
 		return val
 
 
+
+if __name__ == "__main__":
+	'''
+	Example code to test LoRa modules.
+	Set mode = 0 to enable receiver , or mode = 1 to enable a periodic transmitter
+	
+	Frequency = 434MHz #Use the frequency specified by the module being used
+	transmission is at 17db
+	BW = 125KHz
+	Spreading Factor (SF) = 12
+	Coding rate(CR) = 4/5   #The numerator is always 4, and the argument passed to the init function is the denominator
+	'''
+	RX = 0;	TX=1
+	mode = RX
+	from PSL import sciencelab
+	I= sciencelab.connect()
+	lora = SX1276(I.SPI,434e6,boost=True,power=17,BW=125e3,SF=12,CR=5)
+	lora.crc()  #Enable CRC
+	cntr=0      #Incrementing counter for TX mode
+	while 1:
+		time.sleep(0.01)
+		if mode==TX:
+			lora.beginPacket()   #Enable writing mode
+			lora.write([ord(a) for a in ":"]+[cntr])  #write some bytes
+			print (time.ctime(),cntr, hex(lora.SPIRead(lora.REG_OP_MODE)[0]))
+			lora.endPacket()    #Switch to transmit mode, and send the data
+			cntr+=1
+			if cntr==255:cntr=0
+		else:
+			packet_size = lora.parsePacket()
+			if packet_size:  #If some data was received
+				print ('got packet')
+				print 'data',lora.readAll()  #Print the data
+				print ('Rssi',lora.packetRssi(),lora.packetSnr())  #Print signal strength and signal to noise ratio
+
+
