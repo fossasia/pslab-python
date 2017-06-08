@@ -384,7 +384,7 @@ class I2C():
         Blocking call that starts fetching data from I2C sensors like an oscilloscope fetches voltage readings
         You will then have to call `__retrievebuffer__` to fetch this data, and `__dataProcessor` to process and return separate channels
         refer to `capture` if you want a one-stop solution.
-        
+
         .. tabularcolumns:: |p{3cm}|p{11cm}|
         ==================  ============================================================================================
         **Arguments**
@@ -440,7 +440,7 @@ class I2C():
             self.H.__sendInt__(DATA_SPLITTING)
             self.H.__sendInt__(i*DATA_SPLITTING)
             rem = DATA_SPLITTING*2+1
-            for a in range(200):
+            for _ in range(200):
                 partial = self.H.fd.read(rem)       #reading int by int sometimes causes a communication error. this works better.
                 rem -=len(partial)
                 data+=partial
@@ -825,6 +825,13 @@ class SPI():
         except Exception as ex:
             self.raiseException(ex, "Communication Error , Function : " + inspect.currentframe().f_code.co_name)
 
+    def xfer(self,chan,data):
+        self.start(chan)
+        reply=[]
+        for a in data:
+            reply.append(self.send8(a))
+        self.stop(chan)
+        return reply
 
 class DACCHAN:
     def __init__(self, name, span, channum, **kwargs):

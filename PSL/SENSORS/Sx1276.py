@@ -1,6 +1,4 @@
-# This library allows P2P connections for LoRa modules that are built with the SX1276 chip from Semtech
-# It does not implement the LoRaWAN stack, and is only meant for standalone long range communications
-# Register definitions adapted from sample code for SEMTECH SX1276
+#Registers adapted from sample code for SEMTECH SX1276
 import time
 
 def connect(SPI):
@@ -9,324 +7,327 @@ def connect(SPI):
 
 class SX1276():
 	name = 'SX1276'
-	#********************LoRA mode***************************/
-	LR_RegFifo                                     = 0x00
-	#Common settings
-	LR_RegOpMode                                   = 0x01
-	LR_RegFrMsb                                    = 0x06
-	LR_RegFrMid                                    = 0x07
-	LR_RegFrLsb                                    = 0x08
-	#Tx settings
-	LR_RegPaConfig                                 = 0x09
-	LR_RegPaRamp                                   = 0x0A
-	LR_RegOcp                                      = 0x0B
-	#Rx settings
-	LR_RegLna                                      = 0x0C
-	#LoRa registers
-	LR_RegFifoAddrPtr                              = 0x0D
-	LR_RegFifoTxBaseAddr                           = 0x0E
-	LR_RegFifoRxBaseAddr                           = 0x0F
-	LR_RegFifoRxCurrentaddr                        = 0x10
-	LR_RegIrqFlagsMask                             = 0x11
-	LR_RegIrqFlags                                 = 0x12
-	LR_RegRxNbBytes                                = 0x13
-	LR_RegRxHeaderCntValueMsb                      = 0x14
-	LR_RegRxHeaderCntValueLsb                      = 0x15
-	LR_RegRxPacketCntValueMsb                      = 0x16
-	LR_RegRxPacketCntValueLsb                      = 0x17
-	LR_RegModemStat                                = 0x18
-	LR_RegPktSnrValue                              = 0x19
-	LR_RegPktRssiValue                             = 0x1A
-	LR_RegRssiValue                                = 0x1B
-	LR_RegHopChannel                               = 0x1C
-	LR_RegModemConfig1                             = 0x1D
-	LR_RegModemConfig2                             = 0x1E
-	LR_RegSymbTimeoutLsb                           = 0x1F
-	LR_RegPreambleMsb                              = 0x20
-	LR_RegPreambleLsb                              = 0x21
-	LR_RegPayloadLength                            = 0x22
-	LR_RegMaxPayloadLength                         = 0x23
-	LR_RegHopPeriod                                = 0x24
-	LR_RegFifoRxByteAddr                           = 0x25
+	#registers
+	REG_FIFO                 = 0x00
+	REG_OP_MODE              = 0x01
+	REG_FRF_MSB              = 0x06
+	REG_FRF_MID              = 0x07
+	REG_FRF_LSB              = 0x08
+	REG_PA_CONFIG            = 0x09
+	REG_LNA                  = 0x0c
+	REG_FIFO_ADDR_PTR        = 0x0d
+	REG_FIFO_TX_BASE_ADDR    = 0x0e
+	REG_FIFO_RX_BASE_ADDR    = 0x0f
+	REG_FIFO_RX_CURRENT_ADDR = 0x10
+	REG_IRQ_FLAGS            = 0x12
+	REG_RX_NB_BYTES          = 0x13
+	REG_PKT_RSSI_VALUE       = 0x1a
+	REG_PKT_SNR_VALUE        = 0x1b
+	REG_MODEM_CONFIG_1       = 0x1d
+	REG_MODEM_CONFIG_2       = 0x1e
+	REG_PREAMBLE_MSB         = 0x20
+	REG_PREAMBLE_LSB         = 0x21
+	REG_PAYLOAD_LENGTH       = 0x22
+	REG_MODEM_CONFIG_3       = 0x26
+	REG_RSSI_WIDEBAND        = 0x2c
+	REG_DETECTION_OPTIMIZE   = 0x31
+	REG_DETECTION_THRESHOLD  = 0x37
+	REG_SYNC_WORD            = 0x39
+	REG_DIO_MAPPING_1        = 0x40
+	REG_VERSION              = 0x42
+	REG_PA_DAC				 = 0x4D
+	#modes
+	MODE_LONG_RANGE_MODE     = 0x80
+	MODE_SLEEP               = 0x00
+	MODE_STDBY               = 0x01
+	MODE_TX                  = 0x03
+	MODE_RX_CONTINUOUS       = 0x05
+	MODE_RX_SINGLE           = 0x06
 
-	#I/O settings
-	REG_LR_DIOMAPPING1                             = 0x40
-	REG_LR_DIOMAPPING2                             = 0x41
-	#Version
-	REG_LR_VERSION                                 = 0x42
-	#Additional settings
-	REG_LR_PLLHOP                                  = 0x44
-	REG_LR_TCXO                                    = 0x4B
-	REG_LR_PADAC                                   = 0x4D
-	REG_LR_FORMERTEMP                              = 0x5B
+	#PA config
+	PA_BOOST                 = 0x80
 
-	REG_LR_AGCREF                                  = 0x61
-	REG_LR_AGCTHRESH1                              = 0x62
-	REG_LR_AGCTHRESH2                              = 0x63
-	REG_LR_AGCTHRESH3                              = 0x64
+	#IRQ masks
+	IRQ_TX_DONE_MASK           = 0x08
+	IRQ_PAYLOAD_CRC_ERROR_MASK = 0x20
+	IRQ_RX_DONE_MASK           = 0x40
 
-	#/********************FSK/ook mode***************************/
-	RegFIFO  	 			   = 0x00				#FIFO
-	RegOpMode 	 			   = 0x01			#Operation mode
-	RegBitRateMsb 		   = 0x02				#BR MSB
-	RegBitRateLsb 		   = 0x03				#BR LSB
-	RegFdevMsb	 			   = 0x04			#FD MSB
-	RegFdevLsb	 			   = 0x05 			#FD LSB
-	RegFreqMsb	 			   = 0x06			#Freq MSB
-	RegFreqMid	 			   = 0x07 			#Freq Middle byte
-	RegFreqLsb   		   = 0x08				#Freq LSB
-	RegPaConfig			   = 0x09
-	RegPaRamp				   = 0x0a
-	RegOcp						   = 0x0b
-	RegLna						   = 0x0c
-	RegRxConfig			   = 0x0d
-	RegRssiConfig		   = 0x0e
-	RegRssiCollision    = 0x0f
-	RegRssiThresh		   = 0x10
-	RegRssiValue			   = 0x11
-	RegRxBw					   = 0x12
-	RegAfcBw					   = 0x13
-	RegOokPeak				   = 0x14
-	RegOokFix				   = 0x15
-	RegOokAvg				   = 0x16
+	MAX_PKT_LENGTH           = 255
 
-	RegAfcFei				   = 0x1a	
-	RegAfcMsb				   = 0x1b
-	RegAfcLsb				   = 0x1c
-	RegFeiMsb				   = 0x1d
-	RegFeiLsb				   = 0x1e
-	RegPreambleDetect	   = 0x1f
-	RegRxTimeout1		   = 0x20
-	RegRxTimeout2		   = 0x21
-	RegRxTimeout3		   = 0x22
-	RegRxDelay				   = 0x23
-	RegOsc  	 				   = 0x24			#Set OSC 
-	RegPreambleMsb		   = 0x25
-	RegPreambleLsb		   = 0x26
-	RegSyncConfig		   = 0x27
-	RegSyncValue1		   = 0x28
-	RegSyncValue2		   = 0x29
-	RegSyncValue3		   = 0x2a
-	RegSyncValue4		   = 0x2b
-	RegSyncValue5		   = 0x2c
-	RegSyncValue6		   = 0x2d
-	RegSyncValue7		   = 0x2e
-	RegSyncValue8		   = 0x2f
-	RegPacketConfig1		   = 0x30
-	RegPacketConfig2		   = 0x31
-	RegPayloadLength		   = 0x32
-	RegNodeAdrs			   = 0x33
-	RegBroadcastAdrs		   = 0x34
-	RegFifoThresh		   = 0x35
-	RegSeqConfig1		   = 0x36
-	RegSeqConfig2		   = 0x37
-	RegTimerResol		   = 0x38
-	RegTimer1Coef		   = 0x39
-	RegTimer2Coef		   = 0x3a
-	RegImageCal			   = 0x3b
-	RegTemp					   = 0x3c
-	RegLowBat				   = 0x3d
-	RegIrqFlags1			   = 0x3e
-	RegIrqFlags2			   = 0x3f
-	RegDioMapping1		   = 0x40
-	RegDioMapping2		   = 0x41
-	RegVersion				   = 0x42
-
-	RegPllHop				   = 0x44
-	RegPaDac					   = 0x4d
-	RegBitRateFrac		   = 0x5d
-
-	CR_SETTINGS = {'4_5': 0x01,'4_6': 0x02,'4_7': 0x03,'4_8': 0x04}
-	sx1276_7_8FreqTbl = [[0x6C,0x80,0x00]] 		#434MHz
-	sx1276_7_8PowerTbl = [0xFF,0xFC,0xF9,0xF6]  #20dbm,17dbm,14dbm,11dbm
-	sx1276_7_8SpreadFactorTbl = [6,7,8,9,10,11,12]
+	PA_OUTPUT_RFO_PIN      =0
+	PA_OUTPUT_PA_BOOST_PIN =1
 	
-	#7.8KHz,10.4KHz,15.6KHz,20.8KHz,31.2KHz,41.7KHz,62.5KHz,125KHz,250KHz,500KHz
-	sx1276_7_8LoRaBwTbl = [0,1,2,3,4,5,6,7,8,9]
-	sampleData = [ord(a) for a in "Mark1 Lora sx1276_7_8"]
-	
-	mode = 0x01          #lora mode
-	Freq_Sel = 0x00      #433M
-	Power_Sel = 0x00
-	Lora_Rate_Sel = 0x06
-	BandWide_Sel = 0x07
-	Fsk_Rate_Sel = 0x00
+	_onReceive = 0
+	_frequency = 10
+	_packetIndex = 0
+	packetLength =0
 
-	def __init__(self,SPI,**args):
+	def __init__(self,SPI,frq,**kwargs):
 		self.SPI = SPI
 		self.SPI.set_parameters(2,6,1,0)
-		self.CR = self.CR_SETTINGS['4_5']
-		self.CRC = 1
 		self.name = 'SX1276'
+		self.frequency = frq
 
-		self.config()
-		self.LoRaEntryRX();
+		self.reset()
+		self.version = self.SPIRead(self.REG_VERSION,1)[0]
+		if self.version!=0x12:
+			print 'version error',self.version
+		self.sleep()
+		self.setFrequency(self.frequency)
+		
+		#set base address
+		self.SPIWrite(self.REG_FIFO_TX_BASE_ADDR,[0])
+		self.SPIWrite(self.REG_FIFO_RX_BASE_ADDR,[0])
+
+		#set LNA boost
+		self.SPIWrite(self.REG_LNA,[self.SPIRead(self.REG_LNA)[0]|0x03])
+		
+		#set auto ADC
+		self.SPIWrite(self.REG_MODEM_CONFIG_3,[0x04])
+		
+		#output power 17dbm
+		self.setTxPower(kwargs.get('power',17),self.PA_OUTPUT_PA_BOOST_PIN if kwargs.get('boost',True) else self.PA_OUTPUT_RFO_PIN)
+		self.idle()
+		
+		#set bandwidth
+		self.setSignalBandwidth(kwargs.get('BW',125e3))
+		self.setSpreadingFactor(kwargs.get('SF',12))
+		self.setCodingRate4(kwargs.get('CF',5))
+	
+	def beginPacket(self,implicitHeader=False):
+		self.idle()
+		if implicitHeader:
+			self.implicitHeaderMode()
+		else:
+			self.explicitHeaderMode()
+
+		#reset FIFO & payload length
+		self.SPIWrite(self.REG_FIFO_ADDR_PTR,[0])
+		self.SPIWrite(self.REG_PAYLOAD_LENGTH,[0])
+
+	def endPacket(self):
+		#put in TX mode
+		self.SPIWrite(self.REG_OP_MODE,[self.MODE_LONG_RANGE_MODE|self.MODE_TX])
+		while 1: #Wait for TX done
+			if self.SPIRead(self.REG_IRQ_FLAGS,1)[0] & self.IRQ_TX_DONE_MASK: break
+			else:
+				print ('wait...')
+				time.sleep(0.1)
+		self.SPIWrite(self.REG_IRQ_FLAGS,[self.IRQ_TX_DONE_MASK])
+			
+	def parsePacket(self,size=0):
+		self.packetLength = 0
+		irqFlags = self.SPIRead(self.REG_IRQ_FLAGS,1)[0]
+		if size>0:
+			self.implicitHeaderMode()
+			self.SPIWrite(self.REG_PAYLOAD_LENGTH,[size&0xFF])
+		else:
+			self.explicitHeaderMode()
+		self.SPIWrite(self.REG_IRQ_FLAGS,[irqFlags])
+		if (irqFlags & self.IRQ_RX_DONE_MASK) and (irqFlags & self.IRQ_PAYLOAD_CRC_ERROR_MASK)==0 :
+			self._packetIndex = 0
+			if self._implicitHeaderMode:
+				self.packetLength = self.SPIRead(self.REG_PAYLOAD_LENGTH,1)[0]
+			else:
+				self.packetLength = self.SPIRead(self.REG_RX_NB_BYTES,1)[0]
+			self.SPIWrite(self.REG_FIFO_ADDR_PTR,self.SPIRead(self.REG_FIFO_RX_CURRENT_ADDR,1))
+			self.idle()
+		elif self.SPIRead(self.REG_OP_MODE)[0] != (self.MODE_LONG_RANGE_MODE|self.MODE_RX_SINGLE):
+			self.SPIWrite(self.REG_FIFO_ADDR_PTR,[0])
+			self.SPIWrite(self.REG_OP_MODE,[self.MODE_LONG_RANGE_MODE|self.MODE_RX_SINGLE])
+		return self.packetLength
+
+	def packetRssi(self):
+		return self.SPIRead(self.REG_PKT_RSSI_VALUE)[0] - (164 if self._frequency<868e6 else 157)
+	def packetSnr(self):
+		return self.SPIRead(self.REG_PKT_SNR_VALUE)[0]*0.25
+	
+	def write(self,byteArray):
+		size = len(byteArray)
+		currentLength = self.SPIRead(self.REG_PAYLOAD_LENGTH)[0]
+		if (currentLength+size) > self.MAX_PKT_LENGTH:
+			size = self.MAX_PKT_LENGTH - currentLength
+		self.SPIWrite(self.REG_FIFO,byteArray[:size])
+		self.SPIWrite(self.REG_PAYLOAD_LENGTH,[currentLength+size])
+		return size
+	def available(self):
+		return self.SPIRead(self.REG_RX_NB_BYTES)[0] - self._packetIndex
+
+	def checkRx(self):
+		irqFlags = self.SPIRead(self.REG_IRQ_FLAGS,1)[0]
+		if (irqFlags & self.IRQ_RX_DONE_MASK) and (irqFlags & self.IRQ_PAYLOAD_CRC_ERROR_MASK)==0 :
+			return 1
+		return 0;
+			
+	
+	def read(self):
+		if not self.available():return -1
+		self._packetIndex+=1
+		return self.SPIRead(self.REG_FIFO)[0]
+
+	def readAll(self):
+		p=[]
+		while self.available():
+			p.append(self.read())
+		return p
+
+	def peek(self):
+		if not self.available():return -1
+		self.currentAddress = self.SPIRead(self.REG_FIFO_ADDR_PTR)
+		val = self.SPIRead(self.REG_FIFO)[0]
+		self.SPIWrite(self.REG_FIFO_ADDR_PTR,self.currentAddress)
+		return val
+	def flush(self):
+		pass
 
 
-	def standby(self):
-		self.SPIWrite(self.LR_RegOpMode,[0x09]) #Low freq mode
-		#self.SPIWrite(self.LR_RegOpMode,[0x01]) #High freq mode
+	def receive(self,size):
+		if size>0:
+			self.implicitHeaderMode()
+			self.SPIWrite(self.REG_PAYLOAD_LENGTH,[size&0xFF])
+		else:
+			self.explicitHeaderMode()
+
+		self.SPIWrite(self.REG_OP_MODE,[self.MODE_LONG_RANGE_MODE|self.MODE_RX_SINGLE])
+			
+		
+	def reset(self):
+		pass
+
+		
+	def idle(self):
+		self.SPIWrite(self.REG_OP_MODE,[self.MODE_LONG_RANGE_MODE|self.MODE_STDBY]) 
 
 	def sleep(self):
-		self.SPIWrite(self.LR_RegOpMode,[0x08])
+		self.SPIWrite(self.REG_OP_MODE,[self.MODE_LONG_RANGE_MODE|self.MODE_SLEEP]) 
 
-	def EntryLoRa(self):
-		self.SPIWrite(self.LR_RegOpMode,[0x88]) #Low freq mode
-		#self.SPIWrite(self.LR_RegOpMode,[0x80]) #High freq mode
-
-	def LoRaClearIRQ(self):
-		self.SPIWrite(self.LR_RegIrqFlags,[0xFF])
-
-	def LoRaEntryRX(self):
-		self.config()										#setting base parameter
-		self.SPIWrite(self.REG_LR_PADAC,[0x84])				#Normal and Rx
-		self.SPIWrite(self.LR_RegHopPeriod,[0xFF])			#RegHopPeriod NO FHSS
-		self.SPIWrite(self.REG_LR_DIOMAPPING1,[0x01])		#DIO0=00, DIO1=00, DIO2=00, DIO3=01
-		
-		self.SPIWrite(self.LR_RegIrqFlagsMask,[0x3F])		#Open RxDone interrupt & Timeout
-		self.LoRaClearIRQ()
-		
-		self.SPIWrite(self.RegPayloadLength,[21])           #RegPayloadLength  21byte(this register must difine when the data long of one byte in SF is 6)
-
-		addr = self.SPIRead(self.LR_RegFifoRxBaseAddr,1)[0]  #Read RxBaseAddr
-		print ('rx address',addr, self.SPIRead(self.LR_RegFifoRxCurrentaddr,1)[0])
-		self.SPIWrite(self.LR_RegFifoAddrPtr,[addr])		#RxBaseAddr -> FiFoAddrPtr
-		self.SPIWrite(self.LR_RegOpMode,[0x8D])				#Continuous Rx Mode//Low Frequency Mode
-		#self.SPIWrite(self.LR_RegOpMode,[0x05])  			#High freq mode
-
-		while 1:
-			if self.SPIRead(self.LR_RegModemStat,1)[0]&0x04 == 0x04:  #Rx-on going RegModemStat
-				print ('done')
-				break
-			print ('waiting :',time.ctime(),self.SPIRead(self.LR_RegModemStat,1))
-		
-	def LoRaReadRSSI(self):
-		tmp = self.SPIRead(self.LR_RegRssiValue,1)[0]
-		tmp = tmp+127-137			#127:Max RSSI, 137:RSSI offset
-		return tmp
-
-	def LoRaRxPacket(self):
-		#if get_state('ID1'):   #IRQ is high
-		time.sleep(0.01)
-		addr = self.SPIRead(self.LR_RegFifoRxCurrentaddr,1)[0]   #last packet addr
-		self.SPIWrite(self.LR_RegFifoAddrPtr,[addr])
-		if self.sx1276_7_8SpreadFactorTbl[self.Lora_Rate_Sel] == 6: #Spread Factor = 6
-			packet_size = 21
+	def setTxPower(self,level,pin):
+		if pin ==  self.PA_OUTPUT_RFO_PIN:
+			if level<0:			level=0
+			elif level>14:		level = 14
+			self.SPIWrite(self.REG_PA_CONFIG,[0x70|level])
 		else:
-			packet_size = self.SPIRead(self.LR_RegRxNbBytes,1)[0]
-		RxData = self.SPIRead(0x00,packet_size)
-		self.LoRaClearIRQ()
-		return RxData
+			if level<2:			level=2
+			elif level>17:
+				level = 17
+			if level==17:
+				print ('max power output')
+				self.SPIWrite(self.REG_PA_DAC,[0x87])
+			else:
+				self.SPIWrite(self.REG_PA_DAC,[0x84])
+			self.SPIWrite(self.REG_PA_CONFIG,[self.PA_BOOST|0x70|(level-2)])
 
-	def LoRaEntryTX(self):
-		length = 21
-		self.config()										#setting base parameter
-		self.SPIWrite(self.REG_LR_PADAC,[0x87])				#Tx at 20dbm
-		self.SPIWrite(self.LR_RegHopPeriod,[0x00])			#RegHopPeriod NO FHSS
-		self.SPIWrite(self.REG_LR_DIOMAPPING1,[0x41])		#DIO0=01, DIO1=00, DIO2=00, DIO3=01
-		
-		self.LoRaClearIRQ()
-		self.SPIWrite(self.LR_RegIrqFlagsMask,[0xF7])		#Open TxDone interrupt
-		self.SPIWrite(self.RegPayloadLength,[length])           #RegPayloadLength  21byte
+		print 'power',hex(self.SPIRead(self.REG_PA_CONFIG)[0])
 
-		addr = self.SPIRead(self.LR_RegFifoTxBaseAddr,1)[0]  #Read TxBaseAddr
-		print ('tx address',addr)
-		self.SPIWrite(self.LR_RegFifoAddrPtr,[addr])		#TxBaseAddr -> FiFoAddrPtr
+	def setFrequency(self,frq):
+		self._frequency = frq
+		frf = (int(frq)<<19)/32000000
+		print ('frf',frf)
+		print ('freq',(frf>>16)&0xFF,(frf>>8)&0xFF,(frf)&0xFF)
+		self.SPIWrite(self.REG_FRF_MSB,[(frf>>16)&0xFF])
+		self.SPIWrite(self.REG_FRF_MID,[(frf>>8)&0xFF])
+		self.SPIWrite(self.REG_FRF_LSB,[frf&0xFF])
 
-		while 1:
-			if self.SPIRead(self.LR_RegPayloadLength,1)[0] == length:  #Rx-on going RegModemStat
-				print ('done')
-				break
-			print ('waiting :',time.ctime(),self.SPIRead(self.LR_RegPayloadLength,1))
-			time.sleep(0.1)
+	def setSpreadingFactor(self,sf):
+		if sf<6:sf=6
+		elif sf>12:sf=12
 
-	def LoRaTxPacket(self,dataArray):
-		self.SPIWrite(0x00,dataArray)
-		self.SPIWrite(self.LR_RegOpMode,[0x8B]) #TX Mode
-		#while not self.get_state('ID1'): 
-		time.sleep(0.1)
-		self.SPIRead(self.LR_RegIrqFlags,1)
-		self.LoRaClearIRQ()
-		self.standby()
-		print (len(lora.sampleData),lora.sampleData)
-			
-	def ReadRSSI(self):
-		tmp = self.SPIRead(self.LR_RegIrqFlagsMask,1)[0]
-		tmp >>=1	
-		return 127-tmp
-
-	def config(self):
-		self.sleep()
-		time.sleep(0.015)
-		self.EntryLoRa()
-		self.SPIWrite(self.LR_RegFrMsb,self.sx1276_7_8FreqTbl[self.Freq_Sel])
-		self.SPIWrite(self.LR_RegPaConfig,[self.sx1276_7_8PowerTbl[self.Power_Sel]])
-				
-		self.SPIWrite(self.LR_RegOcp,[0x0B]) #Close ocp
-		self.SPIWrite(self.LR_RegLna,[0x23]) #RegLNA , HIGH, LNA enable
-		
-		if self.sx1276_7_8SpreadFactorTbl[self.Lora_Rate_Sel]==6:
-			self.SPIWrite(self.LR_RegModemConfig1,[(self.sx1276_7_8LoRaBwTbl[self.BandWide_Sel]<<4)+(self.CR<<1)+0x01]) 			# Enable CRC Enable(0x02) & Error Coding rate 4/5(0x01), 4/6(0x02), 4/7
-			self.SPIWrite(self.LR_RegModemConfig2,[(self.sx1276_7_8SpreadFactorTbl[self.Lora_Rate_Sel]<<4)+(self.CRC<<2)+0x03]) 			# SFactor &  LNA gain set by the internal AGC loop 
-			tmp = self.SPIRead(0x31)[0]
-			tmp&=0xF8;tmp|=0x05
-			self.SPIWrite(0x31,[tmp])
-			self.SPIWrite(0x37,[0x0C])
+		if sf==6:
+			self.SPIWrite(self.REG_DETECTION_OPTIMIZE,[0xc5])
+			self.SPIWrite(self.REG_DETECTION_THRESHOLD,[0x0c])
 		else:
-			self.SPIWrite(self.LR_RegModemConfig1,[(self.sx1276_7_8LoRaBwTbl[self.BandWide_Sel]<<4)+(self.CR<<1)+0x00])
-			self.SPIWrite(self.LR_RegModemConfig2,[(self.sx1276_7_8SpreadFactorTbl[self.Lora_Rate_Sel]<<4)+(self.CRC<<2)+0x03])
-				
-		self.SPIWrite(self.LR_RegSymbTimeoutLsb,[0xFF])  #Max timeout
-		self.SPIWrite(self.LR_RegPreambleMsb,[0x00])
-		self.SPIWrite(self.LR_RegPreambleLsb,[12])     #RegPreambleLsb 8+4=12byte Preamble
-		
-		self.SPIWrite(self.REG_LR_DIOMAPPING2,[0x01])  #RegDioMapping2 DIO5=00, DIO4=01
-		self.standby()
+			self.SPIWrite(self.REG_DETECTION_OPTIMIZE,[0xc3])
+			self.SPIWrite(self.REG_DETECTION_THRESHOLD,[0x0a])
+		self.SPIWrite(self.REG_MODEM_CONFIG_2,[(self.SPIRead(self.REG_MODEM_CONFIG_2)[0]&0x0F)|((sf<<4)&0xF0)])
+
+	def setSignalBandwidth(self,sbw):
+		bw=9
+		num=0
+		for a in [7.8e3,10.4e3,15.6e3,20.8e3,31.25e3,41.7e3,62.5e3,125e3,250e3]:
+			if sbw<=a:
+				bw = num
+				break
+			num+=1
+		print ('bandwidth: ',bw)
+		self.SPIWrite(self.REG_MODEM_CONFIG_1,[(self.SPIRead(self.REG_MODEM_CONFIG_1)[0]&0x0F)|(bw<<4)])
+
+	def setCodingRate4(self,denominator):
+		if denominator<5:denominator = 5
+		elif denominator>8:denominator = 8
+		self.SPIWrite(self.REG_MODEM_CONFIG_1,[(self.SPIRead(self.REG_MODEM_CONFIG_1)[0]&0xF1)|((denominator-4)<<4)])
+	
+	def setPreambleLength(self,length):
+		self.SPIWrite(self.REG_PREAMBLE_MSB,[(length>>8)&0xFF])
+		self.SPIWrite(self.REG_PREAMBLE_LSB,[length&0xFF])
+
+	def setSyncWord(self,sw):
+		self.SPIWrite(self.REG_SYNC_WORD,[sw])
+
+	def crc(self):
+		self.SPIWrite(self.REG_MODEM_CONFIG_2,[self.SPIRead(self.REG_MODEM_CONFIG_2)[0]|0x04])
+	def noCrc(self):
+		self.SPIWrite(self.REG_MODEM_CONFIG_2,[self.SPIRead(self.REG_MODEM_CONFIG_2)[0]&0xFB])
+	def random(self):
+		return self.SPIRead(self.REG_RSSI_WIDEBAND)[0]
+
+	def explicitHeaderMode(self):
+		self._implicitHeaderMode=0
+		self.SPIWrite(self.REG_MODEM_CONFIG_1,[self.SPIRead(self.REG_MODEM_CONFIG_1)[0]&0xFE])
+
+	def implicitHeaderMode(self):
+		self._implicitHeaderMode=1
+		self.SPIWrite(self.REG_MODEM_CONFIG_1,[self.SPIRead(self.REG_MODEM_CONFIG_1)[0]|0x01])
+
+	def handleDio0Rise(self):
+		irqFlags = self.SPIRead(self.REG_IRQ_FLAGS,1)[0]
+		self.SPIWrite(self.REG_IRQ_FLAGS,[irqFlags])
+
+		if (irqFlags & self.IRQ_PAYLOAD_CRC_ERROR_MASK)==0 :
+			self._packetIndex = 0
+			if self._implicitHeaderMode:
+				self.packetLength = self.SPIRead(self.REG_PAYLOAD_LENGTH,1)[0]
+			else:
+				self.packetLength = self.SPIRead(self.REG_RX_NB_BYTES,1)[0]
+
+			self.SPIWrite(self.REG_FIFO_ADDR_PTR,self.SPIRead(self.REG_FIFO_RX_CURRENT_ADDR,1))
+			if self._onReceive:
+				print self.packetLength
+				#self._onReceive(self.packetLength)
+
+		self.SPIWrite(self.REG_FIFO_ADDR_PTR,[0])
 
 	def SPIWrite(self,adr,byteArray):
 		return self.SPI.xfer('CS1',[0x80|adr]+byteArray)[1:]
 
-	def SPIRead(self,adr,total_bytes):
+	def SPIRead(self,adr,total_bytes=1):
 		return self.SPI.xfer('CS1',[adr]+[0]*total_bytes)[1:]
 
 	def getRaw(self):
 		val = self.SPIRead(0x02,1)
 		return val
 
-
-
 if __name__ == "__main__":
-	'''
-	Example code to test LoRa modules.
-	Set mode = 0 to enable receiver , or mode = 1 to enable a periodic transmitter
-	
-	Frequency = 434MHz #Use the frequency specified by the module being used
-	transmission is at 17db
-	BW = 125KHz
-	Spreading Factor (SF) = 12
-	Coding rate(CR) = 4/5   #The numerator is always 4, and the argument passed to the init function is the denominator
-	'''
 	RX = 0;	TX=1
+	import time
 	mode = RX
 	from PSL import sciencelab
 	I= sciencelab.connect()
-	lora = SX1276(I.SPI,434e6,boost=True,power=17,BW=125e3,SF=12,CR=5)
-	lora.crc()  #Enable CRC
-	cntr=0      #Incrementing counter for TX mode
+	lora = SX1276(I.SPI,434e6,boost=True,power=17,BW=125e3,SF=12,CR=5) #settings for maximum range 
+	lora.crc()
+	cntr=0
 	while 1:
 		time.sleep(0.01)
 		if mode==TX:
-			lora.beginPacket()   #Enable writing mode
-			lora.write([ord(a) for a in ":"]+[cntr])  #write some bytes
-			print (time.ctime(),cntr, hex(lora.SPIRead(lora.REG_OP_MODE)[0]))
-			lora.endPacket()    #Switch to transmit mode, and send the data
+			lora.beginPacket()
+			lora.write([cntr])
+			#lora.write([ord(a) for a in ":"]+[cntr])
+			print (time.ctime(),[ord(a) for a in ":"]+[cntr], hex(lora.SPIRead(lora.REG_OP_MODE)[0]))
+			lora.endPacket()
 			cntr+=1
 			if cntr==255:cntr=0
-		else:
+		elif mode==RX:
 			packet_size = lora.parsePacket()
-			if packet_size:  #If some data was received
-				print ('got packet')
-				print 'data',lora.readAll()  #Print the data
-				print ('Rssi',lora.packetRssi(),lora.packetSnr())  #Print signal strength and signal to noise ratio
-
+			if packet_size:
+				print 'data',lora.readAll()
+				print ('Rssi',lora.packetRssi(),lora.packetSnr())
 

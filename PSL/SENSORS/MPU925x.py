@@ -37,16 +37,8 @@ class MPU925x():
 		self.params={'powerUp':None,'setGyroRange':[250,500,1000,2000],'setAccelRange':[2,4,8,16],'KalmanFilter':[.01,.1,1,10,100,1000,10000,'OFF']}
 		self.setGyroRange(2000)
 		self.setAccelRange(16)
-		'''
-		try:
-			self.I2C.configI2C(400e3)
-		except:
-			pass
-		'''
 		self.powerUp()
 		self.K=None
-
-
 
 	def KalmanFilter(self,opt):
 		if opt=='OFF':
@@ -62,9 +54,8 @@ class MPU925x():
 			sd = std(noise[a])
 			self.K[a] = KalmanFilter(1./opt, sd**2)
 
-	def getVals(self,addr,bytes):
-		vals = self.I2C.readBulk(self.ADDRESS,addr,bytes) 
-		return vals
+	def getVals(self,addr,numbytes):
+		return self.I2C.readBulk(self.ADDRESS,addr,numbytes) 
 
 	def powerUp(self):
 		self.I2C.writeBulk(self.ADDRESS,[0x6B,0])
@@ -79,8 +70,7 @@ class MPU925x():
 
 	def getRaw(self):
 		'''
-		This method must be defined if you want GUIs to use this class to generate 
-		plots on the fly.
+		This method must be defined if you want GUIs to use this class to generate plots on the fly.
 		It must return a set of different values read from the sensor. such as X,Y,Z acceleration.
 		The length of this list must not change, and must be defined in the variable NUMPLOTS.
 		
@@ -151,8 +141,8 @@ class MPU925x():
 
 	def WhoAmI(self):
 		'''
-		Returns the ID . 
-		It is 71 for MPU9250 . 
+		Returns the ID.
+		It is 71 for MPU9250.
 		'''
 		v = self.I2C.readBulk(self.ADDRESS,0x75,1)[0]
 		if v not in [0x71,0x73]:return 'Error %s'%hex(v)
@@ -164,8 +154,8 @@ class MPU925x():
 
 	def WhoAmI_AK8963(self):
 		'''
-		Returns the ID fo magnetometer AK8963 if found. 
-		It should be 0x48. 
+		Returns the ID fo magnetometer AK8963 if found.
+		It should be 0x48.
 		'''
 		self.initMagnetometer()
 		v= self.I2C.readBulk(self.AK8963_ADDRESS,0,1) [0]
@@ -175,10 +165,9 @@ class MPU925x():
 	def initMagnetometer(self):
 		'''
 		For MPU925x with integrated magnetometer.
-		It's called a 10 DoF sensor, but technically speaking , 
-		the 3-axis Accel , 3-Axis Gyro, temperature sensor are integrated in one IC, and the 3-axis magnetometer is implemented in a 
+		It's called a 10 DoF sensor, but technically speaking ,
+		the 3-axis Accel , 3-Axis Gyro, temperature sensor are integrated in one IC, and the 3-axis magnetometer is implemented in a
 		separate IC which can be accessed via an I2C passthrough.
-		
 		Therefore , in order to detect the magnetometer via an I2C scan, the passthrough must first be enabled on IC#1 (Accel,gyro,temp)
 		'''
 		self.I2C.writeBulk(self.ADDRESS,[self.INT_PIN_CFG,0x22]) #I2C passthrough
@@ -190,8 +179,8 @@ class MPU925x():
 if __name__ == "__main__":
 	from PSL import sciencelab
 	I = sciencelab.connect()
-	A = connect(I.I2C) 
-	t,x,y,z = I.I2C.capture(A.ADDRESS,0x43,6,5000,1000,'int') 
+	A = connect(I.I2C)
+	t,x,y,z = I.I2C.capture(A.ADDRESS,0x43,6,5000,1000,'int')
 	#print (t,x,y,z)
 	from pylab import *
 	plot(t,x)

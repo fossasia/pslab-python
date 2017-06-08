@@ -4152,6 +4152,6 @@ if __name__ == "__main__":
 	I=connect(verbose = True)
 	t = time.time()
 	for a in range(100):
-		s =  I.read_flash(3,a) 
+		s =  I.read_flash(3,a)
 		#print(s.replace('\n','.'),len(s))
 	print (time.time()-t)

@@ -1,5 +1,4 @@
 from __future__ import print_function
-from numpy import int16
 import time
 
 
@@ -8,6 +7,27 @@ def connect(route, **args):
     route can either be I.I2C , or a radioLink instance
     '''
     return SHT21(route, **args)
+
+def rawToTemp( vals):
+        if vals:
+            if len(vals):
+                v = (vals[0] << 8) | (vals[1] & 0xFC)  # make integer & remove status bits
+                v *= 175.72
+                v /= (1 << 16)
+                v -= 46.85
+                return [v]
+        return False
+
+def rawToRH( vals):
+        if vals:
+            if len(vals):
+                v = (vals[0] << 8) | (vals[1] & 0xFC)  # make integer & remove status bits
+                v *= 125.
+                v /= (1 << 16)
+                v -= 6
+                return [v]
+        return False
+
 
 
 class SHT21():
@@ -38,25 +58,6 @@ class SHT21():
         self.I2C.writeBulk(self.ADDRESS, [self.RESET])  # soft reset
         time.sleep(0.1)
 
-    def rawToTemp(self, vals):
-        if vals:
-            if len(vals):
-                v = (vals[0] << 8) | (vals[1] & 0xFC)  # make integer & remove status bits
-                v *= 175.72
-                v /= (1 << 16)
-                v -= 46.85
-                return [v]
-        return False
-
-    def rawToRH(self, vals):
-        if vals:
-            if len(vals):
-                v = (vals[0] << 8) | (vals[1] & 0xFC)  # make integer & remove status bits
-                v *= 125.
-                v /= (1 << 16)
-                v -= 6
-                return [v]
-        return False
 
     @staticmethod
     def _calculate_checksum(data, number_of_bytes):
@@ -69,7 +70,7 @@ class SHT21():
         # calculates 8-Bit checksum with given polynomial
         for byteCtr in range(number_of_bytes):
             crc ^= (data[byteCtr])
-            for bit in range(8, 0, -1):
+            for _ in range(8, 0, -1):
                 if crc & 0x80:
                     crc = (crc << 1) ^ POLYNOMIAL
                 else:
@@ -95,6 +96,6 @@ class SHT21():
                 print(vals)
                 return False
         if self.selected == self.TEMP_ADDRESS:
-            return self.rawToTemp(vals)
+            return rawToTemp(vals)
         elif self.selected == self.HUMIDITY_ADDRESS:
-            return self.rawToRH(vals)
+            return rawToRH(vals)

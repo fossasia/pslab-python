@@ -77,8 +77,8 @@ class HMC5883L():
         self.gainValue = self.gain_choices.index(gain)
         self.__writeCONFB__()
 
-    def getVals(self, addr, bytes):
-        vals = self.I2C.readBulk(self.ADDRESS, addr, bytes)
+    def getVals(self, addr, numbytes):
+        vals = self.I2C.readBulk(self.ADDRESS, addr, numbytes)
         return vals
 
     def getRaw(self):
