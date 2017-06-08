@@ -3694,34 +3694,6 @@ class ScienceLab():
     def get_pcs(self):
         return self.DAC.getVoltage('PCS')
 
-    def setOnboardLED(self, R, G, B):
-        """
-		set shade of WS2182 LED on PIC1572 1 RA2
-
-		.. tabularcolumns:: |p{3cm}|p{11cm}|
-
-		==============  ============================================================================================
-		**Arguments**
-		==============  ============================================================================================
-		R               brightness of red colour 0-255
-		G               brightness of green colour 0-255
-		B               brightness of blue colour 0-255
-		==============  ============================================================================================
-		"""
-        try:
-            self.H.__sendByte__(CP.COMMON)
-            self.H.__sendByte__(CP.SET_ONBOARD_RGB)
-            # G=reverse_bits(G);R=reverse_bits(R);B=reverse_bits(B)
-            self.H.__sendByte__(B)
-            self.H.__sendByte__(R)
-            self.H.__sendByte__(G)
-            self.__print__(B, R, G)
-            time.sleep(0.001)
-            self.H.__get_ack__()
-            return B, R, G
-        except Exception as ex:
-            self.raiseException(ex, "Communication Error , Function : " + inspect.currentframe().f_code.co_name)
-
     def WS2812B(self, cols, output='CS1'):
         """
 		set shade of WS2182 LED on SQR1
