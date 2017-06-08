@@ -1,5 +1,4 @@
 from __future__ import print_function
-from numpy import int16
 
 
 def connect(route, **args):
@@ -27,8 +26,8 @@ class MLX90614():
         try:
             print('switching baud to 100k')
             self.I2C.configI2C(100e3)
-        except:
-            print('FAILED TO CHANGE BAUD RATE')
+        except Exception as e:
+            print('FAILED TO CHANGE BAUD RATE',e.message)
 
     def select_source(self, source):
         if source == 'object temperature':
@@ -40,8 +39,8 @@ class MLX90614():
         x = self.getVals(addr, 2)
         print(hex(addr), hex(x[0] | (x[1] << 8)))
 
-    def getVals(self, addr, bytes):
-        vals = self.I2C.readBulk(self.ADDRESS, addr, bytes)
+    def getVals(self, addr, numbytes):
+        vals = self.I2C.readBulk(self.ADDRESS, addr, numbytes)
         return vals
 
     def getRaw(self):

@@ -427,7 +427,6 @@ class I2C():
     def __retrievebuffer__(self):
         '''
         Fetch data acquired by the I2C scope. refer to :func:`__captureStart__`
-        
         '''
         total_int_samples = self.total_bytes/2
         DATA_SPLITTING = 500
@@ -440,7 +439,7 @@ class I2C():
             self.H.__sendInt__(DATA_SPLITTING)
             self.H.__sendInt__(i*DATA_SPLITTING)
             rem = DATA_SPLITTING*2+1
-            for a in range(200):
+            for _ in range(200):
                 partial = self.H.fd.read(rem)       #reading int by int sometimes causes a communication error. this works better.
                 rem -=len(partial)
                 data+=partial
@@ -457,7 +456,7 @@ class I2C():
             self.H.__sendInt__(total_int_samples%DATA_SPLITTING)
             self.H.__sendInt__(total_int_samples-total_int_samples%DATA_SPLITTING)
             rem = 2*(total_int_samples%DATA_SPLITTING)+1
-            for a in range(20):
+            for _ in range(20):
                 partial = self.H.fd.read(rem)       #reading int by int sometimes causes a communication error. this works better.
                 rem -=len(partial)
                 data+=partial
@@ -825,6 +824,13 @@ class SPI():
         except Exception as ex:
             self.raiseException(ex, "Communication Error , Function : " + inspect.currentframe().f_code.co_name)
 
+    def xfer(self,chan,data):
+        self.start(chan)
+        reply=[]
+        for a in data:
+            reply.append(self.send8(a))
+        self.stop(chan)
+        return reply
 
 class DACCHAN:
     def __init__(self, name, span, channum, **kwargs):

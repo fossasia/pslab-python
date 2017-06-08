@@ -37,12 +37,6 @@ class MPU6050():
                        'KalmanFilter': {'dataType':'double','min':0,'max':1000,'prefix':'value: '} }
         self.setGyroRange(2000)
         self.setAccelRange(16)
-        '''
-        try:
-            self.I2C.configI2C(400e3)
-        except:
-            pass
-        '''
         self.powerUp()
         self.K = None
 
@@ -60,8 +54,8 @@ class MPU6050():
             sd = std(noise[a])
             self.K[a] = KalmanFilter(1. / opt, sd ** 2)
 
-    def getVals(self, addr, bytes):
-        vals = self.I2C.readBulk(self.ADDRESS, addr, bytes)
+    def getVals(self, addr, numbytes):
+        vals = self.I2C.readBulk(self.ADDRESS, addr, numbytes)
         return vals
 
     def powerUp(self):
