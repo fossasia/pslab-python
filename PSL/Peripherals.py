@@ -384,7 +384,7 @@ class I2C():
         Blocking call that starts fetching data from I2C sensors like an oscilloscope fetches voltage readings
         You will then have to call `__retrievebuffer__` to fetch this data, and `__dataProcessor` to process and return separate channels
         refer to `capture` if you want a one-stop solution.
-
+        
         .. tabularcolumns:: |p{3cm}|p{11cm}|
         ==================  ============================================================================================
         **Arguments**
