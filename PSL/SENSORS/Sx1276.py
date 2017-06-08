@@ -1,8 +1,8 @@
 #Registers adapted from sample code for SEMTECH SX1276
 import time
 
-def connect(SPI):
-	return SX1276(SPI)
+def connect(SPI,frq,**kwargs):
+	return SX1276(SPI,frq,**kwargs)
 
 
 class SX1276():
@@ -56,7 +56,6 @@ class SX1276():
 
 	PA_OUTPUT_RFO_PIN      =0
 	PA_OUTPUT_PA_BOOST_PIN =1
-	
 	_onReceive = 0
 	_frequency = 10
 	_packetIndex = 0
@@ -196,10 +195,10 @@ class SX1276():
 
 		
 	def idle(self):
-		self.SPIWrite(self.REG_OP_MODE,[self.MODE_LONG_RANGE_MODE|self.MODE_STDBY]) 
+		self.SPIWrite(self.REG_OP_MODE,[self.MODE_LONG_RANGE_MODE|self.MODE_STDBY])
 
 	def sleep(self):
-		self.SPIWrite(self.REG_OP_MODE,[self.MODE_LONG_RANGE_MODE|self.MODE_SLEEP]) 
+		self.SPIWrite(self.REG_OP_MODE,[self.MODE_LONG_RANGE_MODE|self.MODE_SLEEP])
 
 	def setTxPower(self,level,pin):
 		if pin ==  self.PA_OUTPUT_RFO_PIN:
@@ -308,11 +307,10 @@ class SX1276():
 
 if __name__ == "__main__":
 	RX = 0;	TX=1
-	import time
 	mode = RX
 	from PSL import sciencelab
 	I= sciencelab.connect()
-	lora = SX1276(I.SPI,434e6,boost=True,power=17,BW=125e3,SF=12,CR=5) #settings for maximum range 
+	lora = SX1276(I.SPI,434e6,boost=True,power=17,BW=125e3,SF=12,CR=5) #settings for maximum range
 	lora.crc()
 	cntr=0
 	while 1:
