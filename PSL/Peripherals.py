@@ -525,98 +525,10 @@ class I2C():
         :return: Arrays X(timestamps),Y1,Y2 ...
 
         """
-        if tg < 20:
-            tg = 20
-        total_bytes = total_samples * sample_length
-        print('total bytes calculated : ', total_bytes)
-        if (total_bytes > CP.MAX_SAMPLES * 2):
-            print('Sample limit exceeded. 10,000 int / 20000 bytes total')
-            total_samples = CP.MAX_SAMPLES * 2 / sample_length  # 2* because sample array is in Integers, and we're using it to store bytes
-            total_bytes = CP.MAX_SAMPLES * 2
-
-        if ('int' in args):
-            total_chans = sample_length / 2
-            channel_length = total_bytes / sample_length / 2
-        else:
-            total_chans = sample_length
-            channel_length = total_bytes / sample_length
-
-        print('total channels calculated : ', total_chans)
-        print('length of each channel : ', channel_length)
-        try:
-            self.H.__sendByte__(CP.I2C_HEADER)
-            self.H.__sendByte__(CP.I2C_START_SCOPE)
-            self.H.__sendByte__(address)
-            self.H.__sendByte__(location)
-            self.H.__sendByte__(sample_length)
-            self.H.__sendInt__(total_samples)  # total number of samples to record
-            self.H.__sendInt__(tg)  # Timegap between samples.  1MHz timer clock
-            self.H.__get_ack__()
-            print('done', total_chans, channel_length)
-
-            print('sleeping for : ', 1e-6 * total_samples * tg + .01)
-
-            time.sleep(1e-6 * total_samples * tg + 0.5)
-            data = b''
-            total_int_samples = total_bytes / 2
-
-            print('fetchin samples : ', total_int_samples, '   split', CP.DATA_SPLITTING)
-
-            data = b''
-            for i in range(int(total_int_samples / CP.DATA_SPLITTING)):
-                self.H.__sendByte__(CP.ADC)
-                self.H.__sendByte__(CP.GET_CAPTURE_CHANNEL)
-                self.H.__sendByte__(0)  # starts with A0 on PIC
-                self.H.__sendInt__(CP.DATA_SPLITTING)
-                self.H.__sendInt__(i * CP.DATA_SPLITTING)
-                rem = CP.DATA_SPLITTING * 2 + 1
-                for a in range(200):
-                    partial = self.H.fd.read(
-                        rem)  # reading int by int sometimes causes a communication error. this works better.
-                    rem -= len(partial)
-                    data += partial
-                    # print ('partial: ',len(partial), end=",")
-                    if rem <= 0:
-                        break
-                data = data[:-1]
-            # print ('Pass : len=',len(data), ' i = ',i)
-
-            if total_int_samples % CP.DATA_SPLITTING:
-                self.H.__sendByte__(CP.ADC)
-                self.H.__sendByte__(CP.GET_CAPTURE_CHANNEL)
-                self.H.__sendByte__(0)  # starts with A0 on PIC
-                self.H.__sendInt__(total_int_samples % CP.DATA_SPLITTING)
-                self.H.__sendInt__(total_int_samples - total_int_samples % CP.DATA_SPLITTING)
-                rem = 2 * (total_int_samples % CP.DATA_SPLITTING) + 1
-                for a in range(200):
-                    partial = self.H.fd.read(
-                        rem)  # reading int by int sometimes causes a communication error. this works better.
-                    rem -= len(partial)
-                    data += partial
-                    # print ('partial: ',len(partial), end="")
-                    if rem <= 0:
-                        break
-                data = data[:-1]
-                # print ('Final Pass : len=',len(data))
-        except Exception as ex:
-            self.raiseException(ex, "Communication Error , Function : " + inspect.currentframe().f_code.co_name)
-
-        try:
-            data = [ord(a) for a in data]
-            if ('int' in args):
-                for a in range(total_chans * channel_length): self.buff[a] = np.int16(
-                    (data[a * 2] << 8) | data[a * 2 + 1])
-            else:
-                for a in range(total_chans * channel_length): self.buff[a] = data[a]
-
-            # print (self.buff, 'geer')
-
-            yield np.linspace(0, tg * (channel_length - 1), channel_length)
-            for a in range(int(total_chans)):
-                yield self.buff[a:channel_length * total_chans][::total_chans]
-        except Exception as ex:
-            msg = "Incorrect number of bytes received"
-            raise RuntimeError(msg)
+        t = self.__captureStart__(address,location,sample_length,total_samples,tg)
+        time.sleep(t)
+        data = self.__retrievebuffer__()
+        return self.__dataProcessor__(data,*args)
 
 
 class SPI():
