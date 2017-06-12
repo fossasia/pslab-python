@@ -7,7 +7,6 @@
 from __future__ import print_function
 from PSL import sciencelab
 import time
-import RPi.GPIO as GPIO
 
 
 def connect(I, cs):
@@ -161,18 +160,6 @@ class MF522:
         # Enable the antenna
         self.enableAntenna()
         self.connected = True
-
-    def MFRC522_Init(self):
-        GPIO.output(self.NRSTPD, 1)
-        self.MFRC522_Reset();
-        self.write(self.TModeReg, 0x8D)
-        self.write(self.TPrescalerReg, 0x3E)
-        self.write(self.TReloadRegL, 30)
-        self.write(self.TReloadRegH, 0)
-
-        self.write(self.TxAutoReg, 0x40)
-        self.write(self.ModeReg, 0x3D)
-        self.AntennaOn()
 
     def enableAntenna(self):
         val = self.read(self.TxControlReg);
@@ -483,9 +470,9 @@ if __name__ == "__main__":
                 A.MFRC522_SelectTag(uid)
                 status = A.MFRC522_Auth(A.PICC_AUTHENT1A, 8, key, uid)
                 if status == A.MI_OK:
-                    A.MFRC522_Read(8)
-                    # Variable for the data to write
+                    print(A.MFRC522_Read(8))
                     '''
+                    # Variable for the data to write
                     data = []
                     # Fill the data with 0xFF
                     for x in range(0,16):
