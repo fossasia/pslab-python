@@ -33,7 +33,9 @@ def check_root():
 
 class CustomInstall(install):
     def run(self):
-        if not hasattr(self,"root") or 'debian' not in self.root:
+        if not hasattr(self,"root"):
+            install_udev_rules(True)
+        elif 'debian' not in self.root:
             install_udev_rules(True)
         install.run(self)
 
