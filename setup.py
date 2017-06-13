@@ -35,8 +35,9 @@ class CustomInstall(install):
     def run(self):
         if not hasattr(self,"root"):
             install_udev_rules(True)
-        elif 'debian' not in self.root:
-            install_udev_rules(True)
+        elif self.root is not None:
+            if 'debian' not in self.root:
+                install_udev_rules(True)
         install.run(self)
 
 setup(name='PSL',
