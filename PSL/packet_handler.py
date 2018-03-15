@@ -15,7 +15,8 @@ class Handler():
         self.version_string = b''
         self.connected = False
         self.fd = None
-        self.expected_version = b'CS'
+        self.expected_version1 = b'CS'
+        self.expected_version2 = b'PS'
         self.occupiedPorts = set()
         self.blockingSocket = None
         if 'port' in kwargs:
@@ -83,7 +84,7 @@ class Handler():
             fd.flush()
             fd.setTimeout(1.0)
         version = self.get_version(fd)
-        if version[:len(self.expected_version)] == self.expected_version:
+        if version[:len(self.expected_version1)] == self.expected_version1 or version[:len(self.expected_version2)] == self.expected_version2:
             return fd, version, True
 
         return None, '', False
