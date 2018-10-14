@@ -1,6 +1,6 @@
 # PSLab-python 
 
-The Pocket Science Lab from FOSSASIA <http://pslab.fossasia.org>
+The Pocket Science Lab from FOSSASIA <https://pslab.io>
 
 [![Build Status](https://travis-ci.org/fossasia/pslab-python.svg?branch=development)](https://travis-ci.org/fossasia/pslab-python)
 [![Gitter](https://badges.gitter.im/fossasia/pslab.svg)](https://gitter.im/fossasia/pslab?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
@@ -8,7 +8,7 @@ The Pocket Science Lab from FOSSASIA <http://pslab.fossasia.org>
 
 This repository hosts the python library for communicating with PSLab. This can be installed on a linux pc/raspberry pi. With this, one can communicate with the hardware using simple python code. 
 
-The goal of PSLab is to create an Open Source hardware device (open on all layers) that can be used for experiments by teachers, students and citizen scientists. Our tiny pocket lab provides an array of sensors for doing science and engineering experiments. It provides functions of numerous measurement devices including an oscilloscope, a waveform generator, a frequency counter, a programmable voltage, current source and as a data logger. Our website is at: http://pslab.fossasia.org
+The goal of PSLab is to create an Open Source hardware device (open on all layers) that can be used for experiments by teachers, students and citizen scientists. Our tiny pocket lab provides an array of sensors for doing science and engineering experiments. It provides functions of numerous measurement devices including an oscilloscope, a waveform generator, a frequency counter, a programmable voltage, current source and as a data logger. Our website is at: https://pslab.io
 
 ### Communication
 
