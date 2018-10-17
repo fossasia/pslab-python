@@ -1,4 +1,4 @@
-/* Documentation of back-end functions used in PSLab, mostly taken from sciencelab.py */
+/* Documentation of back-end functions used in PSLab, taken from sciencelab.py */
 
 def get_resistance(self):
 
