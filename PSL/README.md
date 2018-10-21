@@ -1,197 +1,700 @@
-/* Documentation of back-end functions used in PSLab, taken from sciencelab.py */
+//* Documentation of back-end functions used in PSLab, taken from sciencelab.py
+Example:
 
-get_resistance(self):
+<details>
+<summary><code>Python method name with parameters</code></summary><br />
 
-get__version(self):
+- Description of the method
+- Parameters and the values they can take
+  - One list item per each parameter
+  - ...
+- Return values and their meaning
+</details>
 
-getRadioLinks(self):
+*/
 
-newRadioLink(self, **args):
 
-reconnect(self, **kwargs):
+<details>
+<summary><code>get_resistance(self)</summary><br />
 
-capture1(self, ch, ns, tg, *args, **kwargs):
 
-capture2(self, ns, tg, TraceOneRemap='CH1'):
+</details>
 
-capture4(self, ns, tg, TraceOneRemap='CH1'):
 
-capture_multiple(self, samples, tg, *args):
+<details>
+<summary><code>get__version(self)</summary><br />
 
-capture_fullspeed(self, chan, samples, tg, *args, **kwargs):
 
-capture_fullspeed_hr(self, chan, samples, tg, *args):
+</details>
 
-capture_traces(self, num, samples, tg, channel_one_input='CH1', CH123SA=0, *kwargs):
 
-capture_highres_traces(self, channel, samples, tg, **kwargs):
+<details>
+<summary><code>getRadioLinks(self)</summary><br />
 
-fetch_trace(self, channel_number):
 
-oscilloscope_progress(self):
+</details>
 
-configure_trigger(self, chan, name, voltage, resolution=10, **kwargs):
 
-set_gain(self, channel, gain, Force=False):
+<details>
+<summary><code>newRadioLink(self, **args)</summary><br />
 
-select_range(self, channel, voltage_range):
 
-get_voltage(self, channel_name, **kwargs):
+</details>
 
-voltmeter_autorange(self, channel_name):
 
-get_average_voltage(self, channel_name, **kwargs):
+<details>
+<summary><code>reconnect(self, **kwargs)</summary><br />
 
-fetch_buffer(self, starting_position=0, total_points=100):
 
-clear_buffer(self, starting_position, total_points):
+</details>
 
-fill(slef, starting_position, poin_array):
 
-start_streaming(self, tg, channel='CH1'):
+<details>
+<summary><code>capture1(self, ch, ns, tg, *args, **kwargs)</summary><br />
 
-stop_streaming(self):
 
-get_high_freq(self, pin):
+</details>
 
-get_freq(self, channel='CNTR', timeout=2):
 
-r2r_time(self, channel, skip_cycle=0, timeout=5):
+<details>
+<summary><code>capture2(self, ns, tg, TraceOneRemap='CH1')</summary><br />
 
-f2f_time(self,channel, skip_cycle=0, timeout=5):
 
-MeasureInterval(self, channel1, channel2, edge1, edge2, timeout=0.1):
+</details>
 
-DutyCycle(self, channel='ID1', timeout=1.):
 
-PulseTime(self, channel='ID1', PulseType='LOW', timeout=0.1):
+<details>
+<summary><code>capture4(self, ns, tg, TraceOneRemap='CH1')</summary><br />
 
-MeasureMultipleDigitalEdges(self, channel1, channel2, edgeType1, edgeType2, points1, points2, timeout=0.1, **kwargs):
 
-capture_edges1(self, waiting_time=1., **args):
+</details>
 
-start_one_channel_LA_backup__(self, trigger=1, channel='ID1', maximum_time=67, **args):
 
-start_one_channel_LA(self, **args):
+<details>
+<summary><code>capture_multiple(self, samples, tg, *args)</summary><br />
 
-start_two_channel_LA(self, **args):
 
-start_three_channel_LA(self, **args):
+</details>
 
-start_four_channel_LA(self, trigger=1, maximum_time=0.001, mode=[1, 1, 1, 1], **args):
 
-get_LA_initial_states(self):
+<details>
+<summary><code>capture_fullspeed(self, chan, samples, tg, *args, **kwargs)</summary><br />
 
-stop_LA(self):
 
-fetch_int_data_from_LA(self, bytes, chan=1):
+</details>
 
-fetch_LA_channels(self):
 
-get_states(self):
+<details>
+<summary><code>capture_fullspeed_hr(self, chan, samples, tg, *args)</summary><br />
 
-get_state(self, input_id):
 
-set_state(self, **kwargs):
+</details>
 
-countPulses(self, channel='SEN'):
 
-readPulseCount(self):
+<details>
+<summary><code>capture_traces(self, num, samples, tg, channel_one_input='CH1', CH123SA=0, *kwargs)</summary><br />
 
-capacitance_via_RC_discharge(self):
 
-get_capacitor_range(self):
+</details>
 
-get_capacitance(self):
 
-get_temperature(self):
+<details>
+<summary><code>capture_highres_traces(self, channel, samples, tg, **kwargs)</summary><br />
 
-resetHardware(self):
 
-read_flash(self, page, location):
+</details>
 
-read_bulk_flash(self, page, numbytes):
 
-write_flash(self, page, location, string_to_write):
+<details>
+<summary><code>fetch_trace(self, channel_number)</summary><br />
 
-write_bulk_flash(self, location, data):
 
-set_wave(self, chan, freq):
+</details>
 
-set_sine1(self, freq):
 
-set_sine2(self, freq):
+<details>
+<summary><code>oscilloscope_progress(self)</summary><br />
 
-set_w1(self, freq, waveType=None):
 
-set_w2(self, freq, waveType=None):
+</details>
 
-readbackWavefrom(self, chan):
 
-set_waves(self, freq, phase, f2=None):
+<details>
+<summary><code>configure_trigger(self, chan, name, voltage, resolution=10, **kwargs)</summary><br />
 
-load_equation(self, chan, function, span=None, **kwargs):
 
-load_table(self, chan, points, mode='arbit', **kwargs):
+</details>
 
-sqr1(self, freq, duty_cycle=50, onlyPrepare=False):
 
-sqr1_pattern(self, timing_array):
+<details>
+<summary><code>set_gain(self, channel, gain, Force=False)</summary><br />
 
-sqr2(self, freq, duty_cycle):
 
-set_sqrs(self, wavelength, phase, high_time1, high_time2, prescaler=1):
+</details>
 
-sqrPWM(self, freq, h0, p1, h1, p2, h2, p3, h3, **kwargs):
 
-map_reference_clock(self, scaler, *args):
+<details>
+<summary><code>select_range(self, channel, voltage_range)</summary><br />
 
-set_pv1(self, val):
+
+</details>
+
+
+<details>
+<summary><code>get_voltage(self, channel_name, **kwargs)</summary><br />
+
+
+</details>
+
+
+<details>
+<summary><code>voltmeter_autorange(self, channel_name)</summary><br />
+
+
+</details>
+
+
+<details>
+<summary><code>get_average_voltage(self, channel_name, **kwargs)</summary><br />
+
+
+</details>
+
+
+<details>
+<summary><code>fetch_buffer(self, starting_position=0, total_points=100)</summary><br />
+
+
+</details>
+
+
+<details>
+<summary><code>clear_buffer(self, starting_position, total_points)</summary><br />
+
+
+</details>
+
+
+<details>
+<summary><code>fill(slef, starting_position, poin_array)</summary><br />
+
+
+</details>
+
+
+<details>
+<summary><code>start_streaming(self, tg, channel='CH1')</summary><br />
+
+
+</details>
+
+
+<details>
+<summary><code>stop_streaming(self)</summary><br />
+
+
+</details>
+
+
+<details>
+<summary><code>get_high_freq(self, pin)</summary><br />
+
+
+</details>
+
+
+<details>
+<summary><code>get_freq(self, channel='CNTR', timeout=2)</summary><br />
+
+
+</details>
+
+
+<details>
+<summary><code>r2r_time(self, channel, skip_cycle=0, timeout=5)</summary><br />
+
+
+</details>
+
+
+<details>
+<summary><code>f2f_time(self,channel, skip_cycle=0, timeout=5)</summary><br />
+
+
+</details>
+
+
+<details>
+<summary><code>MeasureInterval(self, channel1, channel2, edge1, edge2, timeout=0.1)</summary><br />
+
+
+</details>
+
+
+<details>
+<summary><code>DutyCycle(self, channel='ID1', timeout=1.)</summary><br />
+
+
+</details>
+
+
+<details>
+<summary><code>PulseTime(self, channel='ID1', PulseType='LOW', timeout=0.1)</summary><br />
+
+
+</details>
+
+
+<details>
+<summary><code>MeasureMultipleDigitalEdges(self, channel1, channel2, edgeType1, edgeType2, points1, points2, timeout=0.1, **kwargs)</summary><br />
+
+
+</details>
+
+
+<details>
+<summary><code>capture_edges1(self, waiting_time=1., **args)</summary><br />
+
+
+</details>
+
+
+<details>
+<summary><code>start_one_channel_LA_backup__(self, trigger=1, channel='ID1', maximum_time=67, **args)</summary><br />
+
+
+</details>
+
+
+<details>
+<summary><code>start_one_channel_LA(self, **args)</summary><br />
+
+
+</details>
+
+
+<details>
+<summary><code>start_two_channel_LA(self, **args)</summary><br />
+
+
+</details>
+
+
+<details>
+<summary><code>start_three_channel_LA(self, **args)</summary><br />
+
+
+</details>
+
+
+<details>
+<summary><code>start_four_channel_LA(self, trigger=1, maximum_time=0.001, mode=[1, 1, 1, 1], **args)</summary><br />
+
+
+</details>
+
+
+<details>
+<summary><code>get_LA_initial_states(self)</summary><br />
+
+
+</details>
+
+
+<details>
+<summary><code>stop_LA(self)</summary><br />
+
+
+</details>
+
+
+<details>
+<summary><code>fetch_int_data_from_LA(self, bytes, chan=1)</summary><br />
+
+
+</details>
+
+
+<details>
+<summary><code>fetch_LA_channels(self)</summary><br />
+
+
+</details>
+
+
+<details>
+<summary><code>get_states(self)</summary><br />
+
+
+</details>
+
+
+<details>
+<summary><code>get_state(self, input_id)</summary><br />
+
+
+</details>
+
+
+<details>
+<summary><code>set_state(self, **kwargs)</summary><br />
+
+
+</details>
+
+
+<details>
+<summary><code>countPulses(self, channel='SEN')</summary><br />
+
+
+</details>
+
+
+<details>
+<summary><code>readPulseCount(self)</summary><br />
+
+
+</details>
+
+
+<details>
+<summary><code>capacitance_via_RC_discharge(self)</summary><br />
+
+
+</details>
+
+
+<details>
+<summary><code>get_capacitor_range(self)</summary><br />
+
+
+</details>
+
+
+<details>
+<summary><code>get_capacitance(self)</summary><br />
+
+
+</details>
+
+
+<details>
+<summary><code>get_temperature(self)</summary><br />
+
+
+</details>
+
+
+<details>
+<summary><code>resetHardware(self)</summary><br />
+
+
+</details>
+
+
+<details>
+<summary><code>read_flash(self, page, location)</summary><br />
+
+
+</details>
+
+
+<details>
+<summary><code>read_bulk_flash(self, page, numbytes)</summary><br />
+
+
+</details>
+
+
+<details>
+<summary><code>write_flash(self, page, location, string_to_write)</summary><br />
+
+
+</details>
+
+
+<details>
+<summary><code>write_bulk_flash(self, location, data)</summary><br />
+
+
+</details>
+
+
+<details>
+<summary><code>set_wave(self, chan, freq)</summary><br />
+
+
+</details>
+
+
+<details>
+<summary><code>set_sine1(self, freq)</summary><br />
+
+
+</details>
+
+
+<details>
+<summary><code>set_sine2(self, freq)</summary><br />
+
+
+</details>
+
+
+<details>
+<summary><code>set_w1(self, freq, waveType=None)</summary><br />
+
+
+</details>
+
+
+<details>
+<summary><code>set_w2(self, freq, waveType=None)</summary><br />
+
+
+</details>
+
+
+<details>
+<summary><code>readbackWavefrom(self, chan)</summary><br />
+
+
+</details>
+
+
+<details>
+<summary><code>set_waves(self, freq, phase, f2=None)</summary><br />
+
+
+</details>
+
+
+<details>
+<summary><code>load_equation(self, chan, function, span=None, **kwargs)</summary><br />
+
+
+</details>
+
+
+<details>
+<summary><code>load_table(self, chan, points, mode='arbit', **kwargs)</summary><br />
+
+
+</details>
+
+
+<details>
+<summary><code>sqr1(self, freq, duty_cycle=50, onlyPrepare=False)</summary><br />
+
+
+</details>
+
+
+<details>
+<summary><code>sqr1_pattern(self, timing_array)</summary><br />
+
+
+</details>
+
+
+<details>
+<summary><code>sqr2(self, freq, duty_cycle)</summary><br />
+
+
+</details>
+
+
+<details>
+<summary><code>set_sqrs(self, wavelength, phase, high_time1, high_time2, prescaler=1)</summary><br />
+
+
+</details>
+
+
+<details>
+<summary><code>sqrPWM(self, freq, h0, p1, h1, p2, h2, p3, h3, **kwargs)</summary><br />
+
+
+</details>
+
+
+<details>
+<summary><code>map_reference_clock(self, scaler, *args)</summary><br />
+
+
+</details>
+
+
+<details>
+<summary><code>set_pv1(self, val)</summary><br />
+
+
+</details>
+
  
-set_pv2(self, val):
+<details>
+<summary><code>set_pv2(self, val)</summary><br />
 
-set_pv3(self, val):
 
-set_pcs(self, val):
+</details>
 
-get_pv1(self):
 
-get_pv2(self):
+<details>
+<summary><code>set_pv3(self, val)</summary><br />
 
- get_pv3(self):
+
+</details>
+
+
+<details>
+<summary><code>set_pcs(self, val)</summary><br />
+
+
+</details>
+
+
+<details>
+<summary><code>get_pv1(self)</summary><br />
+
+
+</details>
+
+
+<details>
+<summary><code>get_pv2(self)</summary><br />
+
+
+</details>
+
+
+ <details>
+<summary><code>get_pv3(self)</summary><br />
+
+
+</details>
+
  
- get_pcs(self):
+ <details>
+<summary><code>get_pcs(self)</summary><br />
+
+
+</details>
+
  
- WS2812B(self, cols, output='CS1'):
+ <details>
+<summary><code>WS2812B(self, cols, output='CS1')</summary><br />
+
+
+</details>
+
  
- read_program_address(self, address):
+ <details>
+<summary><code>read_program_address(self, address)</summary><br />
+
+
+</details>
+
  
- device_id(self):
+ <details>
+<summary><code>device_id(self)</summary><br />
+
+
+</details>
+
  
- read_data_address(self, address):
+ <details>
+<summary><code>read_data_address(self, address)</summary><br />
+
+
+</details>
+
  
- stepForward(self, steps, delay):
+ <details>
+<summary><code>stepForward(self, steps, delay)</summary><br />
+
+
+</details>
+
  
- stepBackward(self, steps, delay):
+ <details>
+<summary><code>stepBackward(self, steps, delay)</summary><br />
+
+
+</details>
+
  
- servo(self, angle, chan='SQR1'):
+ <details>
+<summary><code>servo(self, angle, chan='SQR1')</summary><br />
+
+
+</details>
+
  
- servo4(self, a1, a2, a3, a4):
+ <details>
+<summary><code>servo4(self, a1, a2, a3, a4)</summary><br />
+
+
+</details>
+
  
- enableUartPassthrough(self, baudrate, persist=False):
+ <details>
+<summary><code>enableUartPassthrough(self, baudrate, persist=False)</summary><br />
+
+
+</details>
+
  
- estimateDistance(self):
+ <details>
+<summary><code>estimateDistance(self)</summary><br />
+
+
+</details>
+
  
- opticalArray(self, SS, delay, channel='CH3', **kwargs):
+ <details>
+<summary><code>opticalArray(self, SS, delay, channel='CH3', **kwargs)</summary><br />
+
+
+</details>
+
  
- setUARTBAUD(self, BAUD):
+ <details>
+<summary><code>setUARTBAUD(self, BAUD)</summary><br />
+
+
+</details>
+
  
- writeUART(self, character):
+ <details>
+<summary><code>writeUART(self, character)</summary><br />
+
+
+</details>
+
  
- readUART(self):
+ <details>
+<summary><code>readUART(self)</summary><br />
+
+
+</details>
+
  
- readUARTStatus(self):
+ <details>
+<summary><code>readUARTStatus(self)</summary><br />
+
+
+</details>
+
  
- readLog(self):
+ <details>
+<summary><code>readLog(self)</summary><br />
+
+
+</details>
+
  
- raiseException(self, ex, msg):
+ <details>
+<summary><code>raiseException(self, ex, msg)</summary><br />
+
+
+</details>
