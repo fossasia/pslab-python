@@ -1,4 +1,6 @@
 #Registers adapted from sample code for SEMTECH SX1276
+from __future__ import print_function
+
 import time
 
 def connect(SPI,frq,**kwargs):
@@ -70,7 +72,7 @@ class SX1276():
 		self.reset()
 		self.version = self.SPIRead(self.REG_VERSION,1)[0]
 		if self.version!=0x12:
-			print 'version error',self.version
+			print('version error',self.version)
 		self.sleep()
 		self.setFrequency(self.frequency)
 		
@@ -110,7 +112,7 @@ class SX1276():
 		while 1: #Wait for TX done
 			if self.SPIRead(self.REG_IRQ_FLAGS,1)[0] & self.IRQ_TX_DONE_MASK: break
 			else:
-				print ('wait...')
+				print('wait...')
 				time.sleep(0.1)
 		self.SPIWrite(self.REG_IRQ_FLAGS,[self.IRQ_TX_DONE_MASK])
 			
@@ -210,19 +212,19 @@ class SX1276():
 			elif level>17:
 				level = 17
 			if level==17:
-				print ('max power output')
+				print('max power output')
 				self.SPIWrite(self.REG_PA_DAC,[0x87])
 			else:
 				self.SPIWrite(self.REG_PA_DAC,[0x84])
 			self.SPIWrite(self.REG_PA_CONFIG,[self.PA_BOOST|0x70|(level-2)])
 
-		print 'power',hex(self.SPIRead(self.REG_PA_CONFIG)[0])
+		print('power',hex(self.SPIRead(self.REG_PA_CONFIG)[0]))
 
 	def setFrequency(self,frq):
 		self._frequency = frq
 		frf = (int(frq)<<19)/32000000
-		print ('frf',frf)
-		print ('freq',(frf>>16)&0xFF,(frf>>8)&0xFF,(frf)&0xFF)
+		print('frf',frf)
+		print('freq',(frf>>16)&0xFF,(frf>>8)&0xFF,(frf)&0xFF)
 		self.SPIWrite(self.REG_FRF_MSB,[(frf>>16)&0xFF])
 		self.SPIWrite(self.REG_FRF_MID,[(frf>>8)&0xFF])
 		self.SPIWrite(self.REG_FRF_LSB,[frf&0xFF])
@@ -247,7 +249,7 @@ class SX1276():
 				bw = num
 				break
 			num+=1
-		print ('bandwidth: ',bw)
+		print('bandwidth: ',bw)
 		self.SPIWrite(self.REG_MODEM_CONFIG_1,[(self.SPIRead(self.REG_MODEM_CONFIG_1)[0]&0x0F)|(bw<<4)])
 
 	def setCodingRate4(self,denominator):
@@ -290,7 +292,7 @@ class SX1276():
 
 			self.SPIWrite(self.REG_FIFO_ADDR_PTR,self.SPIRead(self.REG_FIFO_RX_CURRENT_ADDR,1))
 			if self._onReceive:
-				print self.packetLength
+				print(self.packetLength)
 				#self._onReceive(self.packetLength)
 
 		self.SPIWrite(self.REG_FIFO_ADDR_PTR,[0])
@@ -319,13 +321,12 @@ if __name__ == "__main__":
 			lora.beginPacket()
 			lora.write([cntr])
 			#lora.write([ord(a) for a in ":"]+[cntr])
-			print (time.ctime(),[ord(a) for a in ":"]+[cntr], hex(lora.SPIRead(lora.REG_OP_MODE)[0]))
+			print(time.ctime(),[ord(a) for a in ":"]+[cntr], hex(lora.SPIRead(lora.REG_OP_MODE)[0]))
 			lora.endPacket()
 			cntr+=1
 			if cntr==255:cntr=0
 		elif mode==RX:
 			packet_size = lora.parsePacket()
 			if packet_size:
-				print 'data',lora.readAll()
-				print ('Rssi',lora.packetRssi(),lora.packetSnr())
-
+				print('data',lora.readAll())
+				print('Rssi',lora.packetRssi(),lora.packetSnr())
