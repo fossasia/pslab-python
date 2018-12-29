@@ -1,5 +1,5 @@
 from __future__ import print_function
-import commands_proto as CP
+import PSL.commands_proto as CP
 import numpy as np
 import time, inspect
 
