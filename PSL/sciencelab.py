@@ -2864,7 +2864,7 @@ class ScienceLab():
             self.raiseException(ex, "Communication Error , Function : " + inspect.currentframe().f_code.co_name)
 
     def __stoa__(self, s):
-        return [ord(a) for a in s]
+        return [ord(a) for a in s.decode('utf-8')]
 
     def __atos__(self, a):
         return ''.join(chr(e) for e in a)
