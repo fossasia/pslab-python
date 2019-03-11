@@ -4,7 +4,7 @@ all:
 	#make -C docs/misc all
 	# make in subdirectory PSLab-apps-master if it is there
 	[ ! -d PSLab-apps-master ] || make -C PSLab-apps-master $@ DESTDIR=$(DESTDIR)
-	python setup.py build
+	python3 setup.py build
 
 clean:
 	rm -rf docs/_*
@@ -22,7 +22,7 @@ install:
 	install -d $(DESTDIR)/usr/share/doc/pslab
 	#cp -a docs/_build/html $(DESTDIR)/usr/share/doc/pslab
 	#cp docs/misc/build/*.html $(DESTDIR)/usr/share/doc/pslab/html
-	python setup.py install --install-layout=deb \
+	python3 setup.py install --install-layout=deb \
 	         --root=$(DESTDIR)/ --prefix=/usr
 	# rules for udev
 	mkdir -p $(DESTDIR)/lib/udev/rules.d
