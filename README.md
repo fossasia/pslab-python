@@ -62,6 +62,41 @@ For the main GUI (Control panel), you can run Experiments from the terminal.
 
     $ Experiments
 
+
+### Installing PSLab Python library without GUI
+
+If a user wants to install the python library to have a command line interface to execute commands, he can do so by simply installing the dependencies and latest Python versions.
+
+#### Windows
+
+##### Dependencies
+
+* Python 2.7 or Python 3.7 [Link to Official download page](https://www.python.org/downloads/windows/)
+* Pip
+* PySerial
+* Numpy
+
+##### Instructions
+
+1. Install the latest Python version on your computer and configure `PATH` variable to have both Python installation directory and the Scripts directory to access `pip` tools.
+2. Open up command prompt and execute the command `pip install pyserial && pip install numpy` to install the required dependencies.
+
+##### Validate
+
+1. Download the PSLab-Python library from this repository and extract it to a directory.
+2. Browse in to that directory and create a new file named `test-pslab-libs.py`
+3. Paste the following code into that file and save it.
+
+```
+from PSL import sciencelab
+I = sciencelab.connect()
+capacitance = I.get_capacitance()
+print(capacitance)
+```
+
+4. Plug in the PSLab device and check if both the LEDs are turned on.
+5. Now run this file by typing `python test-pslab-libs.py` on a command prompt and observe a numerical value printed on the screen along with PSLab device version and the port it is connected to.
+
 -----------------------
 
 #### Development Environment
