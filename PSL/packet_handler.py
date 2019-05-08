@@ -49,8 +49,9 @@ class Handler():
             available = []
             for i in range(256):
                 try:
-                    s = serial.Serial(i)
-                    available.append(i)
+                    portname = 'COM' + str(i)
+                    s = serial.Serial(portname)
+                    available.append(portname)
                     s.close()
                 except serial.SerialException:
                     pass
