@@ -5,8 +5,10 @@ Adapted from https://github.com/janheise/TSL2561
 from __future__ import print_function
 import time
 
+
 def connect(route, **args):
     return TSL2561(route, **args)
+
 
 class TSL2561:
     VISIBLE = 2  # channel 0 - channel 1

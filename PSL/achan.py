@@ -135,7 +135,6 @@ for a in ['CH1']:
 # ---------------------------------------------------------------------
 
 
-
 class analogAcquisitionChannel:
     """
     This class takes care of oscilloscope data fetched from the device.
