@@ -1021,7 +1021,7 @@ class ScienceLab():
 
         try:
             for a in range(int(samples)): self.buff[a] = CP.ShortInt.unpack(data[a * 2:a * 2 + 2])[0]
-            self.achans[channel_number - 1].yaxis = self.achans[channel_number - 1].fix_value(self.buff[:samples])
+            self.achans[channel_number - 1].yaxis = self.achans[channel_number - 1].fix_value(self.buff[:int(samples)])
         except Exception as ex:
             msg = "Incorrect Number of bytes received.\n"
             raise RuntimeError(msg)
