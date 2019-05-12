@@ -1,10 +1,19 @@
 language: python
-python:
-  - "2.7"
-  - "3.4"
-  - "3.5"
-  - "3.6"
-script: nosetests
 
-notifications:
-  slack: fossasia:bqOzo4C9y6oI6dTF8kO8zdxp
+sudo: true
+
+python:
+  - "3.5"
+
+before_install:
+    - sudo apt-get -qq update
+    - sudo mkdir -p /builds
+    - sudo chmod a+rw /builds
+
+install:
+    - pip install -r requirements.txt
+    - make clean
+    - make all
+    - sudo make install
+
+script: nosetests
