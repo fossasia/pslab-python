@@ -3,7 +3,9 @@ language: python
 sudo: true
 
 python:
-  - "3.5"
+    - "3.4"
+    - "3.5"
+    - "3.6"
 
 before_install:
     - sudo apt-get -qq update
@@ -11,9 +13,9 @@ before_install:
     - sudo chmod a+rw /builds
 
 install:
-    - pip install -r requirements.txt
-    - make clean
+    - pip3 install -r requirements.txt
+    - sudo env "PATH=$PATH" make clean
     - make all
-    - sudo make install
+    - sudo env "PATH=$PATH" make install
 
 script: nosetests
