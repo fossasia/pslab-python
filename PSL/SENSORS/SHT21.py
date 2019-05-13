@@ -8,26 +8,27 @@ def connect(route, **args):
     '''
     return SHT21(route, **args)
 
-def rawToTemp( vals):
-        if vals:
-            if len(vals):
-                v = (vals[0] << 8) | (vals[1] & 0xFC)  # make integer & remove status bits
-                v *= 175.72
-                v /= (1 << 16)
-                v -= 46.85
-                return [v]
-        return False
 
-def rawToRH( vals):
-        if vals:
-            if len(vals):
-                v = (vals[0] << 8) | (vals[1] & 0xFC)  # make integer & remove status bits
-                v *= 125.
-                v /= (1 << 16)
-                v -= 6
-                return [v]
-        return False
+def rawToTemp(vals):
+    if vals:
+        if len(vals):
+            v = (vals[0] << 8) | (vals[1] & 0xFC)  # make integer & remove status bits
+            v *= 175.72
+            v /= (1 << 16)
+            v -= 46.85
+            return [v]
+    return False
 
+
+def rawToRH(vals):
+    if vals:
+        if len(vals):
+            v = (vals[0] << 8) | (vals[1] & 0xFC)  # make integer & remove status bits
+            v *= 125.
+            v /= (1 << 16)
+            v -= 6
+            return [v]
+    return False
 
 
 class SHT21():
@@ -51,13 +52,12 @@ class SHT21():
         except:
             print ('FAILED TO CHANGE BAUD RATE')
         '''
-        self.params = {'selectParameter': ['temperature', 'humidity'],'init':None}
+        self.params = {'selectParameter': ['temperature', 'humidity'], 'init': None}
         self.init()
 
     def init(self):
         self.I2C.writeBulk(self.ADDRESS, [self.RESET])  # soft reset
         time.sleep(0.1)
-
 
     @staticmethod
     def _calculate_checksum(data, number_of_bytes):

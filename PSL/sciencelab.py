@@ -4,18 +4,14 @@
 # License : GNU GPL 
 
 from __future__ import print_function
-import os, time
+
+import inspect
+import time
 
 import PSL.commands_proto as CP
 import PSL.packet_handler as packet_handler
-
 from PSL.achan import *
 from PSL.digital_channel import *
-import serial, string, inspect
-import time
-import sys
-import numpy as np
-import math
 
 
 def connect(**kwargs):
@@ -121,7 +117,7 @@ class ScienceLab():
 
     def __runInitSequence__(self, **kwargs):
         self.aboutArray = []
-        from PSL.Peripherals import I2C, SPI, NRF24L01, MCP4728, RadioLink
+        from PSL.Peripherals import I2C, SPI, NRF24L01, MCP4728
         self.connected = self.H.connected
         if not self.H.connected:
             self.__print__('Check hardware connections. Not connected')
@@ -277,7 +273,7 @@ class ScienceLab():
                         LOOKAHEAD = 100
                         OFF = np.array([np.argmin(
                             np.fabs(YDATA[max(B - LOOKBEHIND, 0):min(4095, B + LOOKAHEAD)] - DACX[B])) - (
-                                            B - max(B - LOOKBEHIND, 0)) for B in range(0, 4096)])
+                                                B - max(B - LOOKBEHIND, 0)) for B in range(0, 4096)])
                         self.aboutArray.append(['Err min:', min(OFF), 'Err max:', max(OFF)])
                         self.DAC.CHANS[NAME].load_calibration_table(OFF)
 
@@ -303,7 +299,7 @@ class ScienceLab():
             print()
 
     def __del__(self):
-        self.__print__('closing port')
+        self.__print__('Closing PORT')
         try:
             self.H.fd.close()
         except:
@@ -393,7 +389,7 @@ class ScienceLab():
 
 		Example
 
-		>>> from pylab import *
+		>>> from PSL import *
 		>>> from PSL import sciencelab
 		>>> I=sciencelab.connect()
 		>>> x,y = I.capture1('CH1',3200,1)
@@ -430,7 +426,7 @@ class ScienceLab():
 
 		Example
 
-		>>> from pylab import *
+		>>> from PSL import *
 		>>> from PSL import sciencelab
 		>>> I=sciencelab.connect()
 		>>> x,y1,y2 = I.capture2(1600,2,'MIC')  #Chan1 remapped to MIC. Chan2 reads CH2
@@ -483,7 +479,7 @@ class ScienceLab():
 
 		Example
 
-		>>> from pylab import *
+		>>> from PSL import *
 		>>> I=sciencelab.ScienceLab()
 		>>> x,y1,y2,y3,y4 = I.capture4(800,1.75)
 		>>> plot(x,y1)
@@ -525,7 +521,7 @@ class ScienceLab():
 
 		Example
 
-		>>> from pylab import *
+		>>> from PSL import *
 		>>> I=sciencelab.ScienceLab()
 		>>> x,y1,y2,y3,y4 = I.capture_multiple(800,1.75,'CH1','CH2','MIC','SEN')
 		>>> plot(x,y1)
@@ -586,7 +582,7 @@ class ScienceLab():
                 self.H.__sendInt__(total_samples % self.data_splitting)
                 self.H.__sendInt__(total_samples - total_samples % self.data_splitting)
                 data += self.H.fd.read(int(2 * (
-                    total_samples % self.data_splitting)))  # reading int by int may cause packets to be dropped. this works better.
+                        total_samples % self.data_splitting)))  # reading int by int may cause packets to be dropped. this works better.
                 self.H.__get_ack__()
 
             for a in range(int(total_samples)): self.buff[a] = CP.ShortInt.unpack(data[a * 2:a * 2 + 2])[0]
@@ -657,7 +653,7 @@ class ScienceLab():
 
 		.. code-block:: python
 
-			from pylab import *
+			from PSL import *
 			I=sciencelab.ScienceLab()
 			x,y = I.capture_fullspeed('CH1',2000,1)
 			plot(x,y)
@@ -746,7 +742,7 @@ class ScienceLab():
                 self.H.__sendInt__(samples % self.data_splitting)
                 self.H.__sendInt__(samples - samples % self.data_splitting)
                 data += self.H.fd.read(int(2 * (
-                    samples % self.data_splitting)))  # reading int by int may cause packets to be dropped. this works better.
+                        samples % self.data_splitting)))  # reading int by int may cause packets to be dropped. this works better.
                 self.H.__get_ack__()
 
         except Exception as ex:
@@ -1025,7 +1021,7 @@ class ScienceLab():
 
         try:
             for a in range(int(samples)): self.buff[a] = CP.ShortInt.unpack(data[a * 2:a * 2 + 2])[0]
-            self.achans[channel_number - 1].yaxis = self.achans[channel_number - 1].fix_value(self.buff[:samples])
+            self.achans[channel_number - 1].yaxis = self.achans[channel_number - 1].fix_value(self.buff[:int(samples)])
         except Exception as ex:
             msg = "Incorrect Number of bytes received.\n"
             raise RuntimeError(msg)
@@ -2152,7 +2148,6 @@ class ScienceLab():
         # trig_type		'rising' / 'falling' .  Type of logic change to trigger on
         # trig_chan		channel to trigger on . Any digital input. default chans[0]
 
-
         modes = args.get('modes', [1, 1])
         strchans = args.get('chans', ['ID1', 'ID2'])
         chans = [self.__calcDChan__(strchans[0]), self.__calcDChan__(strchans[1])]  # Convert strings to index
@@ -2613,7 +2608,7 @@ class ScienceLab():
             fitres = self.AC.fit_exp(x * 1e-6, y)
             if fitres:
                 cVal, newy = fitres
-                # from pylab import *
+                # from PSL import *
                 # plot(x,newy)
                 # show()
                 return x, y, newy, cVal
@@ -3544,7 +3539,6 @@ class ScienceLab():
         # self.__print__(p1,h1,p2,h2,p3,h3)
         # print(wavelength,int(wavelength*h0),A1,B1,A2,B2,A3,B3,prescaler)
 
-
         self.H.__sendByte__(CP.WAVEGEN)
         self.H.__sendByte__(CP.SQR4)
         self.H.__sendInt__(wavelength - 1)
@@ -3854,7 +3848,6 @@ class ScienceLab():
     # |Set servo motor angles via SQ1-4. Control one stepper motor using SQ1-4											|
     # -------------------------------------------------------------------------------------------------------------------#
 
-
     def __stepperMotor__(self, steps, delay, direction):
         try:
             self.H.__sendByte__(CP.NONSTANDARD_IO)
@@ -4096,9 +4089,9 @@ class ScienceLab():
             self.raiseException(ex, "Communication Error , Function : " + inspect.currentframe().f_code.co_name)
 
     def readLog(self):
-        '''
+        """
 		read hardware debug log.
-		'''
+		"""
         try:
             self.H.__sendByte__(CP.COMMON)
             self.H.__sendByte__(CP.READ_LOG)
@@ -4115,15 +4108,14 @@ class ScienceLab():
 
 
 if __name__ == "__main__":
-	print("""this is not an executable file
-	from PSL import sciencelab
-	I=sciencelab.connect()
-	eg.
-	I.get_average_voltage('CH1')
-	""")
-	I=connect(verbose = True)
-	t = time.time()
-	for a in range(100):
-		s =  I.read_flash(3,a)
-		#print(s.replace('\n','.'),len(s))
-	print (time.time()-t)
+    print(
+        """This is not an executable file. Use this library by importing PSL in a python project
+>>> from PSL import sciencelab
+>>> I = sciencelab.connect()
+>>> I.get_average_voltage('CH1')\n""")
+    I = connect(verbose=True)
+    t = time.time()
+    for a in range(100):
+        s = I.read_flash(3, a)
+    # print(s.replace('\n','.'),len(s))
+    print(time.time() - t)

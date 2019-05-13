@@ -1,8 +1,11 @@
 from __future__ import print_function
+
 import time
 
+import inspect
+import serial
+
 import PSL.commands_proto as CP
-import serial, subprocess, inspect
 
 
 class Handler():
@@ -69,7 +72,7 @@ class Handler():
             import socket
             try:
                 self.blockingSocket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-                self.blockingSocket.bind('\0PSghhhLab%s' % portname)
+                self.blockingSocket.bind('\0PSLab%s' % portname)
                 self.blockingSocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             except socket.error as e:
                 self.occupiedPorts.add(portname)
@@ -85,8 +88,9 @@ class Handler():
             fd.flush()
             fd.setTimeout(1.0)
         version = self.get_version(fd)
-        if version[:len(self.expected_version1)] == self.expected_version1 or version[:len(self.expected_version2)] == self.expected_version2:
-            return fd, version, True
+        if version[:len(self.expected_version1)] == self.expected_version1 or version[:len(
+                self.expected_version2)] == self.expected_version2:
+            return fd, str(version)[1:], True
 
         return None, '', False
 

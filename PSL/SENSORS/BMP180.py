@@ -1,6 +1,8 @@
 from __future__ import print_function
-from numpy import int16
+
 import time
+
+from numpy import int16
 
 
 def connect(route, **args):

@@ -1,12 +1,7 @@
 # -*- coding: utf-8 -*-
 # MF522 - Software stack to access the MF522 RFID reader via  FOSSASIA PSLab
 #
-
-
-
 from __future__ import print_function
-from PSL import sciencelab
-import time
 
 
 def connect(I, cs):

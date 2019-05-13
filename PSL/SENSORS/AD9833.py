@@ -1,5 +1,4 @@
-import time, sys
-import numpy as np
+import sys
 
 
 class AD9833:

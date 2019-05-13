@@ -20,14 +20,14 @@ class MLX90614():
         self.source = self.OBJADDR
 
         self.name = 'Passive IR temperature sensor'
-        self.params = {'readReg': {'dataType':'integer','min':0,'max':0x20,'prefix':'Addr: '} ,
+        self.params = {'readReg': {'dataType': 'integer', 'min': 0, 'max': 0x20, 'prefix': 'Addr: '},
                        'select_source': ['object temperature', 'ambient temperature']}
 
         try:
             print('switching baud to 100k')
             self.I2C.configI2C(100e3)
         except Exception as e:
-            print('FAILED TO CHANGE BAUD RATE',e.message)
+            print('FAILED TO CHANGE BAUD RATE', e.message)
 
     def select_source(self, source):
         if source == 'object temperature':

@@ -1,31 +1,22 @@
 DESTDIR =
+
+# Find library installation path
+INSTALL_PATH = $(patsubst Location:,,$(shell pip show PSL | grep Location))
+INSTALL_PATH_LEN = $(shell echo $(INSTALL_PATH) | wc -c)
+
 all:
-	#make -C docs html
-	#make -C docs/misc all
-	# make in subdirectory PSLab-apps-master if it is there
-	[ ! -d PSLab-apps-master ] || make -C PSLab-apps-master $@ DESTDIR=$(DESTDIR)
 	python3 setup.py build
 
 clean:
-	rm -rf docs/_*
-	# make in subdirectory PSLab-apps-master if it is there
-	[ ! -d PSLab-apps-master ] || make -C PSLab-apps-master $@ DESTDIR=$(DESTDIR)
-	rm -rf PSL.egg-info build
-	find . -name "*~" -o -name "*.pyc" -o -name "__pycache__" | xargs rm -rf
-
-IMAGEDIR=$(DESTDIR)/usr/share/doc/pslab-common/images
+	# Remove build files
+	@rm -rf docs/_*
+	@rm -rf PSL.egg-info build
+	@find . -name "*~" -o -name "*.pyc" -o -name "__pycache__" | xargs rm -rf
+	# Remove previously installed library files if there is any
+	if [ ${INSTALL_PATH_LEN} -gt 2 ]; then sudo rm -rf $(INSTALL_PATH)/PSL $(INSTALL_PATH)/PSL-1* ; fi
 
 install:
-	# make in subdirectory PSLab-apps-master if it is there
-	[ ! -d PSLab-apps-master ] || make -C PSLab-apps-master $@ DESTDIR=$(DESTDIR)
-	# install documents
-	install -d $(DESTDIR)/usr/share/doc/pslab
-	#cp -a docs/_build/html $(DESTDIR)/usr/share/doc/pslab
-	#cp docs/misc/build/*.html $(DESTDIR)/usr/share/doc/pslab/html
-	python3 setup.py install --install-layout=deb \
-	         --root=$(DESTDIR)/ --prefix=/usr
+	python3 setup.py install
 	# rules for udev
 	mkdir -p $(DESTDIR)/lib/udev/rules.d
 	install -m 644 99-pslab.rules $(DESTDIR)/lib/udev/rules.d/99-pslab
-	# fix a few permissions
-	#find $(DESTDIR)/usr/share/pslab/psl_res -name auto.sh -exec chmod -x {} \;

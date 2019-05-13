@@ -1,6 +1,3 @@
-from numpy import int16
-
-
 def connect(route, **args):
     return HMC5883L(route, **args)
 
@@ -63,7 +60,7 @@ class HMC5883L():
 
     def __writeCONFA__(self):
         self.I2C.writeBulk(self.ADDRESS, [self.CONFA, (self.dataOutputRate << 2) | (self.samplesToAverage << 5) | (
-        self.measurementConf)])
+            self.measurementConf)])
 
     def setSamplesToAverage(self, num):
         self.samplesToAverage = self.samplesToAverage_choices.index(num)
