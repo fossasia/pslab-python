@@ -2432,7 +2432,7 @@ class ScienceLab():
             self.H.__sendByte__(chan - 1)
             ss = self.H.fd.read(int(bytes * 4))
             self.H.__get_ack__()
-            tmp = np.zeros(bytes)
+            tmp = np.zeros((bytes))
             for a in range(int(bytes)):
                 tmp[a] = CP.Integer.unpack(ss[a * 4:a * 4 + 4])[0]
             tmp = np.trim_zeros(tmp)
