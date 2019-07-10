@@ -1,5 +1,7 @@
 from __future__ import print_function
-import time, importlib
+
+import time
+
 import numpy as np
 
 '''
@@ -11,8 +13,6 @@ calibs={
 }
 
 '''
-
-import struct
 
 
 def _bv(x):

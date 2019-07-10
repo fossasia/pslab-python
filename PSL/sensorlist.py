@@ -1,6 +1,7 @@
-# from http://www.ladyada.net/library/i2caddr.html
+# I2C Address list from Adafruit : https://learn.adafruit.com/i2c-addresses/the-list
+
 sensors = {
-    0x0: ['Could be MLX90614. Try 0x5A'],
+    0x00: ['Could be MLX90614. Try 0x5A'],
     0x13: ['VCNL4000'],
     0x3c: ['OLED SSD1306', ],
     0x3d: ['OLED SSD1306', ],
@@ -38,5 +39,4 @@ sensors = {
     0x11: ['Si4713'],
     0x38: ['FT6206 touch controller'],
     0x41: ['STMPE610'],
-
 }

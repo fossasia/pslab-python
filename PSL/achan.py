@@ -135,7 +135,6 @@ for a in ['CH1']:
 # ---------------------------------------------------------------------
 
 
-
 class analogAcquisitionChannel:
     """
     This class takes care of oscilloscope data fetched from the device.
@@ -191,7 +190,7 @@ class analogAcquisitionChannel:
         for a in range(int(self.length)): self.xaxis[a] = self.timebase * a
 
     def get_xaxis(self):
-        return self.xaxis[:self.length]
+        return self.xaxis[:int(self.length)]
 
     def get_yaxis(self):
-        return self.yaxis[:self.length]
+        return self.yaxis[:int(self.length)]

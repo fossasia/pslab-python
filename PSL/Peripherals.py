@@ -34,10 +34,11 @@ class I2C():
 
     """
     samples = 0
-    total_bytes=0
+    total_bytes = 0
     channels = 0
-    tg=100
+    tg = 100
     MAX_SAMPLES = 10000
+
     def __init__(self, H):
         self.H = H
         from PSL import sensorlist
@@ -284,7 +285,6 @@ class I2C():
         except Exception as ex:
             self.raiseException(ex, "Communication Error , Function : " + inspect.currentframe().f_code.co_name)
 
-
     def read_end(self):
         try:
             self.H.__sendByte__(CP.I2C_HEADER)
@@ -295,7 +295,6 @@ class I2C():
         except Exception as ex:
             self.raiseException(ex, "Communication Error , Function : " + inspect.currentframe().f_code.co_name)
 
-
     def read_status(self):
         try:
             self.H.__sendByte__(CP.I2C_HEADER)
@@ -305,7 +304,6 @@ class I2C():
             return val
         except Exception as ex:
             self.raiseException(ex, "Communication Error , Function : " + inspect.currentframe().f_code.co_name)
-
 
     def readBulk(self, device_address, register_address, bytes_to_read):
         try:
@@ -379,7 +377,7 @@ class I2C():
             self.stop()
         return addrs
 
-    def __captureStart__(self,address,location,sample_length,total_samples,tg):
+    def __captureStart__(self, address, location, sample_length, total_samples, tg):
         """
         Blocking call that starts fetching data from I2C sensors like an oscilloscope fetches voltage readings
         You will then have to call `__retrievebuffer__` to fetch this data, and `__dataProcessor` to process and return separate channels
@@ -399,16 +397,15 @@ class I2C():
         :return: Arrays X(timestamps),Y1,Y2 ...
 
         """
-        if(tg<20):tg=20
-        total_bytes = total_samples*sample_length
-        print ('total bytes calculated : ',total_bytes)
-        if(total_bytes>self.MAX_SAMPLES*2):
-            print ('Sample limit exceeded. 10,000 int / 20000 bytes total')
-            total_bytes = self.MAX_SAMPLES*2
-            total_samples = total_bytes/sample_length  #2* because sample array is in Integers, and we're using it to store bytes
+        if (tg < 20): tg = 20
+        total_bytes = total_samples * sample_length
+        print('total bytes calculated : ', total_bytes)
+        if (total_bytes > self.MAX_SAMPLES * 2):
+            print('Sample limit exceeded. 10,000 int / 20000 bytes total')
+            total_bytes = self.MAX_SAMPLES * 2
+            total_samples = total_bytes / sample_length  # 2* because sample array is in Integers, and we're using it to store bytes
 
-
-        print ('length of each channel : ',sample_length)
+        print('length of each channel : ', sample_length)
         self.total_bytes = total_bytes
         self.channels = sample_length
         self.samples = total_samples
@@ -419,55 +416,57 @@ class I2C():
         self.H.__sendByte__(address)
         self.H.__sendByte__(location)
         self.H.__sendByte__(sample_length)
-        self.H.__sendInt__(total_samples)           #total number of samples to record
-        self.H.__sendInt__(tg)        #Timegap between samples.  1MHz timer clock
+        self.H.__sendInt__(total_samples)  # total number of samples to record
+        self.H.__sendInt__(tg)  # Timegap between samples.  1MHz timer clock
         self.H.__get_ack__()
-        return 1e-6*self.samples*self.tg+.01
+        return 1e-6 * self.samples * self.tg + .01
 
     def __retrievebuffer__(self):
         '''
         Fetch data acquired by the I2C scope. refer to :func:`__captureStart__`
         '''
-        total_int_samples = self.total_bytes/2
+        total_int_samples = self.total_bytes / 2
         DATA_SPLITTING = 500
-        print ('fetchin samples : ',total_int_samples,'   split',DATA_SPLITTING)
-        data=b''
-        for i in range(int(total_int_samples/DATA_SPLITTING)):
+        print('fetchin samples : ', total_int_samples, '   split', DATA_SPLITTING)
+        data = b''
+        for i in range(int(total_int_samples / DATA_SPLITTING)):
             self.H.__sendByte__(CP.ADC)
             self.H.__sendByte__(CP.GET_CAPTURE_CHANNEL)
-            self.H.__sendByte__(0)   #starts with A0 on PIC
+            self.H.__sendByte__(0)  # starts with A0 on PIC
             self.H.__sendInt__(DATA_SPLITTING)
-            self.H.__sendInt__(i*DATA_SPLITTING)
-            rem = DATA_SPLITTING*2+1
+            self.H.__sendInt__(i * DATA_SPLITTING)
+            rem = DATA_SPLITTING * 2 + 1
             for _ in range(200):
-                partial = self.H.fd.read(rem)       #reading int by int sometimes causes a communication error. this works better.
-                rem -=len(partial)
-                data+=partial
-                #print ('partial: ',len(partial), end=",")
-                if rem<=0:
+                partial = self.H.fd.read(
+                    rem)  # reading int by int sometimes causes a communication error. this works better.
+                rem -= len(partial)
+                data += partial
+                # print ('partial: ',len(partial), end=",")
+                if rem <= 0:
                     break
-            data=data[:-1]
-            #print ('Pass : len=',len(data), ' i = ',i)
+            data = data[:-1]
+            # print ('Pass : len=',len(data), ' i = ',i)
 
-        if total_int_samples%DATA_SPLITTING:
+        if total_int_samples % DATA_SPLITTING:
             self.H.__sendByte__(CP.ADC)
             self.H.__sendByte__(CP.GET_CAPTURE_CHANNEL)
-            self.H.__sendByte__(0)   #starts with A0 on PIC
-            self.H.__sendInt__(total_int_samples%DATA_SPLITTING)
-            self.H.__sendInt__(total_int_samples-total_int_samples%DATA_SPLITTING)
-            rem = 2*(total_int_samples%DATA_SPLITTING)+1
+            self.H.__sendByte__(0)  # starts with A0 on PIC
+            self.H.__sendInt__(total_int_samples % DATA_SPLITTING)
+            self.H.__sendInt__(total_int_samples - total_int_samples % DATA_SPLITTING)
+            rem = 2 * (total_int_samples % DATA_SPLITTING) + 1
             for _ in range(20):
-                partial = self.H.fd.read(rem)       #reading int by int sometimes causes a communication error. this works better.
-                rem -=len(partial)
-                data+=partial
-                #print ('partial: ',len(partial), end="")
-                if rem<=0:
+                partial = self.H.fd.read(
+                    rem)  # reading int by int sometimes causes a communication error. this works better.
+                rem -= len(partial)
+                data += partial
+                # print ('partial: ',len(partial), end="")
+                if rem <= 0:
                     break
-            data=data[:-1]
-        print ('Final Pass : len=',len(data))
+            data = data[:-1]
+        print('Final Pass : len=', len(data))
         return data
 
-    def __dataProcessor__(self,data,*args):
+    def __dataProcessor__(self, data, *args):
         '''
         Interpret data acquired by the I2C scope. refer to :func:`__retrievebuffer__` to fetch data
         
@@ -482,18 +481,18 @@ class I2C():
 
         try:
             data = [ord(a) for a in data]
-            if('int' in args):
-                    for a in range(self.channels*self.samples/2): self.buff[a] = np.int16((data[a*2]<<8)|data[a*2+1])
+            if ('int' in args):
+                for a in range(self.channels * self.samples / 2): self.buff[a] = np.int16(
+                    (data[a * 2] << 8) | data[a * 2 + 1])
             else:
-                    for a in range(self.channels*self.samples): self.buff[a] = data[a]
+                for a in range(self.channels * self.samples): self.buff[a] = data[a]
 
-            yield np.linspace(0,self.tg*(self.samples-1),self.samples)
-            for a in range(int(self.channels/2)):
-                yield self.buff[a:self.samples*self.channels/2][::self.channels/2]
+            yield np.linspace(0, self.tg * (self.samples - 1), self.samples)
+            for a in range(int(self.channels / 2)):
+                yield self.buff[a:self.samples * self.channels / 2][::self.channels / 2]
         except Exception as ex:
-            msg = "Incorrect number of bytes received",ex
+            msg = "Incorrect number of bytes received", ex
             raise RuntimeError(msg)
-
 
     def capture(self, address, location, sample_length, total_samples, tg, *args):
         """
@@ -525,10 +524,10 @@ class I2C():
         :return: Arrays X(timestamps),Y1,Y2 ...
 
         """
-        t = self.__captureStart__(address,location,sample_length,total_samples,tg)
+        t = self.__captureStart__(address, location, sample_length, total_samples, tg)
         time.sleep(t)
         data = self.__retrievebuffer__()
-        return self.__dataProcessor__(data,*args)
+        return self.__dataProcessor__(data, *args)
 
 
 class SPI():
@@ -665,7 +664,6 @@ class SPI():
         except Exception as ex:
             self.raiseException(ex, "Communication Error , Function : " + inspect.currentframe().f_code.co_name)
 
-
     def send16(self, value):
         """
         SENDS 16-bit data over SPI
@@ -690,7 +688,6 @@ class SPI():
             return v
         except Exception as ex:
             self.raiseException(ex, "Communication Error , Function : " + inspect.currentframe().f_code.co_name)
-
 
     def send8_burst(self, value):
         """
@@ -736,13 +733,14 @@ class SPI():
         except Exception as ex:
             self.raiseException(ex, "Communication Error , Function : " + inspect.currentframe().f_code.co_name)
 
-    def xfer(self,chan,data):
+    def xfer(self, chan, data):
         self.start(chan)
-        reply=[]
+        reply = []
         for a in data:
             reply.append(self.send8(a))
         self.stop(chan)
         return reply
+
 
 class DACCHAN:
     def __init__(self, name, span, channum, **kwargs):
@@ -770,7 +768,6 @@ class DACCHAN:
         self.offset = offset
 
     # print('########################',slope,offset)
-
 
     def apply_calibration(self, v):
         if self.calibration_enabled == 'table':  # Each point is individually calibrated
@@ -1014,7 +1011,6 @@ class NRF24L01():
         except Exception as ex:
             self.raiseException(ex, "Communication Error , Function : " + inspect.currentframe().f_code.co_name)
 
-
     def txchar(self, char):
         '''
         Transmits a single character
@@ -1039,7 +1035,6 @@ class NRF24L01():
             return value
         except Exception as ex:
             self.raiseException(ex, "Communication Error , Function : " + inspect.currentframe().f_code.co_name)
-
 
     def flush(self):
         '''
@@ -1082,7 +1077,6 @@ class NRF24L01():
             return val
         except Exception as ex:
             self.raiseException(ex, "Communication Error , Function : " + inspect.currentframe().f_code.co_name)
-
 
     def get_status(self):
         '''
