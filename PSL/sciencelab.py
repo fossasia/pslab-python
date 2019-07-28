@@ -2389,7 +2389,7 @@ class ScienceLab():
             self.H.__sendByte__(chan - 1)
 
             ss = self.H.fd.read(int(bytes * 2))
-            t = np.zeros(bytes * 2)
+            t = np.zeros(int(bytes) * 2)
             for a in range(int(bytes)):
                 t[a] = CP.ShortInt.unpack(ss[a * 2:a * 2 + 2])[0]
 
