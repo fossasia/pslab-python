@@ -315,7 +315,7 @@ class I2C():
             data = self.H.fd.read(bytes_to_read)
             self.H.__get_ack__()
             try:
-                return [ord(a) for a in data]
+                return list(data)
             except:
                 print('Transaction failed')
                 return False
