@@ -28,8 +28,7 @@ To install PSLab on Debian based GNU/Linux system, the following dependencies mu
 * PySerial &nbsp; **For device connection**
 * iPython-qtconsole &nbsp; **_Optional_**
 
-**Note**
-*If user is only interested in using PSLab as an acquisition device without a display/GUI, only one repository  [pslab-python](https://github.com/fossasia/pslab-python) needs to be installed. If you like a GUI, try installing [pslab-desktop](https://github.com/fossasia/pslab-desktop) following the instructions provided in that repository Readme file*
+**Note**: If you are only interested in using PSLab as an acquisition device without a display/GUI, only one repository  [pslab-python](https://github.com/fossasia/pslab-python) needs to be installed. If you like a GUI, install the [pslab-desktop app](https://github.com/fossasia/pslab-desktop) and follow the instructions of the Readme in that repo.
 
 ### How To Install on Linux
 
@@ -40,32 +39,27 @@ cd into the directories
 and run the following
 
     $ sudo make clean
-    
     $ sudo make
-    
     $ sudo make install
 
-Now you are ready with the PSLab software on your machine :)
+Now you are ready with the PSLab software on your machine.
 
 ### How to Install on Windows
 
-**Step 1**: Install the latest Python version on your computer and configure `PATH` variable to have both Python installation directory and the Scripts directory to access `pip` tools.
+**Step 1**: Install the latest Python version on your computer and configure `PATH` variable to have both Python installation directory and the Scripts directory to access `pip` tools. In Windows, Python is installed in `C:` drive by default. We can set `$PATH` by opening the **Environment variables** dialog box by following the steps below;
 
-> In Windows, Python is installed in `C:` drive by default. We can set `$PATH` by opening the **Environment variables** dialog box by following the steps below;
->
-> 1. [Right click on My Computer] 
-> 2. Select "Properties"
-> 3. Open "System Properties"
-> 4. Click "Advanced" tab
-> 5. Click "Environment Variables" button
-> 6. Look for "**_PATH_**" in "System Variables" section and click on it and press "Edit" button
-> 7. To the end of "Variable value" text box, append "`C:\Python34\;C:\Python34\Scripts\;`" (without quotes and `34` may differ depending on the python version installed. It could be 35, 37 ...)
-> 8. Click "OK" twice to save and move out from path windows
+1. [Right click on My Computer] 
+2. Select "Properties"
+3. Open "System Properties"
+4. Click "Advanced" tab
+5. Click "Environment Variables" button
+6. Look for "**_PATH_**" in "System Variables" section and click on it and press "Edit" button
+7. To the end of "Variable value" text box, append "`C:\Python34\;C:\Python34\Scripts\;`" (without quotes and `34` may differ depending on the python version installed. It could be 35, 37 ...)
+8. Click "OK" twice to save and move out from path windows
 
 **Step 2**: Open up command prompt and execute the following commands to install the required dependencies.
 
     $ pip install pyserial
-    
     $ pip install numpy
 
 #### Validate
