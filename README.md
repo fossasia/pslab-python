@@ -10,11 +10,15 @@ The Python library for the [Pocket Science Lab](https://pslab.io) from FOSSASIA.
 
 This repository hosts the python library for communicating with the Pocket Science Lab open hardware platform (PSLab). This can be installed on a Linux or Windows system. Using this library you can communicate with the PSLab using simple Python code. The Python library is also used in the PSLab desktop application as a backend component. The goal of PSLab is to create an Open Source hardware device (open on all layers) and software applications that can be used for experiments by teachers, students and scientists. Our tiny pocket lab provides an array of instruments for doing science and engineering experiments. It provides functions of numerous measurement tools including an oscilloscope, a waveform generator, a frequency counter, a programmable voltage, current source and even a component to control robots with up to four servos. The website is at: https://pslab.io
 
+## Buy
+
+* You can get a Pocket Science Lab device from the [FOSSASIA Shop](https://fossasia.com).
+* More resellers are listed on the [PSLab website](https://pslab.io/shop/).
+
 ## Communication
 
-Please join us on the following channels:
-* [Pocket Science Channel](https://gitter.im/fossasia/pslab)
-* [Mailing List](https://groups.google.com/forum/#!forum/pslab-fossasia)
+* The PSLab [chat channel is on Gitter](https://gitter.im/fossasia/pslab).
+* Please also join us on the [PSLab Mailing List](https://groups.google.com/forum/#!forum/pslab-fossasia).
 
 ## Installation
 
