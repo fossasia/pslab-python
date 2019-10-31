@@ -242,8 +242,8 @@ class analyticsClass():
         v = np.array(ya)
         tr = abs(np.fft.fft(v)) / ns
         frq = np.fft.fftfreq(ns, si)
-        x = frq.reshape(2, ns / 2)
-        y = tr.reshape(2, ns / 2)
+        x = frq.reshape(2, ns // 2)
+        y = tr.reshape(2, ns // 2)
         return x[0], y[0]
 
     def sineFitAndDisplay(self, chan, displayObject):
