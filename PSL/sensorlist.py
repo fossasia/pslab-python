@@ -56,7 +56,7 @@ sensors = {
     0x56: ['MB85RC'],
     0x57: ['MB85RC', 'MAX3010x'],
     0x58: ['TPA2016','SGP30'],
-    0x5A: ['MPR121', 'CCS811', 'MLX9061x', 'DRV2605']
+    0x5A: ['MPR121', 'CCS811', 'MLX9061x', 'DRV2605'],
     0x5B: ['MPR121', 'CCS811'],
     0x5C: ['AM2315', 'MPR121'],
     0x5D: ['MPR121'],
