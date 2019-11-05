@@ -13,7 +13,7 @@ before_install:
 
 install:
     - pip3 install flake8 -r requirements.txt
-    - flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+    - flake8 . --select=E9,F63,F7,F82 --show-source --statistics
     - sudo env "PATH=$PATH" make clean
     - make all
     - sudo env "PATH=$PATH" make install
