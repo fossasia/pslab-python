@@ -157,7 +157,7 @@ class analyticsClass():
 		index =  amp.argmax()				# search for the tallest peak, the fundamental
 		return frq[index]
 
-	def sineFit2(self,x,y):
+	def sineFit2(self,x,y,t,v):
 		freq = self.find_frequency(y, x[1]-x[0])
 		amp =(y.max()-y.min())/2.0
 		guess = [amp, freq, 0, 0]  #amplitude, freq, phase,offset
