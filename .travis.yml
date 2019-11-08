@@ -1,11 +1,10 @@
 language: python
 
-sudo: true
-
 python:
-    - "3.4"
     - "3.5"
     - "3.6"
+    - "3.7"
+    - "3.8"
 
 before_install:
     - sudo apt-get -qq update
@@ -13,7 +12,8 @@ before_install:
     - sudo chmod a+rw /builds
 
 install:
-    - pip3 install -r requirements.txt
+    - pip3 install flake8 -r requirements.txt
+    - flake8 . --select=E9,F63,F7,F82 --show-source --statistics
     - sudo env "PATH=$PATH" make clean
     - make all
     - sudo env "PATH=$PATH" make install
