@@ -5,6 +5,13 @@ import time
 import inspect
 import serial
 
+# Handle namespace conflict between packages 'pyserial' and 'serial'.
+try:
+    serial.Serial
+except AttributeError:
+    e = "import serial failed; PSL requires 'pyserial' but conflicting package 'serial' was found."
+    raise ImportError(e)
+
 import PSL.commands_proto as CP
 
 
