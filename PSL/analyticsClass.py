@@ -1,7 +1,8 @@
-from __future__ import print_function
-import time
+import math
+from typing import Tuple
 
 import numpy as np
+
 
 class analyticsClass():
     """
@@ -36,13 +37,6 @@ class analyticsClass():
             self.signal = None
         else:
             self.signal = signal
-
-        try:
-            from PSL.commands_proto import applySIPrefix as applySIPrefix
-        except ImportError:
-            self.applySIPrefix = None
-        else:
-            self.applySIPrefix = applySIPrefix
 
     def sineFunc(self, x, a1, a2, a3, a4):
         return a4 + a1 * np.sin(abs(a2 * (2 * np.pi)) * x + a3)
@@ -259,11 +253,11 @@ class analyticsClass():
             if fitres:
                 amp, freq, offset, phase = fitres
                 if amp > 0.05: fit = 'Voltage=%s\nFrequency=%s' % (
-                    self.applySIPrefix(amp, 'V'), self.applySIPrefix(freq, 'Hz'))
+                    apply_si_prefix(amp, 'V'), apply_si_prefix(freq, 'Hz'))
         except Exception as e:
-            fires = None
+            fitres = None
 
-        if not fitres or len(fit) == 0: fit = 'Voltage=%s\n' % (self.applySIPrefix(np.average(chan.get_yaxis()), 'V'))
+        if not fitres or len(fit) == 0: fit = 'Voltage=%s\n' % (apply_si_prefix(np.average(chan.get_yaxis()), 'V'))
         displayObject.setValue(fit)
         if fitres:
             return fitres
@@ -278,7 +272,7 @@ class analyticsClass():
         Fits against a sine function, and writes to the object
         '''
         rms = self.RMS(data)
-        displayObject.setValue('Voltage=%s' % (self.applySIPrefix(rms, 'V')))
+        displayObject.setValue('Voltage=%s' % (apply_si_prefix(rms, 'V')))
         return rms
 
     def RMS(self, data):
@@ -298,3 +292,71 @@ class analyticsClass():
         b, a = self.butter_notch(lowcut, highcut, fs, order=order)
         y = lfilter(b, a, data)
         return y
+
+
+SI_PREFIXES = {k: v for k, v in zip(range(-24, 25, 3), "yzafpnµm kMGTPEZY")}
+SI_PREFIXES[0] = ""
+
+
+def frexp10(x: float) -> Tuple[float, int]:
+    """Return the base 10 fractional coefficient and exponent of x, as pair (m, e).
+
+    This function is analogous to math.frexp, only for base 10 instead of base 2.
+    If x is 0, m and e are both 0. Else 1 <= abs(m) < 10. Note that m * 10**e is not
+    guaranteed to be exactly equal to x.
+
+    Parameters
+    ----------
+    x : float
+        Number to be split into base 10 fractional coefficient and exponent.
+
+    Returns
+    -------
+    (float, int)
+        Base 10 fractional coefficient and exponent of x.
+
+    Examples
+    --------
+    >>> frexp10(37)
+    (3.7, 1)
+    """
+    if x == 0:
+        coefficient, exponent = 0.0, 0
+    else:
+        log10x = math.log10(abs(x))
+        exponent = int(math.copysign(math.floor(log10x), log10x))
+        coefficient = x / 10 ** exponent
+
+    return coefficient, exponent
+
+
+def apply_si_prefix(value: float, unit: str, precision: int = 2) -> str:
+    """Scale :value: and apply appropriate SI prefix to :unit:.
+
+    Parameters
+    ----------
+    value : float
+        Number to be scaled.
+    unit : str
+        Base unit of :value: (without prefix).
+    precision : int, optional
+        :value: will be rounded to :precision: decimal places. The default value is 2.
+
+    Returns
+    -------
+    str
+        "<scaled> <prefix><unit>", such that 1 <= <scaled> < 1000.
+
+    Examples
+    -------
+    apply_si_prefix(0.03409, "V")
+    '34.09 mV'
+    """
+    coefficient, exponent = frexp10(value)
+    si_exponent = exponent - (exponent % 3)
+    si_coefficient = coefficient * 10 ** (exponent % 3)
+
+    if abs(si_exponent) > max(SI_PREFIXES):
+        raise ValueError("Exponent out of range of available prefixes.")
+
+    return f"{si_coefficient:.{precision}f} {SI_PREFIXES[si_exponent]}{unit}"
