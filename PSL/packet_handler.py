@@ -1,231 +1,316 @@
-from __future__ import print_function
+"""Low-level communication for PSLab.
 
+Example
+-------
+>>> from PSL.packet_handler import Handler
+>>> H = Handler()
+>>> version = H.get_version()
+>>> H.disconnect()
+"""
+from functools import partial
+import logging
+import struct
 import time
+from typing import List, Union
 
 import serial
-
-# Handle namespace conflict between packages 'pyserial' and 'serial'.
-try:
-    serial.Serial
-except AttributeError:
-    e = "import serial failed; PSL requires 'pyserial' but conflicting package 'serial' was found."
-    raise ImportError(e)
+from serial.tools import list_ports
 
 import PSL.commands_proto as CP
 
+logger = logging.getLogger(__name__)
 
-class Handler():
-    def __init__(self, timeout=1.0, **kwargs):
-        self.burstBuffer = b''
-        self.loadBurst = False
-        self.inputQueueSize = 0
-        self.BAUD = 1000000
-        self.timeout = timeout
-        self.version_string = b''
-        self.connected = False
-        self.fd = None
-        self.expected_version1 = b'CS'
-        self.expected_version2 = b'PS'
+USB_VID = 0x04D8
+USB_PID = 0x00DF
+
+
+class Handler:
+    """Provides methods for communicating with the PSLab hardware.
+
+    When instantiated, Handler tries to connect to the PSLab. A port can optionally
+    be specified; otherwise Handler will try to find the correct port automatically.
+
+    Parameters
+    ----------
+        port : str, optional
+            See :meth:`connect. <PSL.packet_handler.Handler.connect>`.
+        baudrate : int, optional
+            See :meth:`connect. <PSL.packet_handler.Handler.connect>`.
+        timeout : float, optional
+            See :meth:`connect. <PSL.packet_handler.Handler.connect>`.
+    """
+
+    def __init__(
+        self,
+        port: str = None,
+        baudrate: int = 1000000,
+        timeout: float = 1.0,
+        **kwargs,  # Backward compatibility
+    ):
+        self.burst_buffer = b""
+        self.load_burst = False
+        self.input_queue_size = 0
+        self.version = ""
+        self.interface = serial.Serial()
+        self.connect(port=port, baudrate=baudrate, timeout=timeout)
+
+        # Backwards compatibility
+        self.fd = self.interface
         self.occupiedPorts = set()
-        self.blockingSocket = None
-        if 'port' in kwargs:
-            self.portname = kwargs.get('port', None)
-            self.fd, self.version_string, self.connected = self.connectToPort(self.portname)
-            if self.connected: return
+        self.connected = self.interface.is_open
+        self.__sendByte__ = partial(self.send, size=1)
+        self.__sendInt__ = partial(self.send, size=2)
+        self.__get_ack__ = self.get_ack
+        self.__getByte__ = partial(self.receive, size=1)
+        self.__getInt__ = partial(self.receive, size=2)
+        self.__getLong__ = partial(self.receive, size=4)
+        self.WaitForData = self.wait_for_data
+        self.SendBurst = self.send_burst
+        self.portname = self.interface.name
+        self.listPorts = self._list_ports
 
-        else:  # Scan and pick a port
-            L = self.listPorts()
-            for a in L:
-                self.portname = a
-                self.fd, self.version_string, self.connected = self.connectToPort(self.portname)
-                if self.connected:
-                    print(a + ' .yes.', self.version_string)
-                    return
+    @staticmethod
+    def _list_ports() -> List[str]:  # Promote to public?
+        """Return a list of serial port names."""
+        return [p.device for p in list_ports.comports()]
 
-            if not self.connected:
-                if len(self.occupiedPorts): print('Device not found. Programs already using :', self.occupiedPorts)
+    def connect(
+        self, port: str = None, baudrate: int = 1000000, timeout: float = 1.0,
+    ):
+        """Connect to PSLab.
 
-    def listPorts(self):
-        import platform, glob
-        system_name = platform.system()
-        if system_name == "Windows":
-            # Scan for available ports.
-            available = []
-            for i in range(256):
-                try:
-                    portname = 'COM' + str(i)
-                    s = serial.Serial(portname)
-                    available.append(portname)
-                    s.close()
-                except serial.SerialException:
-                    pass
-            return available
-        elif system_name == "Darwin":
-            # Mac
-            return glob.glob('/dev/tty*') + glob.glob('/dev/cu*')
+        Parameters
+        ----------
+        port : str, optional
+            The name of the port to which the PSLab is connected as a string. On
+            Posix this is a path, e.g. "/dev/ttyACM0". On Windows, it's a numbered
+            COM port, e.g. "COM5". Will be autodetected if not specified.
+        baudrate : int, optional
+            Symbol rate in bit/s. The default value is 1000000.
+        timeout : float, optional
+            Time in seconds to wait before cancelling a read or write command. The
+            default value is 1.0.
+
+        Raises
+        ------
+        SerialException
+            If connection could not be established.
+        """
+        # serial.Serial opens automatically if port is not None.
+        self.interface = serial.Serial(
+            port=port, baudrate=baudrate, timeout=timeout, write_timeout=timeout,
+        )
+
+        if self.interface.is_open:
+            # User specified a port.
+            version = self.get_version()
         else:
-            # Assume Linux or something else
-            return glob.glob('/dev/ttyACM*') + glob.glob('/dev/ttyUSB*')
+            port_info_generator = list_ports.grep(f"{USB_VID:04x}:{USB_PID:04x}")
 
-    def connectToPort(self, portname):
-        import platform
-        if platform.system() not in ["Windows", "Darwin"]:
-            import socket
-            try:
-                self.blockingSocket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-                self.blockingSocket.bind('\0PSLab%s' % portname)
-                self.blockingSocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-            except socket.error as e:
-                self.occupiedPorts.add(portname)
-                raise e
+            for port_info in port_info_generator:
+                self.interface.port = port_info.device
+                self.interface.open()
+                version = self.get_version()
+                if any(expected in version for expected in ["PSLab", "CSpark"]):
+                    break
+            else:
+                version = ""
 
-        fd = serial.Serial(portname, 9600, stopbits=1, timeout=0.02)
-        fd.read(100)
-        fd.close()
-        fd = serial.Serial(portname, self.BAUD, stopbits=1, timeout=1.0)
-        if (fd.inWaiting()):
-            fd.setTimeout(0.1)
-            fd.read(1000)
-            fd.flush()
-            fd.setTimeout(1.0)
-        version = self.get_version(fd)
-        if version[:len(self.expected_version1)] == self.expected_version1 or version[:len(
-                self.expected_version2)] == self.expected_version2:
-            return fd, str(version)[1:], True
-
-        return None, '', False
+        if any(expected in version for expected in ["PSLab", "CSpark"]):
+            self.version = version
+            self.fd = self.interface  # Backward compatibility
+            logger.info(f"Connected to {self.version} on {self.interface.port}.")
+        else:
+            self.interface.close()
+            self.version = ""
+            raise serial.SerialException("Device not found.")
 
     def disconnect(self):
-        if self.connected:
-            self.fd.close()
-        if self.blockingSocket:
-            print('Releasing port')
-            self.blockingSocket.shutdown(1)
-            self.blockingSocket.close()
-            self.blockingSocket = None
+        """Disconnect from PSLab."""
+        self.interface.close()
 
-    def get_version(self, fd):
-        fd.write(CP.COMMON)
-        fd.write(CP.GET_VERSION)
-        x = fd.readline()
-        # print('remaining',[ord(a) for a in fd.read(10)])
-        if len(x):
-            x = x[:-1]
-        return x
+    def reconnect(
+        self, port: str = None, baudrate: int = None, timeout: float = None,
+    ):
+        """Reconnect to PSLab.
 
-    def reconnect(self, **kwargs):
-        if 'port' in kwargs:
-            self.portname = kwargs.get('port', None)
+        Will reuse previous settings (port, baudrate, timeout) unless new ones are
+        provided.
 
-        self.fd, self.version_string, self.connected = self.connectToPort(self.portname)
-
-    def __del__(self):
-        # print('closing port')
-        self.fd.close()
-
-    def __get_ack__(self):
+        Parameters
+        ----------
+        port : str, optional
+            See :meth:`connect. <PSL.packet_handler.Handler.connect>`.
+        baudrate : int, optional
+            See :meth:`connect. <PSL.packet_handler.Handler.connect>`.
+        timeout : float, optional
+            See :meth:`connect. <PSL.packet_handler.Handler.connect>`.
         """
-        fetches the response byte
-        1 SUCCESS
-        2 ARGUMENT_ERROR
-        3 FAILED
-        used as a handshake
+        self.disconnect()
+
+        # Reuse previous settings unless user provided new ones.
+        baudrate = self.interface.baudrate if baudrate is None else baudrate
+        port = self.interface.port if port is None else port
+        timeout = self.interface.timeout if timeout is None else timeout
+
+        self.interface = serial.Serial(
+            port=port, baudrate=baudrate, timeout=timeout, write_timeout=timeout,
+        )
+        self.connect()
+
+    def __del__(self):  # Is this necessary?
+        """Disconnect before garbage collection."""
+        self.interface.close()
+
+    def get_version(self, *args) -> str:  # *args for backwards compatibility
+        """Query PSLab for its version and return it as a decoded string.
+
+        Returns
+        -------
+        str
+            Version string.
         """
-        if not self.loadBurst:
-            x = self.fd.read(1)
+        self.interface.write(CP.COMMON)
+        self.interface.write(CP.GET_VERSION)
+        return self.interface.readline().decode("utf-8")
+
+    def get_ack(self) -> int:  # Make _internal?
+        """Get response code from PSLab.
+
+        Also functions as handshake.
+
+        Returns
+        -------
+        int
+            Response code. Meanings:
+                1 SUCCESS
+                2 ARGUMENT_ERROR
+                3 FAILED
+        """
+        if not self.load_burst:
+            response = self.interface.read(1)
         else:
-            self.inputQueueSize += 1
+            self.input_queue_size += 1
             return 1
+
         try:
-            return CP.Byte.unpack(x)[0]
-        except:
-            return 3
+            return CP.Byte.unpack(response)[0]
+        except Exception as e:
+            logger.error(e)
+            return 3  # raise exception instead?
 
-    def __sendInt__(self, val):
-        """
-        transmits an integer packaged as two characters
-        :params int val: int to send
-        """
-        if not self.loadBurst:
-            self.fd.write(CP.ShortInt.pack(int(val)))
+    @staticmethod
+    def _get_integer_type(size: int) -> struct.Struct:
+        if size == 1:
+            return CP.Byte
+        elif size == 2:
+            return CP.ShortInt
+        elif size == 4:
+            return CP.Integer
         else:
-            self.burstBuffer += CP.ShortInt.pack(int(val))
+            raise ValueError("size must be 1, 2, or 4.")
 
-    def __sendByte__(self, val):
+    def send(self, value: Union[bytes, int], size: int = None):
+        """Send a value to the PSLab.
+
+        Optionally handles conversion from int to bytes.
+
+        Parameters
+        ----------
+        value : bytes, int
+            Value to send to PSLab. Must fit in four bytes.
+        size : int, optional
+            Number of bytes to send. If not specified, the number of bytes sent
+            depends on the size of :value:.
         """
-        transmits a BYTE
-        val - byte to send
+        if isinstance(value, bytes):
+            packet = value
+        else:
+            # True + True == 2, see PEP 285.
+            size = 2 ** ((value > 0xFF) + (value > 0xFFFF)) if size is None else size
+            packer = self._get_integer_type(size)
+            packet = packer.pack(value)
+
+        if self.load_burst:
+            self.burst_buffer += packet
+        else:
+            self.interface.write(packet)
+        # return self.get_ack?
+
+    def receive(self, size: int) -> int:
+        """Read and unpack the specified number of bytes from the serial port.
+
+        Parameters
+        ----------
+        size : int
+            Number of bytes to read from the serial port.
+
+        Returns
+        -------
+        int
+            Unpacked bytes, or -1 if too few bytes were read.
         """
-        # print (val)
-        if (type(val) == int):
-            if not self.loadBurst:
-                self.fd.write(CP.Byte.pack(val))
+        received = self.interface.read(size)
+
+        if len(received) == size:
+            if size in (1, 2, 4):
+                unpacker = self._get_integer_type(size)
+                retval = unpacker.unpack(received)[0]
             else:
-                self.burstBuffer += CP.Byte.pack(val)
+                retval = int.from_bytes(bytes=received, byteorder="little", signed=False)
         else:
-            if not self.loadBurst:
-                self.fd.write(val)
-            else:
-                self.burstBuffer += val
+            logger.error(f"Requested {size} bytes, got {len(received)}.")
+            retval = -1  # raise an exception instead?
 
-    def __getByte__(self):
-        """
-        reads a byte from the serial port and returns it
-        """
-        ss = self.fd.read(1)
-        if len(ss):
-            return CP.Byte.unpack(ss)[0]
+        return retval
 
-    def __getInt__(self):
-        """
-        reads two bytes from the serial port and
-        returns an integer after combining them
-        """
-        ss = self.fd.read(2)
-        if len(ss) == 2:
-            return CP.ShortInt.unpack(ss)[0]
+    def wait_for_data(self, timeout: float = 0.2) -> bool:
+        """Wait for :timeout: seconds or until there is data in the input buffer.
 
-    def __getLong__(self):
-        """
-        reads four bytes.
-        returns long
-        """
-        ss = self.fd.read(4)
-        if len(ss) == 4:
-            return CP.Integer.unpack(ss)[0]
-        else:
-            # print('.')
-            return -1
+        Parameters
+        ----------
+        timeout : float, optional
+            Time in seconds to wait. The default is 0.2.
 
-    def waitForData(self, timeout=0.2):
+        Returns
+        -------
+        bool
+            True iff the input buffer is not empty.
+        """
         start_time = time.time()
+
         while time.time() - start_time < timeout:
+            if self.interface.in_waiting:
+                return True
             time.sleep(0.02)
-            if self.fd.inWaiting(): return True
+
         return False
 
-    def sendBurst(self):
+    def send_burst(self) -> List[int]:
+        """Transmit the commands stored in the burst_buffer.
+
+        The burst_buffer and input buffer are both emptied.
+
+        The following example initiates the capture routine and sets OD1 HIGH
+        immediately. It is used by the Transient response experiment where the input
+        needs to be toggled soon after the oscilloscope has been started.
+
+        Example
+        -------
+        >>> I.load_burst = True
+        >>> I.capture_traces(4, 800, 2)
+        >>> I.set_state(I.OD1, I.HIGH)
+        >>> I.send_burst()
+
+        Returns
+        -------
+        list
+            List of response codes (see :meth:`get_ack <PSL.packet_handler.Handler.get_ack>`). # noqa E501
         """
-        Transmits the commands stored in the burstBuffer.
-        empties input buffer
-        empties the burstBuffer.
+        self.interface.write(self.burst_buffer)
+        self.burst_buffer = b""
+        self.load_burst = False
+        acks = self.interface.read(self.input_queue_size)
+        self.input_queue_size = 0
 
-        The following example initiates the capture routine and sets OD1 HIGH immediately.
-
-        It is used by the Transient response experiment where the input needs to be toggled soon
-        after the oscilloscope has been started.
-
-        >>> I.loadBurst=True
-        >>> I.capture_traces(4,800,2)
-        >>> I.set_state(I.OD1,I.HIGH)
-        >>> I.sendBurst()
-
-
-        """
-        # print([Byte.unpack(a)[0] for a in self.burstBuffer],self.inputQueueSize)
-        self.fd.write(self.burstBuffer)
-        self.burstBuffer = ''
-        self.loadBurst = False
-        acks = self.fd.read(self.inputQueueSize)
-        self.inputQueueSize = 0
-        return [CP.Byte.unpack(a)[0] for a in acks]
+        return list(acks)
