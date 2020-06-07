@@ -6,7 +6,7 @@ Sciencelab class contains methods that can be used to interact with the FOSSASIA
 	>>> I = sciencelab.connect()
 	>>> self.__print__(I)
 	<sciencelab.ScienceLab instance at 0xb6c0cac>
-	
+
 Once you have initiated this class,  its various methods will allow access to all the features built into the device.
 
 <details>
@@ -29,7 +29,7 @@ Once you have initiated this class,  its various methods will allow access to al
 
 + Arguments
 	+ \*\*Kwargs: Keyword Arguments
-		+ address: Address of the node. a 24 bit number. Printed on the nodes. Can also be retrieved using :py:meth:`~NRF24L01_class.NRF24L01.get_nodelist` 
+		+ address: Address of the node. a 24 bit number. Printed on the nodes. Can also be retrieved using :py:meth:`~NRF24L01_class.NRF24L01.get_nodelist`
 + Return: :py:meth:`~NRF_NODE.RadioLink`
 
 </details>
@@ -53,7 +53,7 @@ This section has commands related to analog measurement and control. These inclu
 	+ ch: Channel to select as input. ['CH1'..'CH3','SEN']
 	+ ns: Number of samples to fetch. Maximum 10000
 	+ tg: Timegap between samples in microseconds
-+ Return: Arrays X(timestamps),Y(Corresponding Voltage values)	
++ Return: Arrays X(timestamps),Y(Corresponding Voltage values)
 
 ```
 >>> from pylab import *
@@ -147,7 +147,7 @@ This section has commands related to analog measurement and control. These inclu
 		+ 'SET_HIGH': Set SQR1 to 1V
 		+ 'FIRE_PULSES': output a preset frequency on SQR1 for a given interval (keyword arg 'interval' must be specified or it will default to 1000uS) before acquiring data. This is used for measuring speed of sound using piezos if no arguments are specified, a regular capture will be executed.
 	+ \*\*kwargs
-		+ interval: Units: uS. Necessary if 'FIRE_PULSES' argument was supplied. Default 1000uS  
+		+ interval: Units: uS. Necessary if 'FIRE_PULSES' argument was supplied. Default 1000uS
 + Return: timestamp array ,voltage_value array
 
 ```
@@ -185,7 +185,7 @@ This section has commands related to analog measurement and control. These inclu
 + Arguments
 	+ num: Channels to acquire. 1/2/4
 	+ samples: Total points to store per channel. Maximum 3200 total.
-	+ tg: Timegap between two successive samples (in uSec) 
+	+ tg: Timegap between two successive samples (in uSec)
 	+ channel_one_input: Map channel 1 to 'CH1' ... 'CH9'
 	+ \*\*kwargs
 		+ \*trigger: Whether or not to trigger the oscilloscope based on the voltage level set by :func:`configure_trigger`
@@ -345,7 +345,7 @@ The following events take place when the above snippet runs
 + Return the voltage on the selected channel
 + Arguments
 	+ channel_name : 'CH1','CH2','CH3', 'MIC','IN1','SEN','V+'
-	+ sleep: Read voltage in CPU sleep mode. not particularly useful. Also, Buggy. 
+	+ sleep: Read voltage in CPU sleep mode. not particularly useful. Also, Buggy.
 	+ \*\*kwargs: Samples to average can be specified. Eg, samples=100 will average a hundred readings
 
 ```
@@ -384,7 +384,7 @@ The following events take place when the above snippet runs
 + Instruct the ADC to start streaming 8-bit data.  use stop_streaming to stop.
 + Arguments
 	+ tg: timegap. 250KHz clock
-	+ channel: channel 'CH1'... 'CH9','IN1','SEN'  
+	+ channel: channel 'CH1'... 'CH9','IN1','SEN'
 
 </details>
 
@@ -583,7 +583,7 @@ Connect SQR1 to ID1
 	+ channel: ['ID1','ID2','ID3','ID4','SEN','EXT','CNTR']
 	+ maximum_time: Total time to sample. If total time exceeds 67 seconds, a prescaler will be used in the reference clock.
 	+ kwargs
-		+ triggger_channels: array of digital input names that can trigger the acquisition. Eg, trigger = ['ID1','ID2','ID3'] will triggger when a logic change specified by the keyword argument 'edge' occurs on either or the three specified trigger inputs. 
+		+ triggger_channels: array of digital input names that can trigger the acquisition. Eg, trigger = ['ID1','ID2','ID3'] will triggger when a logic change specified by the keyword argument 'edge' occurs on either or the three specified trigger inputs.
 		+ edge: 'rising' or 'falling' . trigger edge type for trigger_channels.
 + Return: Nothing
 
@@ -613,7 +613,7 @@ Connect SQR1 to ID1
 + Arguments
 	+ trigger: Bool. Enable rising edge trigger on ID1
 	+ \*\*args
-		+ chans: Channels to acquire data from . default ['ID1','ID2'] 
+		+ chans: Channels to acquire data from . default ['ID1','ID2']
 		+ mode: modes for each channel. Array, default value: [1,1]
 			+ EVERY_SIXTEENTH_RISING_EDGE = 5
 			+ EVERY_FOURTH_RISING_EDGE    = 4
@@ -632,7 +632,7 @@ Connect SQR1 to ID1
 + Start logging timestamps of rising/falling edges on ID1, ID2, ID3
 + Arguments
 	+ \*\*args
-		+ trigger_channel: ['ID1','ID2','ID3','ID4','SEN','EXT','CNTR'] 
+		+ trigger_channel: ['ID1','ID2','ID3','ID4','SEN','EXT','CNTR']
 		+ mode: modes for each channel. Array, default value: [1,1,1]
 			+ EVERY_SIXTEENTH_RISING_EDGE = 5
 			+ EVERY_FOURTH_RISING_EDGE    = 4
@@ -757,7 +757,7 @@ If you need to record large intervals, try single channel/two channel modes whic
 		states(0 or 1)
 ```
 >>> I.set_state(SQR1 = 1,SQR2 = 0)
-#Sets SQR1 HIGH, SQR2 LOw, but leave SQR3,SQR4 untouched.	
+#Sets SQR1 HIGH, SQR2 LOw, but leave SQR3,SQR4 untouched.
 ```
 
 </details>
@@ -811,17 +811,17 @@ If you need to record large intervals, try single channel/two channel modes whic
 <summary><code>get_ctmu_voltage(self, channel, Crange, tgen = 1)</code></summary>
 
 + get_ctmu_voltage(5,2)  will activate a constant current source of 5.5uA on IN1 and then measure the voltage at the output.
-+ If a diode is used to connect IN1 to ground, the forward voltage drop of the diode will be returned. e.g. .6V for a 4148diode.  
++ If a diode is used to connect IN1 to ground, the forward voltage drop of the diode will be returned. e.g. .6V for a 4148diode.
 + Returns: Voltage
 + Channel = 5 for IN1
 
-| CRange   |      Implies  | 
+| CRange   |      Implies  |
 |----------|:-------------:|
 | 0		   |  550uA		   |
 | 1		   |  0.55uA       |
 | 2		   | 5.5uA         |
 | 3		   | 55uA          |
-    
+
 </details>
 
 <details>
@@ -884,7 +884,7 @@ If you need to record large intervals, try single channel/two channel modes whic
 
 ## WAVEGEN SECTION
 
-This section has commands related to waveform generators W1, W2, PWM outputs, servo motor control etc. 
+This section has commands related to waveform generators W1, W2, PWM outputs, servo motor control etc.
 
 <details>
 <summary><code>set_wave(self, chan, freq)</code></summary>
@@ -1095,7 +1095,7 @@ This section has commands related to current and voltage sources PV1,PV2,PV3,PCS
 	+ val: Output voltage on PV1. -5V to 5V
 
 </details>
- 
+
 <details>
 <summary><code>set_pv2(self, val)</code></summary>
 
@@ -1148,20 +1148,20 @@ This section has commands related to current and voltage sources PV1,PV2,PV3,PCS
 + Get the last set voltage on PV3
 
 </details>
- 
+
 <details>
 <summary><code>get_pcs(self)</code></summary>
 
 + Get the last set voltage on PCS
 
 </details>
- 
+
 <details>
 <summary><code>WS2812B(self, cols, output = 'CS1')</code></summary>
 
 + Set shade of WS2182 LED on SQR1
 + Arguments
-	+ cols: 2Darray [[R,G,B],[R2,G2,B2],[R3,G3,B3]...] <br /> 
+	+ cols: 2Darray [[R,G,B],[R2,G2,B2],[R3,G3,B3]...] <br />
 			brightness of R,G,B ( 0-255  )
 
 ```
@@ -1182,20 +1182,20 @@ Direct access to RAM and FLASH
 	+ address: Address to read from. Refer to PIC24EP64GP204 programming manual
 
 </details>
- 
+
 <details>
 <summary><code>device_id(self)</code></summary><br />
 </details>
- 
+
 <details>
 <summary><code>read_data_address(self, address)</code></summary>
 
 + Reads and returns the value stored at the specified address in RAM
 + Arguments
-	+ address: Address to read from.  Refer to PIC24EP64GP204 programming manual 
+	+ address: Address to read from.  Refer to PIC24EP64GP204 programming manual
 
 </details>
- 
+
 ## MOTOR SIGNALLING
 Set servo motor angles via SQ1-4. Control one stepper motor using SQ1-4
 
@@ -1206,7 +1206,7 @@ Set servo motor angles via SQ1-4. Control one stepper motor using SQ1-4
 + Take a fixed number of steps in the forward direction with a certain delay( in milliseconds ) between each step.
 
 </details>
- 
+
 <details>
 <summary><code>stepBackward(self, steps, delay)</code></summary>
 
@@ -1214,7 +1214,7 @@ Set servo motor angles via SQ1-4. Control one stepper motor using SQ1-4
 + Take a fixed number of steps in the backward direction with a certain delay( in milliseconds ) between each step.
 
 </details>
- 
+
 <details>
 <summary><code>servo(self, angle, chan = 'SQR1')</code></summary>
 
@@ -1225,7 +1225,7 @@ Set servo motor angles via SQ1-4. Control one stepper motor using SQ1-4
 	+ chan: 'SQR1' or 'SQR2'. Whether to use SQ1 or SQ2 to output the PWM waveform used by the servo
 
 </details>
- 
+
 <details>
 <summary><code>servo4(self, a1, a2, a3, a4)</code></summary>
 
@@ -1239,7 +1239,7 @@ Set servo motor angles via SQ1-4. Control one stepper motor using SQ1-4
 	+ a4: Angle to set on Servo which uses SQR4 as PWM input. [0-180]
 
 </details>
- 
+
 <details>
 <summary><code>enableUartPassthrough(self, baudrate, persist = False)</code></summary>
 
@@ -1252,7 +1252,7 @@ Set servo motor angles via SQ1-4. Control one stepper motor using SQ1-4
 	Otherwise(default scenario), the device will return to normal operation if no data is sent/received for a period greater than one second at a time.
 
 </details>
- 
+
 <details>
 <summary><code>estimateDistance(self)</code></summary>
 
@@ -1264,7 +1264,7 @@ Set servo motor angles via SQ1-4. Control one stepper motor using SQ1-4
 + Return: 0 upon timeout
 
 </details>
- 
+
 <details>
 <summary><code>opticalArray(self, SS, delay, channel = 'CH3', **kwargs)</code></summary>
 
@@ -1274,33 +1274,29 @@ Set servo motor angles via SQ1-4. Control one stepper motor using SQ1-4
 + tp : clock wavelength = tp*15nS,  SS = clock/4
 
 </details>
- 
+
 <details>
 <summary><code>setUARTBAUD(self, BAUD)</code></summary><br />
 </details>
- 
+
 <details>
 <summary><code>writeUART(self, character)</code></summary><br />
 </details>
- 
+
 <details>
 <summary><code>readUART(self)</code></summary><br />
 </details>
- 
+
 <details>
 <summary><code>readUARTStatus(self)</code></summary>
 
 + Return: available bytes in UART buffer
 
 </details>
- 
+
 <details>
 <summary><code>readLog(self)</code></summary>
 
 + Read hardware debug log.
 
-</details>
- 
-<details>
-<summary><code>raiseException(self, ex, msg)</code></summary><br />
 </details>
