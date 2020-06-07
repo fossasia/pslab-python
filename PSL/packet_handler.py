@@ -2,7 +2,6 @@ from __future__ import print_function
 
 import time
 
-import inspect
 import serial
 
 # Handle namespace conflict between packages 'pyserial' and 'serial'.
@@ -31,23 +30,18 @@ class Handler():
         self.blockingSocket = None
         if 'port' in kwargs:
             self.portname = kwargs.get('port', None)
-            try:
-                self.fd, self.version_string, self.connected = self.connectToPort(self.portname)
-                if self.connected: return
-            except Exception as ex:
-                print('Failed to connect to ', self.portname, ex.message)
+            self.fd, self.version_string, self.connected = self.connectToPort(self.portname)
+            if self.connected: return
 
         else:  # Scan and pick a port
             L = self.listPorts()
             for a in L:
-                try:
-                    self.portname = a
-                    self.fd, self.version_string, self.connected = self.connectToPort(self.portname)
-                    if self.connected:
-                        print(a + ' .yes.', self.version_string)
-                        return
-                except:
-                    pass
+                self.portname = a
+                self.fd, self.version_string, self.connected = self.connectToPort(self.portname)
+                if self.connected:
+                    print(a + ' .yes.', self.version_string)
+                    return
+
             if not self.connected:
                 if len(self.occupiedPorts): print('Device not found. Programs already using :', self.occupiedPorts)
 
@@ -83,7 +77,7 @@ class Handler():
                 self.blockingSocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             except socket.error as e:
                 self.occupiedPorts.add(portname)
-                raise RuntimeError("Another program is using %s (%d)" % (portname))
+                raise e
 
         fd = serial.Serial(portname, 9600, stopbits=1, timeout=0.02)
         fd.read(100)
@@ -123,19 +117,11 @@ class Handler():
         if 'port' in kwargs:
             self.portname = kwargs.get('port', None)
 
-        try:
-            self.fd, self.version_string, self.connected = self.connectToPort(self.portname)
-        except serial.SerialException as ex:
-            msg = "failed to reconnect. Check device connections."
-            print(msg)
-            raise RuntimeError(msg)
+        self.fd, self.version_string, self.connected = self.connectToPort(self.portname)
 
     def __del__(self):
         # print('closing port')
-        try:
-            self.fd.close()
-        except:
-            pass
+        self.fd.close()
 
     def __get_ack__(self):
         """
@@ -187,13 +173,8 @@ class Handler():
         reads a byte from the serial port and returns it
         """
         ss = self.fd.read(1)
-        try:
-            if len(ss):
-                return CP.Byte.unpack(ss)[0]
-        except Exception as ex:
-            print('byte communication error.', time.ctime())
-            self.raiseException(ex, "Communication Error , Function : " + inspect.currentframe().f_code.co_name)
-            # sys.exit(1)
+        if len(ss):
+            return CP.Byte.unpack(ss)[0]
 
     def __getInt__(self):
         """
@@ -201,13 +182,8 @@ class Handler():
         returns an integer after combining them
         """
         ss = self.fd.read(2)
-        try:
-            if len(ss) == 2:
-                return CP.ShortInt.unpack(ss)[0]
-        except Exception as ex:
-            print('int communication error.', time.ctime())
-            self.raiseException(ex, "Communication Error , Function : " + inspect.currentframe().f_code.co_name)
-            # sys.exit(1)
+        if len(ss) == 2:
+            return CP.ShortInt.unpack(ss)[0]
 
     def __getLong__(self):
         """
