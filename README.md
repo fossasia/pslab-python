@@ -50,7 +50,7 @@ Now you are ready with the PSLab software on your machine.
 
 ### How to Install on Windows
 
-**Step 1**: Install the latest Python version on your computer and configure `PATH` variable to have both Python installation directory and the Scripts directory to access `pip` tools. In Windows, Python is installed in `C:` drive by default. We can set `$PATH` by opening the **Environment variables** dialog box by following the steps below;
+**Step 1**: Install the latest Python version on your computer and configure `PATH` variable to have both Python installation directory and the Scripts directory to access `pip` tools. In Windows, Python is installed in `C:` drive by default. We can set `$PATH` by opening the **Environment variables** dialog box by following the steps below:
 
 1. [Right click on My Computer] 
 2. Select "Properties"
