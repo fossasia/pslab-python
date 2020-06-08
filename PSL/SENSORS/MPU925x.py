@@ -1,12 +1,12 @@
-from numpy import int16, std
-from PSL.SENSORS.Kalman import KalmanFilter
+# -*- coding: utf-8; mode: python; indent-tabs-mode: t; tab-width:4 -*-
+from Kalman import KalmanFilter
 
 
 def connect(route, **args):
-    return MPU6050(route, **args)
+    return MPU925x(route, **args)
 
 
-class MPU6050():
+class MPU925x():
     '''
     Mandatory members:
     GetRaw : Function called by Graphical apps. Must return values stored in a list
@@ -18,6 +18,7 @@ class MPU6050():
         These calls can be used for one time configuration settings
 
     '''
+    INT_PIN_CFG = 0x37
     GYRO_CONFIG = 0x1B
     ACCEL_CONFIG = 0x1C
     GYRO_SCALING = [131, 65.5, 32.8, 16.4]
@@ -27,6 +28,8 @@ class MPU6050():
     NUMPLOTS = 7
     PLOTNAMES = ['Ax', 'Ay', 'Az', 'Temp', 'Gx', 'Gy', 'Gz']
     ADDRESS = 0x68
+    AK8963_ADDRESS = 0x0C
+    AK8963_CNTL = 0x0A
     name = 'Accel/gyro'
 
     def __init__(self, I2C, **args):
@@ -34,14 +37,14 @@ class MPU6050():
         self.ADDRESS = args.get('address', self.ADDRESS)
         self.name = 'Accel/gyro'
         self.params = {'powerUp': None, 'setGyroRange': [250, 500, 1000, 2000], 'setAccelRange': [2, 4, 8, 16],
-                       'KalmanFilter': {'dataType': 'double', 'min': 0, 'max': 1000, 'prefix': 'value: '}}
+                       'KalmanFilter': [.01, .1, 1, 10, 100, 1000, 10000, 'OFF']}
         self.setGyroRange(2000)
         self.setAccelRange(16)
         self.powerUp()
         self.K = None
 
     def KalmanFilter(self, opt):
-        if opt == 0:
+        if opt == 'OFF':
             self.K = None
             return
         noise = [[]] * self.NUMPLOTS
@@ -55,8 +58,7 @@ class MPU6050():
             self.K[a] = KalmanFilter(1. / opt, sd ** 2)
 
     def getVals(self, addr, numbytes):
-        vals = self.I2C.readBulk(self.ADDRESS, addr, numbytes)
-        return vals
+        return self.I2C.readBulk(self.ADDRESS, addr, numbytes)
 
     def powerUp(self):
         self.I2C.writeBulk(self.ADDRESS, [0x6B, 0])
@@ -71,8 +73,7 @@ class MPU6050():
 
     def getRaw(self):
         '''
-        This method must be defined if you want GUIs to use this class to generate
-        plots on the fly.
+        This method must be defined if you want GUIs to use this class to generate plots on the fly.
         It must return a set of different values read from the sensor. such as X,Y,Z acceleration.
         The length of this list must not change, and must be defined in the variable NUMPLOTS.
 
@@ -100,6 +101,10 @@ class MPU6050():
             return False
 
     def getAccel(self):
+        '''
+        Return a list of 3 values for acceleration vector
+
+        '''
         vals = self.getVals(0x3B, 6)
         ax = int16(vals[0] << 8 | vals[1])
         ay = int16(vals[2] << 8 | vals[3])
@@ -107,16 +112,76 @@ class MPU6050():
         return [ax / 65535., ay / 65535., az / 65535.]
 
     def getTemp(self):
+        '''
+        Return temperature
+        '''
         vals = self.getVals(0x41, 6)
         t = int16(vals[0] << 8 | vals[1])
         return t / 65535.
 
     def getGyro(self):
+        '''
+        Return a list of 3 values for angular velocity vector
+
+        '''
         vals = self.getVals(0x43, 6)
         ax = int16(vals[0] << 8 | vals[1])
         ay = int16(vals[2] << 8 | vals[3])
         az = int16(vals[4] << 8 | vals[5])
         return [ax / 65535., ay / 65535., az / 65535.]
+
+    def getMag(self):
+        '''
+        Return a list of 3 values for magnetic field vector
+
+        '''
+        vals = self.I2C.readBulk(self.AK8963_ADDRESS, 0x03,
+                                 7)  # 6+1 . 1(ST2) should not have bit 4 (0x8) true. It's ideally 16 . overflow bit
+        ax = int16(vals[0] << 8 | vals[1])
+        ay = int16(vals[2] << 8 | vals[3])
+        az = int16(vals[4] << 8 | vals[5])
+        if not vals[6] & 0x08:
+            return [ax / 65535., ay / 65535., az / 65535.]
+        else:
+            return None
+
+    def WhoAmI(self):
+        '''
+        Returns the ID.
+        It is 71 for MPU9250.
+        '''
+        v = self.I2C.readBulk(self.ADDRESS, 0x75, 1)[0]
+        if v not in [0x71, 0x73]: return 'Error %s' % hex(v)
+
+        if v == 0x73:
+            return 'MPU9255 %s' % hex(v)
+        elif v == 0x71:
+            return 'MPU9250 %s' % hex(v)
+
+    def WhoAmI_AK8963(self):
+        '''
+        Returns the ID fo magnetometer AK8963 if found.
+        It should be 0x48.
+        '''
+        self.initMagnetometer()
+        v = self.I2C.readBulk(self.AK8963_ADDRESS, 0, 1)[0]
+        if v == 0x48:
+            return 'AK8963 at %s' % hex(v)
+        else:
+            return 'AK8963 not found. returned :%s' % hex(v)
+
+    def initMagnetometer(self):
+        '''
+        For MPU925x with integrated magnetometer.
+        It's called a 10 DoF sensor, but technically speaking ,
+        the 3-axis Accel , 3-Axis Gyro, temperature sensor are integrated in one IC, and the 3-axis magnetometer is implemented in a
+        separate IC which can be accessed via an I2C passthrough.
+        Therefore , in order to detect the magnetometer via an I2C scan, the passthrough must first be enabled on IC#1 (Accel,gyro,temp)
+        '''
+        self.I2C.writeBulk(self.ADDRESS, [self.INT_PIN_CFG, 0x22])  # I2C passthrough
+        self.I2C.writeBulk(self.AK8963_ADDRESS, [self.AK8963_CNTL, 0])  # power down mag
+        self.I2C.writeBulk(self.AK8963_ADDRESS,
+                           [self.AK8963_CNTL, (1 << 4) | 6])  # mode   (0=14bits,1=16bits) <<4 | (2=8Hz , 6=100Hz)
 
 
 if __name__ == "__main__":
