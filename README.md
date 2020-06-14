@@ -88,11 +88,11 @@ To set up the development environment, install the packages mentioned in depende
 
 First install sphinx by running following command
 
-    sudo pip install -U Sphinx
+    pip install -U Sphinx
 
 Then go to pslab/docs and run the following command
 
-    $ sudo make html
+    $ make html
 
 ## License
 
