@@ -257,34 +257,39 @@ class Handler:
                 unpacker = self._get_integer_type(size)
                 retval = unpacker.unpack(received)[0]
             else:
-                retval = int.from_bytes(bytes=received, byteorder="little", signed=False)
+                retval = int.from_bytes(
+                    bytes=received, byteorder="little", signed=False
+                )
         else:
             logger.error(f"Requested {size} bytes, got {len(received)}.")
             retval = -1  # raise an exception instead?
 
         return retval
 
-    def wait_for_data(self, timeout: float = 0.2) -> bool:
-        """Wait for :timeout: seconds or until there is data in the input buffer.
+    def wait_for_data(self, numbytes: int = 1, timeout: float = 0.2) -> int:
+        """Wait for :timeout: seconds or until there is enough data in the input buffer.
 
         Parameters
         ----------
+        numbytes : int, optional
+            Wait until the input buffer contains at least this many bytes.
+            The default is 1.
         timeout : float, optional
             Time in seconds to wait. The default is 0.2.
 
         Returns
         -------
-        bool
-            True iff the input buffer is not empty.
+        int
+            Number of bytes in the input buffer.
         """
         start_time = time.time()
 
         while time.time() - start_time < timeout:
-            if self.interface.in_waiting:
-                return True
+            if self.interface.in_waiting >= numbytes:
+                break
             time.sleep(0.02)
 
-        return False
+        return self.interface.in_waiting
 
     def send_burst(self) -> List[int]:
         """Transmit the commands stored in the burst_buffer.
@@ -314,3 +319,118 @@ class Handler:
         self.input_queue_size = 0
 
         return list(acks)
+
+    def read_flash(self, page, location):
+        """
+		Reads 16 bytes from the specified location
+
+		.. tabularcolumns:: |p{3cm}|p{11cm}|
+
+		================    ============================================================================================
+		**Arguments**
+		================    ============================================================================================
+		page                page number. 20 pages with 2KBytes each
+		location            The flash location(0 to 63) to read from .
+		================    ============================================================================================
+
+		:return: a string of 16 characters read from the location
+		"""
+        self.send(CP.FLASH)
+        self.send(CP.READ_FLASH)
+        self.send(page)  # send the page number. 20 pages with 2K bytes each
+        self.send(location)  # send the location
+        ss = self.interface.read(16)
+        self.get_ack()
+        return ss
+
+    def read_bulk_flash(self, page, numbytes):
+        """
+		Reads :numbytes: from the specified location
+
+		.. tabularcolumns:: |p{3cm}|p{11cm}|
+
+		================    ============================================================================================
+		**Arguments**
+		================    ============================================================================================
+		page                Block number. 0-20. each block is 2kB.
+		numbytes            Total bytes to read
+		================    ============================================================================================
+
+		:return: :numbytes: bytes read from the location
+		"""
+        self.send(CP.FLASH)
+        self.send(CP.READ_BULK_FLASH)
+        bytes_to_read = (
+            numbytes + numbytes % 2
+        )  # Stuff is stored as integers (byte+byte) in the hardware.
+        self.send(bytes_to_read, size=2)
+        self.send(page)
+        ss = self.interface.read(bytes_to_read)
+        self.get_ack()
+        logger.info(f"Read {bytes_to_read} bytes from page {page}: {list(ss)}")
+        return ss[
+            :numbytes
+        ]  # Kill the extra character we read. Don't surprise the user with extra data
+
+    def write_flash(self, page: int, location: int, string_to_write: str):
+        """
+		write a 16 BYTE string to the selected location (0-63)
+
+		DO NOT USE THIS UNLESS YOU'RE ABSOLUTELY SURE KNOW THIS!
+		YOU MAY END UP OVERWRITING THE CALIBRATION DATA, AND WILL HAVE
+		TO GO THROUGH THE TROUBLE OF GETTING IT FROM THE MANUFACTURER AND
+		REFLASHING IT.
+
+		.. tabularcolumns:: |p{3cm}|p{11cm}|
+
+		================    ============================================================================================
+		**Arguments**
+		================    ============================================================================================
+		page                page number. 20 pages with 2KBytes each
+		location            The flash location(0 to 63) to write to.
+		string_to_write     a string of 16 characters can be written to each location
+		================    ============================================================================================
+
+		"""
+        string_to_write += "." * (16 - len(string_to_write))
+        self.send(CP.FLASH)
+        self.send(CP.WRITE_FLASH)
+        self.send(page)
+        self.send(location)
+        self.interface.write(string_to_write)
+        self.wait_for_data()
+        self.get_ack()
+
+    def write_bulk_flash(self, page: int, data: Union[bytes, str]):
+        """
+		write a byte array to the entire flash page. Erases any other data
+
+		DO NOT USE THIS UNLESS YOU'RE ABSOLUTELY SURE YOU KNOW THIS!
+		YOU MAY END UP OVERWRITING THE CALIBRATION DATA, AND WILL HAVE
+		TO GO THROUGH THE TROUBLE OF GETTING IT FROM THE MANUFACTURER AND
+		REFLASHING IT.
+
+		.. tabularcolumns:: |p{3cm}|p{11cm}|
+
+		================    ============================================================================================
+		**Arguments**
+		================    ============================================================================================
+		location            Block number. 0-20. each block is 2kB.
+		data                Array to dump onto flash. Max size 2048 bytes
+		================    ============================================================================================
+
+		"""
+        if isinstance(data, str):
+            data = data.encode("utf-8")
+
+        data += b"\x00" * (len(data) % 2)
+        logger.info(f"Writing {len(data)} bytes to page {page}: {list(data)}")
+        self.send(CP.FLASH)
+        self.send(CP.WRITE_BULK_FLASH)
+        self.send(len(data), size=2)
+        self.send(page)
+        self.interface.write(data)
+        self.get_ack()
+
+        if self.read_bulk_flash(page, len(data)) != data:
+            raise RuntimeError("Verification by readback failed")
