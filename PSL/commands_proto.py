@@ -1,4 +1,5 @@
-import math, sys, time, struct
+import struct
+
 
 # allows to pack numeric values into byte strings
 Byte = struct.Struct("B")  # size 1
@@ -252,34 +253,6 @@ TEN_BIT = Byte.pack(10)
 TWELVE_BIT = Byte.pack(12)
 
 
-def applySIPrefix(value, unit='', precision=2):
-    neg = False
-    if value < 0.:
-        value *= -1
-        neg = True
-    elif value == 0.:
-        return '0 '  # mantissa & exponnt both 0
-    exponent = int(math.log10(value))
-    if exponent > 0:
-        exponent = (exponent // 3) * 3
-    else:
-        exponent = (-1 * exponent + 3) // 3 * (-3)
-
-    value *= (10 ** (-exponent))
-    if value >= 1000.:
-        value /= 1000.0
-        exponent += 3
-    if neg:
-        value *= -1
-    exponent = int(exponent)
-    PREFIXES = "yzafpnum kMGTPEZY"
-    prefix_levels = (len(PREFIXES) - 1) // 2
-    si_level = exponent // 3
-    if abs(si_level) > prefix_levels:
-        raise ValueError("Exponent out range of available prefixes.")
-    return '%.*f %s%s' % (precision, value, PREFIXES[si_level + prefix_levels], unit)
-
-
 '''
 def reverse_bits(x):
 	return int('{:08b}'.format(x)[::-1], 2)
@@ -311,5 +284,5 @@ def getLx(f1,f2,f3,Ccal):
 	b=(f1/f2)**2
 	c=(2*math.pi*f1)**2
 	return (a-1)*(b-1)/(Ccal*c)
-	
+
 '''
