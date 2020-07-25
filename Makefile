@@ -32,4 +32,4 @@ clean:
 install:
 	python3 setup.py install
 	mkdir -p $(DESTDIR)/lib/udev/rules.d
-	install -m 644 99-pslab.rules $(DESTDIR)/lib/udev/rules.d/99-pslab
+	install -m 644 99-pslab.rules $(DESTDIR)/lib/udev/rules.d/99-pslab.rules
