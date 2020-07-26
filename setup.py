@@ -79,7 +79,7 @@ setup(
     author_email="pslab-fossasia@googlegroups.com",
     url="https://pslab.io/",
     install_requires=["numpy>=1.16.3."],
-    packages=find_packages(),
+    packages=find_packages(exclude=("tests",)),
     package_data={
         "": [
             "*.css",
