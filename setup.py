@@ -16,7 +16,7 @@ def udev_reload_rules():
 
 
 def udev_trigger():
-    call(
+    call(  # nosec
         [
             "udevadm",
             "trigger",
