@@ -1,12 +1,13 @@
-#!/usr/bin/env python
-from __future__ import print_function
-
-import os
-import shutil
+from distutils.cmd import Command
 from distutils.util import execute
+import os
+import platform
+import shutil
 from subprocess import call
+import warnings
 
 from setuptools import setup, find_packages
+from setuptools.command.develop import develop
 from setuptools.command.install import install
 
 
@@ -15,20 +16,21 @@ def udev_reload_rules():
 
 
 def udev_trigger():
-    call(["udevadm", "trigger", "--subsystem-match=usb", "--attr-match=idVendor=04d8", "--action=add"])
+    call(
+        [
+            "udevadm",
+            "trigger",
+            "--subsystem-match=usb",
+            "--attr-match=idVendor=04d8",
+            "--action=add",
+        ]
+    )
 
 
-def install_udev_rules(raise_exception):
-    if check_root():
-        shutil.copy('99-pslab.rules', '/etc/udev/rules.d')
-        execute(udev_reload_rules, [], "Reloading udev rules")
-        execute(udev_trigger, [], "Triggering udev rules")
-    else:
-        msg = "You must have root privileges to install udev rules. Run 'sudo python setup.py install'"
-        if raise_exception:
-            raise OSError(msg)
-        else:
-            print(msg)
+def install_udev_rules():
+    shutil.copy("99-pslab.rules", "/lib/udev/rules.d")
+    execute(udev_reload_rules, [], "Reloading udev rules")
+    execute(udev_trigger, [], "Triggering udev rules")
 
 
 def check_root():
@@ -37,22 +39,65 @@ def check_root():
 
 class CustomInstall(install):
     def run(self):
-        if not hasattr(self, "root"):
-            install_udev_rules(True)
-        elif self.root is not None:
-            if 'debian' not in self.root:
-                install_udev_rules(True)
         install.run(self)
+        self.run_command("udev")
 
 
-setup(name='PSL',
-      version='1.1.0',
-      description='Pocket Science Lab by FOSSASIA',
-      author='FOSSASIA PSLab Developers',
-      author_email='pslab-fossasia@googlegroups.com',
-      url='https://pslab.io/',
-      install_requires=['numpy>=1.16.3.', 'pyqtgraph>=0.9.10'],
-      packages=find_packages(),
-      package_data={'': ['*.css', '*.png', '*.gif', '*.html', '*.css', '*.js', '*.png', '*.jpg', '*.jpeg', '*.htm',
-                         '99-pslab.rules']},
-      cmdclass={'install': CustomInstall})
+class CustomDevelop(develop):
+    def run(self):
+        develop.run(self)
+        try:
+            self.run_command("udev")
+        except OSError as e:
+            warnings.warn(e)
+
+
+class InstallUdevRules(Command):
+    description = "install udev rules (requires root privileges)."
+    user_options = []
+
+    def initialize_options(self):
+        pass
+
+    def finalize_options(self):
+        pass
+
+    def run(self):
+        if platform.system() == "Linux":
+            if check_root():
+                install_udev_rules()
+            else:
+                msg = "You must have root privileges to install udev rules."
+                raise OSError(msg)
+
+
+setup(
+    name="PSL",
+    version="1.1.0",
+    description="Pocket Science Lab by FOSSASIA",
+    author="FOSSASIA PSLab Developers",
+    author_email="pslab-fossasia@googlegroups.com",
+    url="https://pslab.io/",
+    install_requires=["numpy>=1.16.3."],
+    packages=find_packages(),
+    package_data={
+        "": [
+            "*.css",
+            "*.png",
+            "*.gif",
+            "*.html",
+            "*.css",
+            "*.js",
+            "*.png",
+            "*.jpg",
+            "*.jpeg",
+            "*.htm",
+            "99-pslab.rules",
+        ]
+    },
+    cmdclass={
+        "develop": CustomDevelop,
+        "install": CustomInstall,
+        "udev": InstallUdevRules,
+    },
+)
