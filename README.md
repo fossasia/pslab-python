@@ -24,30 +24,63 @@ This repository hosts the python library for communicating with the Pocket Scien
 
 To install PSLab on Debian based GNU/Linux system, the following dependencies must be installed.
 
-### Dependencies
-
-* Python 3.4 or higher [Link to Official download page](https://www.python.org/downloads/windows/)
+### Prerequisites & Dependencies
+* Python 3.4 or higher [Link to Official download page](https://www.python.org/downloads/)
 * Pip &nbsp; **Support package installer**
 * NumPy &nbsp; **For numerical calculations**
 * PySerial &nbsp; **For device connection**
 * iPython-qtconsole &nbsp; **_Optional_**
+* [Git](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git) 
 
 **Note**: If you are only interested in using PSLab as an acquisition device without a display/GUI, only one repository  [pslab-python](https://github.com/fossasia/pslab-python) needs to be installed. If you like a GUI, install the [pslab-desktop app](https://github.com/fossasia/pslab-desktop) and follow the instructions of the Readme in that repo.
 
 ### How To Install on Linux
 
-cd into the directories
+Clone [pslab-python](https://github.com/fossasia/pslab-python) repository 
+
+    $ git clone <REPO>
+
+Go into **pslab-python** directory
 
     $ cd <SOURCE_DIR>
 
-and run the following
+And run the following
 
     $ sudo make clean
     $ sudo make
     $ sudo make install
 
-Now you are ready with the PSLab software on your machine.
+Now you connect PSLab device to your machine, to check whether device is detected, run `$ ls -l /dev/ttyACMx`: x is 0 for the first device. 
 
+Start python command-line interface and begin to program your PSLab
+
+    $ python3
+    
+### How to Install on Mac
+
+Make sure you have all the Dependencies installed. Then open Terminal on your Mac. 
+
+Clone [pslab-python](https://github.com/fossasia/pslab-python) repository 
+
+    $ git clone <REPO>
+
+Go into **pslab-python** directory
+
+    $ cd <SOURCE_DIR>
+
+And run the following
+
+    $ sudo make clean
+    $ sudo python3 setup.py build
+    $ sudo make install
+
+Now you connect PSLab device to your machine, to check whether device is detected, run `ls -l /dev/tty.usbserial-*`
+
+Start python command-line interface and begin to program your PSLab
+
+    $ python3
+
+    
 ### How to Install on Windows
 
 **Step 1**: Install the latest Python version on your computer and configure `PATH` variable to have both Python installation directory and the Scripts directory to access `pip` tools. In Windows, Python is installed in `C:` drive by default. We can set `$PATH` by opening the **Environment variables** dialog box by following the steps below:
