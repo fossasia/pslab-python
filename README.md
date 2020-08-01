@@ -26,7 +26,7 @@ To install PSLab on Debian based GNU/Linux system, the following dependencies mu
 
 ### Dependencies
 
-* Python 3.4 or higher [Link to Official download page](https://www.python.org/downloads/windows/)
+* Python 3.6 or higher [Link to Official download page](https://www.python.org/downloads/windows/)
 * Pip &nbsp; **Support package installer**
 * NumPy &nbsp; **For numerical calculations**
 * PySerial &nbsp; **For device connection**
@@ -36,17 +36,11 @@ To install PSLab on Debian based GNU/Linux system, the following dependencies mu
 
 ### How To Install on Linux
 
-cd into the directories
+As root (or with sudo):
 
-    $ cd <SOURCE_DIR>
+    # pip install git+https://github.com/fossasia/pslab-python@master
 
-and run the following
-
-    $ sudo make clean
-    $ sudo make
-    $ sudo make install
-
-Now you are ready with the PSLab software on your machine.
+Done!
 
 ### How to Install on Windows
 
