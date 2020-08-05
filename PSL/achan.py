@@ -190,12 +190,7 @@ class AnalogAcquisitionHandler:
         self._trigger_channel = "CH1"
         self.data_splitting = CP.DATA_SPLITTING
 
-    def capture(
-            self,
-            channels: int,
-            samples: int,
-            timegap: float,
-        ) -> np.ndarray:
+    def capture(self, channels: int, samples: int, timegap: float,) -> np.ndarray:
         """Blocking call that fetches an oscilloscope trace from the specified input channels.
 
         Parameters
@@ -253,12 +248,7 @@ class AnalogAcquisitionHandler:
 
         return xy
 
-    def capture_nonblocking(
-            self,
-            channels: int,
-            samples: int,
-            timegap: float
-        ):
+    def capture_nonblocking(self, channels: int, samples: int, timegap: float):
         """Tell the pslab to start sampling the specified input channels.
 
         This method is identical to :meth:`capture <PSL.achan.AnalogAcquisitionHandler.capture>`,
@@ -484,4 +474,3 @@ class AnalogAcquisitionHandler:
         else:
             e = f"Invalid range: {voltage_range}. Valid ranges are {ranges}."
             raise ValueError(e)
-
