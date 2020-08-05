@@ -82,7 +82,7 @@ class ScienceLab():
         self.errmsg = ''
         # --------------------------Initialize communication handler, and subclasses-----------------
         self.H = packet_handler.Handler(**kwargs)
-        self.oscilloscope = Oscilloscope(connection=self.H)
+        self.oscilloscope = Oscilloscope(device=self.H)
         self.__runInitSequence__(**kwargs)
 
     def __runInitSequence__(self, **kwargs):
@@ -181,34 +181,26 @@ class ScienceLab():
         self.H.reconnect(**kwargs)
         self.__runInitSequence__(**kwargs)
 
-    def __calcCHOSA__(self, name):
-        name = name.upper()
-        source = self.analogInputSources[name]
-
-        if name not in self.allAnalogChannels:
-            self.__print__('not a valid channel name. selecting CH1')
-            return self.__calcCHOSA__('CH1')
-
-        return source.CHOSA
-
     def get_voltage(self, channel_name, **kwargs):
         self.voltmeter_autorange(channel_name)
         return self.get_average_voltage(channel_name, **kwargs)
 
     def voltmeter_autorange(self, channel_name):
-        if self.analogInputSources[channel_name].gainPGA == None: return None
-        self.set_gain(channel_name, 0)
+        try:
+            self.oscilloscope.channels[channel_name].gain = 1
+        except TypeError:  # channel_name is not CH1 or CH2.
+            return 1
         V = self.get_average_voltage(channel_name)
         return self.__autoSelectRange__(channel_name, V)
 
     def __autoSelectRange__(self, channel_name, V):
         keys = [8, 4, 3, 2, 1.5, 1, .5, 0]
-        cutoffs = {8: 0, 4: 1, 3: 2, 2: 3, 1.5: 4, 1.: 5, .5: 6, 0: 7}
+        cutoffs = {8: 1, 4: 2, 3: 4, 2: 5, 1.5: 8, 1.: 10, .5: 16, 0: 32}
         for a in keys:
             if abs(V) > a:
                 g = cutoffs[a]
                 break
-        self.set_gain(channel_name, g)
+        self.oscilloscope.channels[channel_name].gain = g
         return g
 
     def __autoRangeScope__(self, tg):
@@ -241,10 +233,11 @@ class ScienceLab():
 		1.002
 
 		"""
-        poly = self.analogInputSources[channel_name].calPoly12
+        self.oscilloscope.channels[channel_name].resolution = 12
+        scale = self.oscilloscope.channels[channel_name].scale
         vals = [self.__get_raw_average_voltage__(channel_name, **kwargs) for a in range(int(kwargs.get('samples', 1)))]
         # if vals[0]>2052:print (vals)
-        val = np.average([poly(a) for a in vals])
+        val = np.average([scale(a) for a in vals])
         return val
 
     def __get_raw_average_voltage__(self, channel_name, **kwargs):
@@ -261,7 +254,7 @@ class ScienceLab():
 		==============  ============================================================================================================
 
 		"""
-        chosa = self.__calcCHOSA__(channel_name)
+        chosa = self.oscilloscope.channels[channel_name].chosa
         self.H.__sendByte__(CP.ADC)
         self.H.__sendByte__(CP.GET_VOLTAGE_SUMMED)
         self.H.__sendByte__(chosa)
@@ -316,10 +309,11 @@ class ScienceLab():
 		==============  ============================================================================================
 
 		"""
+        chosa = self.oscilloscope.channels[channel].chosa
         if (self.streaming): self.stop_streaming()
         self.H.__sendByte__(CP.ADC)
         self.H.__sendByte__(CP.START_ADC_STREAMING)
-        self.H.__sendByte__(self.__calcCHOSA__(channel))
+        self.H.__sendByte__(chosa)
         self.H.__sendInt__(tg)  # Timegap between samples.  8MHz timer clock
         self.streaming = True
 
@@ -2783,19 +2777,20 @@ class ScienceLab():
         samples = 3694
         res = kwargs.get('resolution', 10)
         tweak = kwargs.get('tweak', 1)
+        chosa = self.oscilloscope.channels[channel].chosa
 
         self.H.__sendByte__(CP.NONSTANDARD_IO)
         self.H.__sendByte__(CP.TCD1304_HEADER)
         if res == 10:
-            self.H.__sendByte__(self.__calcCHOSA__(channel))  # 10-bit
+            self.oscilloscope.channels[channel].resolution = 10
+            self.H.__sendByte__(chosa)  # 10-bit
         else:
-            self.H.__sendByte__(self.__calcCHOSA__(channel) | 0x80)  # 12-bit
+            self.oscilloscope.channels[channel].resolution = 12
+            self.H.__sendByte__(chosa | 0x80)  # 12-bit
         self.H.__sendByte__(tweak)  # Tweak the SH low to ICG high space. =tweak*delay
         self.H.__sendInt__(delay)
         self.H.__sendInt__(int(SS * 64))
         self.timebase = SS
-        self.achans[0].set_params(channel=0, length=samples, timebase=self.timebase,
-                                  resolution=12 if res != 10 else 10, source=self.analogInputSources[channel])
         self.samples = samples
         self.channels_in_buffer = 1
         time.sleep(2 * delay * 1e-6)
