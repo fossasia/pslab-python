@@ -45,9 +45,9 @@ class AnalogInput:
     """
     """
 
-    def __init__(self, name: str, connection: packet_handler.Handler):
+    def __init__(self, name: str, device: packet_handler.Handler):
         self.name = name  # The generic name of the input. like 'CH1', 'IN1' etc.
-        self.connection = connection
+        self.device = device
 
         if self.name == "CH1":
             self.programmable_gain_amplifier = 1
@@ -58,7 +58,7 @@ class AnalogInput:
 
         self._gain = 1
         self._resolution = 2 ** 10 - 1
-        self.buffer = None
+        self.buffer_idx = None
         self._scale = np.poly1d(0)
         self._unscale = np.poly1d(0)
         self.chosa = PIC_ADC_MULTIPLEX[self.name]
@@ -95,11 +95,11 @@ class AnalogInput:
             value = 1  # External attenuator mode. Set gain 1x.
 
         gain_idx = GAIN_VALUES.index(value)
-        self.connection.send_byte(CP.ADC)
-        self.connection.send_byte(CP.SET_PGA_GAIN)
-        self.connection.send_byte(self.programmable_gain_amplifier)
-        self.connection.send_byte(gain_idx)
-        self.connection.get_ack()
+        self.device.send_byte(CP.ADC)
+        self.device.send_byte(CP.SET_PGA_GAIN)
+        self.device.send_byte(self.programmable_gain_amplifier)
+        self.device.send_byte(gain_idx)
+        self.device.get_ack()
         self._gain = value
         self._calibrate()
 
