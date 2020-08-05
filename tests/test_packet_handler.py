@@ -92,46 +92,46 @@ class TestHandler(unittest.TestCase):
 
     def test_send_bytes(self):
         H = Handler()
-        H.send(CP.Byte.pack(0xFF))
+        H._send(CP.Byte.pack(0xFF))
         self.mock_Serial().write.assert_called_with(CP.Byte.pack(0xFF))
 
     def test_send_byte(self):
         H = Handler()
-        H.send(0xFF)
+        H._send(0xFF)
         self.mock_Serial().write.assert_called_with(CP.Byte.pack(0xFF))
 
     def test_send_byte_burst_mode(self):
         H = Handler()
         H.load_burst = True
-        H.send(0xFF)
+        H._send(0xFF)
         self.assertEqual(H.burst_buffer, CP.Byte.pack(0xFF))
 
     def test_send_int(self):
         H = Handler()
-        H.send(0xFFFF)
+        H._send(0xFFFF)
         self.mock_Serial().write.assert_called_with(CP.ShortInt.pack(0xFFFF))
 
     def test_send_int_burst_mode(self):
         H = Handler()
         H.load_burst = True
-        H.send(0xFFFF)
+        H._send(0xFFFF)
         self.assertEqual(H.burst_buffer, CP.ShortInt.pack(0xFFFF))
 
     def test_send_long(self):
         H = Handler()
-        H.send(0xFFFFFFFF)
+        H._send(0xFFFFFFFF)
         self.mock_Serial().write.assert_called_with(CP.Integer.pack(0xFFFFFFFF))
 
     def test_send_long_burst_mode(self):
         H = Handler()
         H.load_burst = True
-        H.send(0xFFFFFFFF)
+        H._send(0xFFFFFFFF)
         self.assertEqual(H.burst_buffer, CP.Integer.pack(0xFFFFFFFF))
 
     def test_receive(self):
         H = Handler()
         self.mock_Serial().read.return_value = CP.Byte.pack(0xFF)
-        r = H.receive(1)
+        r = H._receive(1)
         self.mock_Serial().read.assert_called_with(1)
         self.assertEqual(r, 0xFF)
 
@@ -140,14 +140,14 @@ class TestHandler(unittest.TestCase):
         self.mock_Serial().read.return_value = int.to_bytes(
             0xFFFFFF, length=3, byteorder="little", signed=False
         )
-        r = H.receive(3)
+        r = H._receive(3)
         self.mock_Serial().read.assert_called_with(3)
         self.assertEqual(r, 0xFFFFFF)
 
     def test_receive_failure(self):
         H = Handler()
         self.mock_Serial().read.return_value = b""
-        r = H.receive(1)
+        r = H._receive(1)
         self.mock_Serial().read.assert_called_with(1)
         self.assertEqual(r, -1)
 
@@ -165,7 +165,7 @@ class TestHandler(unittest.TestCase):
         H.load_burst = True
 
         for b in b"abc":
-            H.send(b)
+            H._send(b)
             H.get_ack()
 
         self.mock_Serial().read.return_value = b"\x01\x01\x01"
