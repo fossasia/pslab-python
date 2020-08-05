@@ -32,12 +32,7 @@ class Handler:
 
     Parameters
     ----------
-        port : str, optional
-            See :meth:`connect. <PSL.packet_handler.Handler.connect>`.
-        baudrate : int, optional
-            See :meth:`connect. <PSL.packet_handler.Handler.connect>`.
-        timeout : float, optional
-            See :meth:`connect. <PSL.packet_handler.Handler.connect>`.
+    See :meth:`connect. <PSL.packet_handler.Handler.connect>`.
     """
 
     def __init__(
@@ -53,17 +48,22 @@ class Handler:
         self.version = ""
         self.interface = serial.Serial()
         self.connect(port=port, baudrate=baudrate, timeout=timeout)
+        self.send_byte = partial(self._send, size=1)
+        self.send_int = partial(self._send, size=2)
+        self.get_byte = partial(self._receive, size=1)
+        self.get_int = partial(self._receive, size=2)
+        self.get_long = partial(self._receive, size=4)
 
         # Backwards compatibility
         self.fd = self.interface
         self.occupiedPorts = set()
         self.connected = self.interface.is_open
-        self.__sendByte__ = partial(self.send, size=1)
-        self.__sendInt__ = partial(self.send, size=2)
+        self.__sendByte__ = partial(self._send, size=1)
+        self.__sendInt__ = partial(self._send, size=2)
         self.__get_ack__ = self.get_ack
-        self.__getByte__ = partial(self.receive, size=1)
-        self.__getInt__ = partial(self.receive, size=2)
-        self.__getLong__ = partial(self.receive, size=4)
+        self.__getByte__ = partial(self._receive, size=1)
+        self.__getInt__ = partial(self._receive, size=2)
+        self.__getLong__ = partial(self._receive, size=4)
         self.WaitForData = self.wait_for_data
         self.SendBurst = self.send_burst
         self.portname = self.interface.name
@@ -139,12 +139,7 @@ class Handler:
 
         Parameters
         ----------
-        port : str, optional
-            See :meth:`connect. <PSL.packet_handler.Handler.connect>`.
-        baudrate : int, optional
-            See :meth:`connect. <PSL.packet_handler.Handler.connect>`.
-        timeout : float, optional
-            See :meth:`connect. <PSL.packet_handler.Handler.connect>`.
+        See :meth:`connect. <PSL.packet_handler.Handler.connect>`.
         """
         self.disconnect()
 
@@ -210,7 +205,7 @@ class Handler:
         else:
             raise ValueError("size must be 1, 2, or 4.")
 
-    def send(self, value: Union[bytes, int], size: int = None):
+    def _send(self, value: Union[bytes, int], size: int = None):
         """Send a value to the PSLab.
 
         Optionally handles conversion from int to bytes.
@@ -237,7 +232,7 @@ class Handler:
             self.interface.write(packet)
         # return self.get_ack?
 
-    def receive(self, size: int) -> int:
+    def _receive(self, size: int) -> int:
         """Read and unpack the specified number of bytes from the serial port.
 
         Parameters
