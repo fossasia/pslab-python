@@ -9,8 +9,8 @@ import time
 
 import PSL.commands_proto as CP
 import PSL.packet_handler as packet_handler
-from PSL import achan
 from PSL.digital_channel import *
+from PSL.oscilloscope import Oscilloscope
 
 
 def connect(**kwargs):
@@ -82,7 +82,7 @@ class ScienceLab():
         self.errmsg = ''
         # --------------------------Initialize communication handler, and subclasses-----------------
         self.H = packet_handler.Handler(**kwargs)
-        self.analog_handler = achan.AnalogAcquisitionHandler(connection=self.H)
+        self.oscilloscope = Oscilloscope(connection=self.H)
         self.__runInitSequence__(**kwargs)
 
     def __runInitSequence__(self, **kwargs):
@@ -112,7 +112,7 @@ class ScienceLab():
         self.hexid = ''
         if self.H.connected:
             for a in ['CH1', 'CH2']:
-                self.analog_handler.channels[a].gain = 1
+                self.oscilloscope.channels[a].gain = 1
             for a in ['W1', 'W2']: self.load_equation(a, 'sine')
             self.SPI.set_parameters(1, 7, 1, 0)
             self.hexid = hex(self.device_id())
@@ -212,7 +212,7 @@ class ScienceLab():
         return g
 
     def __autoRangeScope__(self, tg):
-        x, y1, y2 = self.analog_channels.capture(2, 1000, tg)
+        x, y1, y2 = self.oscilloscope.capture(2, 1000, tg)
         self.__autoSelectRange__('CH1', max(abs(y1)))
         self.__autoSelectRange__('CH2', max(abs(y2)))
 
