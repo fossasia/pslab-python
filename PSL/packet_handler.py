@@ -3,9 +3,9 @@
 Example
 -------
 >>> from PSL.packet_handler import Handler
->>> H = Handler()
->>> version = H.get_version()
->>> H.disconnect()
+>>> device = Handler()
+>>> version = device.get_version()
+>>> device.disconnect()
 """
 from functools import partial
 import logging
@@ -302,7 +302,8 @@ class Handler:
         Returns
         -------
         list
-            List of response codes (see :meth:`get_ack <PSL.packet_handler.Handler.get_ack>`). # noqa E501
+            List of response codes
+            (see :meth:`get_ack <PSL.packet_handler.Handler.get_ack>`).
         """
         self.interface.write(self.burst_buffer)
         self.burst_buffer = b""

@@ -1,3 +1,12 @@
+"""Classes and functions related to the PSLab's oscilloscope instrument.
+
+Example
+-------
+>>> from PSL.oscilloscope import Oscilloscope
+>>> scope = Oscilloscope()
+>>> x, y1, y2, y3, y4 = scope.capture(channels=4, samples=1600, timegap=2)
+"""
+
 import time
 from typing import Tuple, Union
 
@@ -15,19 +24,21 @@ class Oscilloscope:
     MAX_SAMPLES = 10000
     CH234 = ["CH2", "CH3", "MIC"]
 
-    def __init__(self, connection: packet_handler.Handler = None):
-        self.connection = packet_handler.Handler() if connection is None else connection
+    def __init__(self, device: packet_handler.Handler = None):
+        self.device = packet_handler.Handler() if device is None else device
         self.channels = {
-            a: achan.AnalogInput(a, self.connection) for a in achan.ANALOG_CHANNELS
+            a: achan.AnalogInput(a, self.device) for a in achan.ANALOG_CHANNELS
         }
         self.channel_one_map = "CH1"
         self._trigger_voltage = 0
-        self.trigger_enabled = False
+        self._trigger_enabled = False
         self._trigger_channel = "CH1"
         self.data_splitting = CP.DATA_SPLITTING
 
     def capture(self, channels: int, samples: int, timegap: float,) -> np.ndarray:
-        """Blocking call that fetches an oscilloscope trace from the specified input channels.
+        """Capture an oscilloscope trace from the specified input channels.
+
+        This is a blocking call.
 
         Parameters
         ----------
@@ -68,28 +79,29 @@ class Oscilloscope:
             :channel_one_map: is not one of CH1, CH2, CH3, MIC, CAP, SEN, AN8, or
             :timegap: is too low.
         """
-        self.capture_nonblocking(channels, samples, timegap)
+        xy = np.zeros([channels + 1, samples])
+        xy[0] = self.capture_nonblocking(channels, samples, timegap)
         time.sleep(1e-6 * samples * timegap + 0.01)
 
         while not self.progress()[0]:
             pass
 
-        xy = np.zeros([channels + 1, samples])
-        xy[0] = timegap * np.arange(samples)
-        active_channels = [
-            self.channels[k] for k in ([self.channel_one_map] + self.CH234)[:channels]
-        ]
+        active_channels = ([self.channel_one_map] + self.CH234)[:channels]
         for e, c in enumerate(active_channels):
-            xy[e + 1] = c.scale(self.fetch_data(c.buffer, samples))
+            xy[e + 1] = self.fetch_data(c, samples)
 
         return xy
 
-    def capture_nonblocking(self, channels: int, samples: int, timegap: float):
+    def capture_nonblocking(
+        self, channels: int, samples: int, timegap: float
+    ) -> np.ndarray:
         """Tell the pslab to start sampling the specified input channels.
 
-        This method is identical to :meth:`capture <PSL.oscilloscope.Oscilloscope.capture>`,
+        This method is identical to
+        :meth:`capture <PSL.oscilloscope.Oscilloscope.capture>`,
         except it does not block while the samples are being captured. Collected
-        samples must be manually fetched by calling :meth:`fetch_data <PSL.oscilloscope.Oscilloscope.fetch_data>`.
+        samples must be manually fetched by calling
+        :meth:`fetch_data<PSL.oscilloscope.Oscilloscope.fetch_data>`.
 
         Parameters
         ----------
@@ -97,12 +109,18 @@ class Oscilloscope:
 
         Example
         -------
+        >>> import time
         >>> import numpy as np
         >>> from PSL.oscilloscope import Oscilloscope
         >>> scope = Oscilloscope()
-        >>> scope.capture_nonblocking(1, 3200, 1)
-        >>> x = 1 * np.arange(3200)
+        >>> x = scope.capture_nonblocking(1, 3200, 1)
+        >>> time.sleep(3200 * 1e-6)
         >>> y = scope.fetch_data(0, 3200)
+
+        Returns
+        -------
+        numpy.ndarray
+            One-dimensional array of timestamps.
 
         Raises
         ------
@@ -111,6 +129,7 @@ class Oscilloscope:
         self._check_args(channels, samples, timegap)
         timegap = int(timegap * 8) / 8
         self._capture(channels, samples, timegap)
+        return timegap * np.arange(samples)
 
     def _check_args(self, channels: int, samples: int, timegap: float):
         if channels not in (1, 2, 4):
@@ -135,45 +154,41 @@ class Oscilloscope:
         chosa = self.channels[self.channel_one_map].chosa
         self.channels[self.channel_one_map].buffer = 0
         self.channels[self.channel_one_map].resolution = 10
-        self.connection.send_byte(CP.ADC)
+        self.device.send_byte(CP.ADC)
 
         CH123SA = 0  # TODO what is this?
         chosa = self.channels[self.channel_one_map].chosa
+        self.channels[self.channel_one_map].buffer_idx = 0
         if channels == 1:
             if self.trigger_enabled:
-                self.channels[self.channel_one_map].resolution = 12
-                # Rescale trigger voltage for 12-bit resolution.
-                self.configure_trigger(
-                    self.channels[self.channel_one_map], self.trigger_voltage
-                )
-                self.connection.send_byte(CP.CAPTURE_12BIT)
-                self.connection.send_byte(chosa | 0x80)  # Trigger
+                self.device.send_byte(CP.CAPTURE_ONE)
+                self.device.send_byte(chosa | 0x80)  # Trigger
             elif timegap >= 1:
                 self.channels[self.channel_one_map].resolution = 12
-                self.connection.send_byte(CP.CAPTURE_DMASPEED)
-                self.connection.send_byte(chosa | 0x80)  # 12-bit mode
+                self.device.send_byte(CP.CAPTURE_DMASPEED)
+                self.device.send_byte(chosa | 0x80)  # 12-bit mode
             else:
-                self.connection.send_byte(CP.CAPTURE_DMASPEED)
-                self.connection.send_byte(chosa)  # 10-bit mode
+                self.device.send_byte(CP.CAPTURE_DMASPEED)
+                self.device.send_byte(chosa)  # 10-bit mode
         elif channels == 2:
             self.channels["CH2"].resolution = 10
-            self.channels["CH2"].buffer = 1
-            self.connection.send_byte(CP.CAPTURE_TWO)
-            self.connection.send_byte(chosa | (0x80 * self.trigger_enabled))
+            self.channels["CH2"].buffer_idx = 1
+            self.device.send_byte(CP.CAPTURE_TWO)
+            self.device.send_byte(chosa | (0x80 * self.trigger_enabled))
         else:
             for e, c in enumerate(self.CH234):
                 self.channels[c].resolution = 10
-                self.channels[c].buffer = e + 1
-            self.connection.send_byte(CP.CAPTURE_FOUR)
-            self.connection.send_byte(
+                self.channels[c].buffer_idx = e + 1
+            self.device.send_byte(CP.CAPTURE_FOUR)
+            self.device.send_byte(
                 chosa | (CH123SA << 4) | (0x80 * self.trigger_enabled)
             )
 
-        self.connection.send_int(samples)
-        self.connection.send_int(int(timegap * 8))  # 8 MHz clock
-        self.connection.get_ack()
+        self.device.send_int(samples)
+        self.device.send_int(int(timegap * 8))  # 8 MHz clock
+        self.device.get_ack()
 
-    def fetch_data(self, offset_index, samples) -> np.ndarray:
+    def fetch_data(self, channel: str, samples: int) -> np.ndarray:
         """Fetch the requested number of samples from specified buffer index.
 
         The ADC hardware buffer can store up to 10000 samples. During simultaneous
@@ -208,20 +223,21 @@ class Oscilloscope:
             One-dimensional array holding the requested voltages.
         """
         data = bytearray()
+        channel = self.channels[channel]
 
         for i in range(int(np.ceil(samples / self.data_splitting))):
-            self.connection.send_byte(CP.COMMON)
-            self.connection.send_byte(CP.RETRIEVE_BUFFER)
-            offset = offset_index * samples + i * self.data_splitting
-            self.connection.send_int(offset)
-            self.connection.send_int(self.data_splitting)  # Ints to read
+            self.device.send_byte(CP.COMMON)
+            self.device.send_byte(CP.RETRIEVE_BUFFER)
+            offset = channel.buffer_idx * samples + i * self.data_splitting
+            self.device.send_int(offset)
+            self.device.send_int(self.data_splitting)  # Ints to read
             # Reading int by int sometimes causes a communication error.
-            data += self.connection.interface.read(self.data_splitting * 2)
-            self.connection.get_ack()
+            data += self.device.interface.read(self.data_splitting * 2)
+            self.device.get_ack()
 
         data = [CP.ShortInt.unpack(data[s * 2 : s * 2 + 2])[0] for s in range(samples)]
 
-        return np.array(data)
+        return channel.scale(np.array(data))
 
     def progress(self) -> Tuple[bool, int]:
         """Return the status of a capture call.
@@ -232,16 +248,16 @@ class Oscilloscope:
             A boolean indicating whether the capture is complete, followed by the
             number of samples currently held in the buffer.
         """
-        self.connection.send_byte(CP.ADC)
-        self.connection.send_byte(CP.GET_CAPTURE_STATUS)
-        conversion_done = self.connection.get_byte()
-        samples = self.connection.get_int()
-        self.connection.get_ack()
+        self.device.send_byte(CP.ADC)
+        self.device.send_byte(CP.GET_CAPTURE_STATUS)
+        conversion_done = self.device.get_byte()
+        samples = self.device.get_int()
+        self.device.get_ack()
 
         return bool(conversion_done), samples
 
     def configure_trigger(self, channel: str, voltage: float, prescaler: int = 0):
-        """Configure trigger parameters for capture routines.
+        """Configure trigger parameters for 10-bit capture routines.
 
         The capture routines will wait until a rising edge of the input signal crosses
         the specified level. The trigger will timeout within 8 ms, and capture will
@@ -266,21 +282,43 @@ class Oscilloscope:
         >>> scope.configure_trigger(channel='CH1', voltage=1.1)
         >>> xy = scope.capture(channels=1, samples=800, timegap=2)
         >>> diff = abs(xy[1, 0] - 1.1)  # Should be small unless a timeout occurred.
+
+        Raises
+        ------
+        TypeError
+            If the trigger channel is set to a channel which cannot be sampled.
         """
         self._trigger_channel = channel
 
         if channel == self.channel_one_map:
             channel = 0
+        elif channel in self.CH234:
+            channel = self.CH234.index(channel) + 1
+        elif self.channel_one_map == "CH1":
+            e = f"Cannot trigger on {channel} unless it is remapped to CH1."
+            raise TypeError(e)
         else:
-            channel == self.CH234.index(channel) + 1
+            e = f"Cannot trigger on CH1 when {self.channel_one_map} is mapped to CH1."
+            raise TypeError(e)
 
-        self.connection.send_byte(CP.ADC)
-        self.connection.send_byte(CP.CONFIGURE_TRIGGER)
+        self.device.send_byte(CP.ADC)
+        self.device.send_byte(CP.CONFIGURE_TRIGGER)
         # Trigger channel (4lsb) , trigger timeout prescaler (4msb)
-        self.connection.send_byte((prescaler << 4) | (1 << channel))  # TODO prescaler?
+        self.device.send_byte((prescaler << 4) | (1 << channel))  # TODO prescaler?
         level = self.channels[self._trigger_channel].unscale(voltage)
-        self.connection.send_int(level)
-        self.connection.get_ack()
+        self.device.send_int(level)
+        self.device.get_ack()
+        self._trigger_enabled = True
+
+    @property
+    def trigger_enabled(self) -> bool:
+        return self._trigger_enabled
+
+    @trigger_enabled.setter
+    def trigger_enabled(self, value: bool):
+        self._trigger_enabled = value
+        if self._trigger_enabled:
+            self.configure_trigger(self._trigger_channel, self._trigger_voltage)
 
     def select_range(self, channel: str, voltage_range: Union[int, float]):
         """Set appropriate gain automatically.
