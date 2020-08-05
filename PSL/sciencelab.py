@@ -9,7 +9,7 @@ import time
 
 import PSL.commands_proto as CP
 import PSL.packet_handler as packet_handler
-from PSL.achan import *
+from PSL import achan
 from PSL.digital_channel import *
 
 
@@ -89,11 +89,6 @@ class ScienceLab():
         self.currents = [0.55e-3, 0.55e-6, 0.55e-5, 0.55e-4]
         self.currentScalers = [1.0, 1.0, 1.0, 1.0]
 
-        self.data_splitting = kwargs.get('data_splitting', CP.DATA_SPLITTING)
-        self.allAnalogChannels = allAnalogChannels
-        self.analogInputSources = {}
-        for a in allAnalogChannels: self.analogInputSources[a] = analogInputSource(a)
-
         self.sine1freq = None
         self.sine2freq = None
         self.sqrfreq = {'SQR1': None, 'SQR2': None, 'SQR3': None, 'SQR4': None}
@@ -101,6 +96,7 @@ class ScienceLab():
         self.errmsg = ''
         # --------------------------Initialize communication handler, and subclasses-----------------
         self.H = packet_handler.Handler(**kwargs)
+        self.analog_handler = achan.AnalogAcquisitionHandler(connection=self.H)
         self.__runInitSequence__(**kwargs)
 
     def __runInitSequence__(self, **kwargs):
@@ -111,10 +107,8 @@ class ScienceLab():
             self.__print__('Check hardware connections. Not connected')
 
         self.streaming = False
-        self.achans = [analogAcquisitionChannel(a) for a in ['CH1', 'CH2', 'CH3', 'MIC']]
-        self.gain_values = gains
         self.buff = np.zeros(10000)
-        self.SOCKET_CAPACITANCE = 42e-12  # 42e-12 is typical for the FOSSASIA PSLab. Actual values will be updated during calibration loading
+        self.SOCKET_CAPACITANCE = 42e-12  # 42e-12 is typical for the FOSSASIA PSLab. Actual values require calibration (currently not supported).
         self.resistanceScaling = 1.
 
         self.digital_channel_names = digital_channel_names
@@ -131,7 +125,8 @@ class ScienceLab():
         self.SPI = SPI(self.H)
         self.hexid = ''
         if self.H.connected:
-            for a in ['CH1', 'CH2']: self.set_gain(a, 0, True)  # Force load gain
+            for a in ['CH1', 'CH2']:
+                self.analog_handler.channels[a].gain = 1
             for a in ['W1', 'W2']: self.load_equation(a, 'sine')
             self.SPI.set_parameters(1, 7, 1, 0)
             self.hexid = hex(self.device_id())
@@ -286,15 +281,12 @@ class ScienceLab():
                 print(a, end="")
             print()
 
-    def __del__(self):
-        self.H.fd.close()
-
     def get_version(self):
         """
 		Returns the version string of the device
 		format: LTS-......
 		"""
-        return self.H.get_version(self.H.fd)
+        return self.H.get_version()
 
     def getRadioLinks(self):
         return self.NRF.get_nodelist()
@@ -334,793 +326,6 @@ class ScienceLab():
         self.H.reconnect(**kwargs)
         self.__runInitSequence__(**kwargs)
 
-    def capture1(self, ch, ns, tg, *args, **kwargs):
-        """
-		Blocking call that fetches an oscilloscope trace from the specified input channel
-
-		.. tabularcolumns:: |p{3cm}|p{11cm}|
-
-		==============  ============================================================================================
-		**Arguments**
-		==============  ============================================================================================
-		ch              Channel to select as input. ['CH1'..'CH3','SEN']
-		ns              Number of samples to fetch. Maximum 10000
-		tg              Timegap between samples in microseconds
-		==============  ============================================================================================
-
-		.. figure:: images/capture1.png
-			:width: 11cm
-			:align: center
-			:alt: alternate text
-			:figclass: align-center
-
-			A sine wave captured and plotted.
-
-		Example
-
-		>>> from PSL import *
-		>>> from PSL import sciencelab
-		>>> I=sciencelab.connect()
-		>>> x,y = I.capture1('CH1',3200,1)
-		>>> plot(x,y)
-		>>> show()
-
-
-		:return: Arrays X(timestamps),Y(Corresponding Voltage values)
-
-		"""
-        return self.capture_fullspeed(ch, ns, tg, *args, **kwargs)
-
-    def capture2(self, ns, tg, TraceOneRemap='CH1'):
-        """
-		Blocking call that fetches oscilloscope traces from CH1,CH2
-
-		.. tabularcolumns:: |p{3cm}|p{11cm}|
-
-		==============  =======================================================================================================
-		**Arguments**
-		==============  =======================================================================================================
-		ns              Number of samples to fetch. Maximum 5000
-		tg              Timegap between samples in microseconds
-		TraceOneRemap   Choose the analog input for channel 1. It is connected to CH1 by default. Channel 2 always reads CH2.
-		==============  =======================================================================================================
-
-		.. figure:: images/capture2.png
-			:width: 11cm
-			:align: center
-			:alt: alternate text
-			:figclass: align-center
-
-			Two sine waves captured and plotted.
-
-		Example
-
-		>>> from PSL import *
-		>>> from PSL import sciencelab
-		>>> I=sciencelab.connect()
-		>>> x,y1,y2 = I.capture2(1600,2,'MIC')  #Chan1 remapped to MIC. Chan2 reads CH2
-		>>> plot(x,y1)              #Plot of analog input MIC
-		>>> plot(x,y2)              #plot of analog input CH2
-		>>> show()
-
-		:return: Arrays X(timestamps),Y1(Voltage at CH1),Y2(Voltage at CH2)
-
-		"""
-        self.capture_traces(2, ns, tg, TraceOneRemap)
-        time.sleep(1e-6 * self.samples * self.timebase + .01)
-        while not self.oscilloscope_progress()[0]:
-            pass
-
-        self.__fetch_channel__(1)
-        self.__fetch_channel__(2)
-
-        x = self.achans[0].get_xaxis()
-        y = self.achans[0].get_yaxis()
-        y2 = self.achans[1].get_yaxis()
-        # x,y2=self.fetch_trace(2)
-        return x, y, y2
-
-    def capture4(self, ns, tg, TraceOneRemap='CH1'):
-        """
-		Blocking call that fetches oscilloscope traces from CH1,CH2,CH3,CH4
-
-		.. tabularcolumns:: |p{3cm}|p{11cm}|
-
-		==============  ======================================================================================================
-		**Arguments**
-		==============  ======================================================================================================
-		ns              Number of samples to fetch. Maximum 2500
-		tg              Timegap between samples in microseconds. Minimum 1.75uS
-		TraceOneRemap   Choose the analog input for channel 1. It is connected to CH1 by default. Channel 2 always reads CH2.
-		==============  ======================================================================================================
-
-		.. figure:: images/capture4.png
-			:width: 11cm
-			:align: center
-			:alt: alternate text
-			:figclass: align-center
-
-			Four traces captured and plotted.
-
-		Example
-
-		>>> from PSL import *
-		>>> I=sciencelab.ScienceLab()
-		>>> x,y1,y2,y3,y4 = I.capture4(800,1.75)
-		>>> plot(x,y1)
-		>>> plot(x,y2)
-		>>> plot(x,y3)
-		>>> plot(x,y4)
-		>>> show()
-
-		:return: Arrays X(timestamps),Y1(Voltage at CH1),Y2(Voltage at CH2),Y3(Voltage at CH3),Y4(Voltage at CH4)
-
-		"""
-        self.capture_traces(4, ns, tg, TraceOneRemap)
-        time.sleep(1e-6 * self.samples * self.timebase + .01)
-        while not self.oscilloscope_progress()[0]:
-            pass
-        x, y = self.fetch_trace(1)
-        x, y2 = self.fetch_trace(2)
-        x, y3 = self.fetch_trace(3)
-        x, y4 = self.fetch_trace(4)
-
-        return x, y, y2, y3, y4
-
-    def capture_multiple(self, samples, tg, *args):
-        """
-		Blocking call that fetches oscilloscope traces from a set of specified channels
-
-		.. tabularcolumns:: |p{3cm}|p{11cm}|
-
-		==============  ============================================================================================
-		**Arguments**
-		==============  ============================================================================================
-		samples         Number of samples to fetch. Maximum 10000/(total specified channels)
-		tg              Timegap between samples in microseconds.
-		\*args          channel names
-		==============  ============================================================================================
-
-		Example
-
-		>>> from PSL import *
-		>>> I=sciencelab.ScienceLab()
-		>>> x,y1,y2,y3,y4 = I.capture_multiple(800,1.75,'CH1','CH2','MIC','SEN')
-		>>> plot(x,y1)
-		>>> plot(x,y2)
-		>>> plot(x,y3)
-		>>> plot(x,y4)
-		>>> show()
-
-		:return: Arrays X(timestamps),Y1,Y2 ...
-
-		"""
-        if len(args) == 0:
-            self.__print__('please specify channels to record')
-            return
-        tg = int(tg * 8) / 8.  # Round off the timescale to 1/8uS units
-        if (tg < 1.5): tg = int(1.5 * 8) / 8.
-        total_chans = len(args)
-
-        total_samples = samples * total_chans
-        if (total_samples > self.MAX_SAMPLES):
-            self.__print__('Sample limit exceeded. 10,000 total')
-            total_samples = self.MAX_SAMPLES
-            samples = self.MAX_SAMPLES / total_chans
-
-        CHANNEL_SELECTION = 0
-        for chan in args:
-            C = self.analogInputSources[chan].CHOSA
-            self.__print__(chan, C)
-            CHANNEL_SELECTION |= (1 << C)
-        self.__print__('selection', CHANNEL_SELECTION, len(args), hex(CHANNEL_SELECTION | ((total_chans - 1) << 12)))
-
-        self.H.__sendByte__(CP.ADC)
-        self.H.__sendByte__(CP.CAPTURE_MULTIPLE)
-        self.H.__sendInt__(CHANNEL_SELECTION | ((total_chans - 1) << 12))
-
-        self.H.__sendInt__(total_samples)  # total number of samples to record
-        self.H.__sendInt__(int(self.timebase * 8))  # Timegap between samples.  8MHz timer clock
-        self.H.__get_ack__()
-        self.__print__('wait')
-        time.sleep(1e-6 * total_samples * tg + .01)
-        self.__print__('done')
-        data = b''
-        for i in range(int(total_samples / self.data_splitting)):
-            self.H.__sendByte__(CP.ADC)
-            self.H.__sendByte__(CP.GET_CAPTURE_CHANNEL)
-            self.H.__sendByte__(0)  # channel number . starts with A0 on PIC
-            self.H.__sendInt__(self.data_splitting)
-            self.H.__sendInt__(i * self.data_splitting)
-            data += self.H.fd.read(int(
-                self.data_splitting * 2))  # reading int by int sometimes causes a communication error. this works better.
-            self.H.__get_ack__()
-
-        if total_samples % self.data_splitting:
-            self.H.__sendByte__(CP.ADC)
-            self.H.__sendByte__(CP.GET_CAPTURE_CHANNEL)
-            self.H.__sendByte__(0)  # channel number starts with A0 on PIC
-            self.H.__sendInt__(total_samples % self.data_splitting)
-            self.H.__sendInt__(total_samples - total_samples % self.data_splitting)
-            data += self.H.fd.read(int(2 * (
-                    total_samples % self.data_splitting)))  # reading int by int may cause packets to be dropped. this works better.
-            self.H.__get_ack__()
-
-        for a in range(int(total_samples)): self.buff[a] = CP.ShortInt.unpack(data[a * 2:a * 2 + 2])[0]
-        # self.achans[channel_number-1].yaxis = self.achans[channel_number-1].fix_value(self.buff[:samples])
-        yield np.linspace(0, tg * (samples - 1), samples)
-        for a in range(int(total_chans)):
-            yield self.buff[a:total_samples][::total_chans]
-
-    def __capture_fullspeed__(self, chan, samples, tg, *args, **kwargs):
-        tg = int(tg * 8) / 8.  # Round off the timescale to 1/8uS units
-        if (tg < 0.5): tg = int(0.5 * 8) / 8.
-        if (samples > self.MAX_SAMPLES):
-            self.__print__('Sample limit exceeded. 10,000 max')
-            samples = self.MAX_SAMPLES
-
-        self.timebase = int(tg * 8) / 8.
-        self.samples = samples
-        CHOSA = self.analogInputSources[chan].CHOSA
-
-        self.H.__sendByte__(CP.ADC)
-        if 'SET_LOW' in args:
-            self.H.__sendByte__(CP.SET_LO_CAPTURE)
-        elif 'SET_HIGH' in args:
-            self.H.__sendByte__(CP.SET_HI_CAPTURE)
-        elif 'FIRE_PULSES' in args:
-            self.H.__sendByte__(CP.PULSE_TRAIN)
-            self.__print__('firing sqr1 pulses for ', kwargs.get('interval', 1000), 'uS')
-        else:
-            self.H.__sendByte__(CP.CAPTURE_DMASPEED)
-        self.H.__sendByte__(CHOSA)
-        self.H.__sendInt__(samples)  # total number of samples to record
-        self.H.__sendInt__(int(tg * 8))  # Timegap between samples.  8MHz timer clock
-        if 'FIRE_PULSES' in args:
-            t = kwargs.get('interval', 1000)
-            print('Firing for', t, 'uS')
-            self.H.__sendInt__(t)
-            time.sleep(
-                t * 1e-6)  # Wait for hardware to free up from firing pulses(blocking call). Background capture starts immediately after this
-        self.H.__get_ack__()
-
-    def capture_fullspeed(self, chan, samples, tg, *args, **kwargs):
-        """
-		Blocking call that fetches oscilloscope traces from a single oscilloscope channel at a maximum speed of 2MSPS
-
-		.. tabularcolumns:: |p{3cm}|p{11cm}|
-
-		==============  ============================================================================================
-		**Arguments**
-		==============  ============================================================================================
-		chan                channel name 'CH1' / 'CH2' ... 'SEN'
-		samples             Number of samples to fetch. Maximum 10000/(total specified channels)
-		tg                  Timegap between samples in microseconds. minimum 0.5uS
-		\*args              specify if SQR1 must be toggled right before capturing.
-		 'SET_LOW' 			will set SQR1 to 0V
-		 'SET_HIGH'			will set it to 5V.
-		 'FIRE_PULSES' 		will output a preset frequency on SQR1 for a given interval (keyword arg 'interval'
-							must be specified or it will default to 1000uS) before acquiring data. This is
-							used for measuring speed of sound using piezos
-							if no arguments are specified, a regular capture will be executed.
-		\*\*kwargs
-			interval		units:uS . Necessary if 'FIRE_PULSES' argument was supplied. default 1000uS
-		==============  ============================================================================================
-
-		.. code-block:: python
-
-			from PSL import *
-			I=sciencelab.ScienceLab()
-			x,y = I.capture_fullspeed('CH1',2000,1)
-			plot(x,y)
-			show()
-
-
-		.. code-block:: python
-
-			x,y = I.capture_fullspeed('CH1',2000,1,'SET_LOW')
-			plot(x,y)
-			show()
-
-		.. code-block:: python
-
-			I.sqr1(40e3 , 50, True )   # Prepare a 40KHz, 50% square wave. Do not output it yet
-			x,y = I.capture_fullspeed('CH1',2000,1,'FIRE_PULSES',interval = 250) #Output the prepared 40KHz(25uS) wave for 250uS(10 cycles) before acquisition
-			plot(x,y)
-			show()
-
-		:return: timestamp array ,voltage_value array
-
-		"""
-        self.__capture_fullspeed__(chan, samples, tg, *args, **kwargs)
-        time.sleep(1e-6 * self.samples * self.timebase + kwargs.get('interval', 0) * 1e-6 + 0.1)
-        x, y = self.__retrieveBufferData__(chan, self.samples, self.timebase)
-
-        return x, self.analogInputSources[chan].calPoly10(y)
-
-    def __capture_fullspeed_hr__(self, chan, samples, tg, *args):
-        tg = int(tg * 8) / 8.  # Round off the timescale to 1/8uS units
-        if (tg < 1): tg = 1.
-        if (samples > self.MAX_SAMPLES):
-            self.__print__('Sample limit exceeded. 10,000 max')
-            samples = self.MAX_SAMPLES
-
-        self.timebase = int(tg * 8) / 8.
-        self.samples = samples
-        CHOSA = self.analogInputSources[chan].CHOSA
-        self.H.__sendByte__(CP.ADC)
-        if 'SET_LOW' in args:
-            self.H.__sendByte__(CP.SET_LO_CAPTURE)
-        elif 'SET_HIGH' in args:
-            self.H.__sendByte__(CP.SET_HI_CAPTURE)
-        elif 'READ_CAP' in args:
-            self.H.__sendByte__(CP.MULTIPOINT_CAPACITANCE)
-        else:
-            self.H.__sendByte__(CP.CAPTURE_DMASPEED)
-        self.H.__sendByte__(CHOSA | 0x80)
-        self.H.__sendInt__(samples)  # total number of samples to record
-        self.H.__sendInt__(int(tg * 8))  # Timegap between samples.  8MHz timer clock
-        self.H.__get_ack__()
-
-    def capture_fullspeed_hr(self, chan, samples, tg, *args):
-        self.__capture_fullspeed_hr__(chan, samples, tg, *args)
-        time.sleep(1e-6 * self.samples * self.timebase + .01)
-        x, y = self.__retrieveBufferData__(chan, self.samples, self.timebase)
-
-        return x, self.analogInputSources[chan].calPoly12(y)
-
-    def __retrieveBufferData__(self, chan, samples, tg):
-        '''
-
-		'''
-        data = b''
-        for i in range(int(samples / self.data_splitting)):
-            self.H.__sendByte__(CP.ADC)
-            self.H.__sendByte__(CP.GET_CAPTURE_CHANNEL)
-            self.H.__sendByte__(0)  # channel number . starts with A0 on PIC
-            self.H.__sendInt__(self.data_splitting)
-            self.H.__sendInt__(i * self.data_splitting)
-            data += self.H.fd.read(int(
-                self.data_splitting * 2))  # reading int by int sometimes causes a communication error. this works better.
-            self.H.__get_ack__()
-
-        if samples % self.data_splitting:
-            self.H.__sendByte__(CP.ADC)
-            self.H.__sendByte__(CP.GET_CAPTURE_CHANNEL)
-            self.H.__sendByte__(0)  # channel number starts with A0 on PIC
-            self.H.__sendInt__(samples % self.data_splitting)
-            self.H.__sendInt__(samples - samples % self.data_splitting)
-            data += self.H.fd.read(int(2 * (
-                    samples % self.data_splitting)))  # reading int by int may cause packets to be dropped. this works better.
-            self.H.__get_ack__()
-
-        for a in range(int(samples)): self.buff[a] = CP.ShortInt.unpack(data[a * 2:a * 2 + 2])[0]
-
-        # self.achans[channel_number-1].yaxis = self.achans[channel_number-1].fix_value(self.buff[:samples])
-        return np.linspace(0, tg * (samples - 1), samples), self.buff[:samples]
-
-    def capture_traces(self, num, samples, tg, channel_one_input='CH1', CH123SA=0, **kwargs):
-        """
-		Instruct the ADC to start sampling. use fetch_trace to retrieve the data
-
-		.. tabularcolumns:: |p{3cm}|p{11cm}|
-
-		=================== ============================================================================================
-		**Arguments**
-		=================== ============================================================================================
-		num                 Channels to acquire. 1/2/4
-		samples             Total points to store per channel. Maximum 3200 total.
-		tg                  Timegap between two successive samples (in uSec)
-		channel_one_input   map channel 1 to 'CH1' ... 'CH9'
-		\*\*kwargs
-
-		\*trigger           Whether or not to trigger the oscilloscope based on the voltage level set by :func:`configure_trigger`
-		=================== ============================================================================================
-
-
-		see :ref:`capture_video`
-
-		.. _adc_example:
-
-			.. figure:: images/transient.png
-				:width: 11cm
-				:align: center
-				:alt: alternate text
-				:figclass: align-center
-
-				Transient response of an Inductor and Capacitor in series
-
-			The following example demonstrates how to use this function to record active events.
-
-				* Connect a capacitor and an Inductor in series.
-				* Connect CH1 to the spare leg of the inductor. Also Connect OD1 to this point
-				* Connect CH2 to the junction between the capacitor and the inductor
-				* connect the spare leg of the capacitor to GND( ground )
-				* set OD1 initially high using set_state(SQR1=1)
-
-			::
-
-				>>> I.set_state(OD1=1)  #Turn on OD1
-				#Arbitrary delay to wait for stabilization
-				>>> time.sleep(0.5)
-				#Start acquiring data (2 channels,800 samples, 2microsecond intervals)
-				>>> I.capture_traces(2,800,2,trigger=False)
-				#Turn off OD1. This must occur immediately after the previous line was executed.
-				>>> I.set_state(OD1=0)
-				#Minimum interval to wait for completion of data acquisition.
-				#samples*timegap*(convert to Seconds)
-				>>> time.sleep(800*2*1e-6)
-				>>> x,CH1=I.fetch_trace(1)
-				>>> x,CH2=I.fetch_trace(2)
-				>>> plot(x,CH1-CH2) #Voltage across the inductor
-				>>> plot(x,CH2)     ##Voltage across the capacitor
-				>>> show()
-
-			The following events take place when the above snippet runs
-
-			#. The oscilloscope starts storing voltages present at CH1 and CH2 every 2 microseconds
-			#. The output OD1 was enabled, and this causes the voltage between the L and C to approach OD1 voltage.
-			   (It may or may not oscillate)
-			#. The data from CH1 and CH2 was read into x,CH1,CH2
-			#. Both traces were plotted in order to visualize the Transient response of series LC
-
-		:return: nothing
-
-		.. seealso::
-			:func:`fetch_trace` , :func:`oscilloscope_progress` , :func:`capture1` , :func:`capture2` , :func:`capture4`
-
-		"""
-        triggerornot = 0x80 if kwargs.get('trigger', True) else 0
-        self.timebase = tg
-        self.timebase = int(self.timebase * 8) / 8.  # Round off the timescale to 1/8uS units
-        if channel_one_input not in self.analogInputSources: raise RuntimeError(
-            'Invalid input %s, not in %s' % (channel_one_input, str(self.analogInputSources.keys())))
-        CHOSA = self.analogInputSources[channel_one_input].CHOSA
-        self.H.__sendByte__(CP.ADC)
-        if (num == 1):
-            if (self.timebase < 1.5): self.timebase = int(1.5 * 8) / 8.
-            if (samples > self.MAX_SAMPLES): samples = self.MAX_SAMPLES
-
-            self.achans[0].set_params(channel=channel_one_input, length=samples, timebase=self.timebase,
-                                      resolution=10, source=self.analogInputSources[channel_one_input])
-            self.H.__sendByte__(CP.CAPTURE_ONE)  # read 1 channel
-            self.H.__sendByte__(CHOSA | triggerornot)  # channelk number
-
-        elif (num == 2):
-            if (self.timebase < 1.75): self.timebase = int(1.75 * 8) / 8.
-            if (samples > self.MAX_SAMPLES / 2): samples = self.MAX_SAMPLES / 2
-
-            self.achans[0].set_params(channel=channel_one_input, length=samples, timebase=self.timebase,
-                                      resolution=10, source=self.analogInputSources[channel_one_input])
-            self.achans[1].set_params(channel='CH2', length=samples, timebase=self.timebase, resolution=10,
-                                      source=self.analogInputSources['CH2'])
-
-            self.H.__sendByte__(CP.CAPTURE_TWO)  # capture 2 channels
-            self.H.__sendByte__(CHOSA | triggerornot)  # channel 0 number
-
-        elif (num == 3 or num == 4):
-            if (self.timebase < 1.75): self.timebase = int(1.75 * 8) / 8.
-            if (samples > self.MAX_SAMPLES / 4): samples = self.MAX_SAMPLES / 4
-
-            self.achans[0].set_params(channel=channel_one_input, length=samples, timebase=self.timebase, \
-                                      resolution=10, source=self.analogInputSources[channel_one_input])
-
-            for a in range(1, 4):
-                chans = ['NONE', 'CH2', 'CH3', 'MIC']
-                self.achans[a].set_params(channel=chans[a], length=samples, timebase=self.timebase, \
-                                          resolution=10, source=self.analogInputSources[chans[a]])
-
-            self.H.__sendByte__(CP.CAPTURE_FOUR)  # read 4 channels
-            self.H.__sendByte__(CHOSA | (CH123SA << 4) | triggerornot)  # channel number
-
-        self.samples = samples
-        self.H.__sendInt__(samples)  # number of samples per channel to record
-        self.H.__sendInt__(int(self.timebase * 8))  # Timegap between samples.  8MHz timer clock
-        self.H.__get_ack__()
-        self.channels_in_buffer = num
-
-    def capture_highres_traces(self, channel, samples, tg, **kwargs):
-        """
-		Instruct the ADC to start sampling. use fetch_trace to retrieve the data
-
-		.. tabularcolumns:: |p{3cm}|p{11cm}|
-
-		=================== ============================================================================================
-		**Arguments**
-		=================== ============================================================================================
-		channel             channel to acquire data from 'CH1' ... 'CH9'
-		samples             Total points to store per channel. Maximum 3200 total.
-		tg                  Timegap between two successive samples (in uSec)
-		\*\*kwargs
-
-		\*trigger           Whether or not to trigger the oscilloscope based on the voltage level set by :func:`configure_trigger`
-		=================== ============================================================================================
-
-
-		:return: nothing
-
-		.. seealso::
-
-			:func:`fetch_trace` , :func:`oscilloscope_progress` , :func:`capture1` , :func:`capture2` , :func:`capture4`
-
-		"""
-        triggerornot = 0x80 if kwargs.get('trigger', True) else 0
-        self.timebase = tg
-        self.H.__sendByte__(CP.ADC)
-        CHOSA = self.analogInputSources[channel].CHOSA
-        if (self.timebase < 3): self.timebase = 3
-        if (samples > self.MAX_SAMPLES): samples = self.MAX_SAMPLES
-        self.achans[0].set_params(channel=channel, length=samples, timebase=self.timebase, resolution=12,
-                                  source=self.analogInputSources[channel])
-
-        self.H.__sendByte__(CP.CAPTURE_12BIT)  # read 1 channel
-        self.H.__sendByte__(CHOSA | triggerornot)  # channelk number
-
-        self.samples = samples
-        self.H.__sendInt__(samples)  # number of samples to read
-        self.H.__sendInt__(int(self.timebase * 8))  # Timegap between samples.  8MHz timer clock
-        self.H.__get_ack__()
-        self.channels_in_buffer = 1
-
-    def fetch_trace(self, channel_number):
-        """
-		fetches a channel(1-4) captured by :func:`capture_traces` called prior to this, and returns xaxis,yaxis
-
-		.. tabularcolumns:: |p{3cm}|p{11cm}|
-
-		==============  ============================================================================================
-		**Arguments**
-		==============  ============================================================================================
-		channel_number  Any of the maximum of four channels that the oscilloscope captured. 1/2/3/4
-		==============  ============================================================================================
-
-		:return: time array,voltage array
-
-		.. seealso::
-
-			:func:`capture_traces` , :func:`oscilloscope_progress`
-
-		"""
-        self.__fetch_channel__(channel_number)
-        return self.achans[channel_number - 1].get_xaxis(), self.achans[channel_number - 1].get_yaxis()
-
-    def oscilloscope_progress(self):
-        """
-		returns the number of samples acquired by the capture routines, and the conversion_done status
-
-		:return: conversion done(bool) ,samples acquired (number)
-
-		>>> I.start_capture(1,3200,2)
-		>>> self.__print__(I.oscilloscope_progress())
-		(0,46)
-		>>> time.sleep(3200*2e-6)
-		>>> self.__print__(I.oscilloscope_progress())
-		(1,3200)
-
-		.. seealso::
-
-			:func:`fetch_trace` , :func:`capture_traces`
-
-		"""
-        conversion_done = 0
-        samples = 0
-        self.H.__sendByte__(CP.ADC)
-        self.H.__sendByte__(CP.GET_CAPTURE_STATUS)
-        conversion_done = self.H.__getByte__()
-        samples = self.H.__getInt__()
-        self.H.__get_ack__()
-
-        return conversion_done, samples
-
-    def __fetch_channel__(self, channel_number):
-        """
-		Fetches a section of data from any channel and stores it in the relevant instance of achan()
-
-		.. tabularcolumns:: |p{3cm}|p{11cm}|
-
-		==============  ============================================================================================
-		**Arguments**
-		==============  ============================================================================================
-		channel_number  channel number (1,2,3,4)
-		==============  ============================================================================================
-
-		:return: True if successful
-		"""
-        samples = self.achans[channel_number - 1].length
-        if (channel_number > self.channels_in_buffer):
-            self.__print__('Channel unavailable')
-            return False
-        data = b''
-        for i in range(int(samples / self.data_splitting)):
-            self.H.__sendByte__(CP.ADC)
-            self.H.__sendByte__(CP.GET_CAPTURE_CHANNEL)
-            self.H.__sendByte__(channel_number - 1)  # starts with A0 on PIC
-            self.H.__sendInt__(self.data_splitting)
-            self.H.__sendInt__(i * self.data_splitting)
-            data += self.H.fd.read(
-                int(self.data_splitting * 2))  # reading int by int sometimes causes a communication error.
-            self.H.__get_ack__()
-
-        if samples % self.data_splitting:
-            self.H.__sendByte__(CP.ADC)
-            self.H.__sendByte__(CP.GET_CAPTURE_CHANNEL)
-            self.H.__sendByte__(channel_number - 1)  # starts with A0 on PIC
-            self.H.__sendInt__(samples % self.data_splitting)
-            self.H.__sendInt__(samples - samples % self.data_splitting)
-            data += self.H.fd.read(
-                int(2 * (samples % self.data_splitting)))  # reading int by int may cause packets to be dropped.
-            self.H.__get_ack__()
-
-        for a in range(int(samples)): self.buff[a] = CP.ShortInt.unpack(data[a * 2:a * 2 + 2])[0]
-        self.achans[channel_number - 1].yaxis = self.achans[channel_number - 1].fix_value(self.buff[:int(samples)])
-
-        return True
-
-    def __fetch_channel_oneshot__(self, channel_number):
-        """
-		Fetches all data from given channel and stores it in the relevant instance of achan()
-
-		.. tabularcolumns:: |p{3cm}|p{11cm}|
-
-		==============  ============================================================================================
-		**Arguments**
-		==============  ============================================================================================
-		channel_number  channel number (1,2,3,4)
-		==============  ============================================================================================
-
-		"""
-        offset = 0
-        samples = self.achans[channel_number - 1].length
-        if (channel_number > self.channels_in_buffer):
-            self.__print__('Channel unavailable')
-            return False
-        self.H.__sendByte__(CP.ADC)
-        self.H.__sendByte__(CP.GET_CAPTURE_CHANNEL)
-        self.H.__sendByte__(channel_number - 1)  # starts with A0 on PIC
-        self.H.__sendInt__(samples)
-        self.H.__sendInt__(offset)
-        data = self.H.fd.read(
-            int(samples * 2))  # reading int by int sometimes causes a communication error. this works better.
-        self.H.__get_ack__()
-        for a in range(int(samples)): self.buff[a] = CP.ShortInt.unpack(data[a * 2:a * 2 + 2])[0]
-        self.achans[channel_number - 1].yaxis = self.achans[channel_number - 1].fix_value(self.buff[:samples])
-
-        return True
-
-    def configure_trigger(self, chan, name, voltage, resolution=10, **kwargs):
-        """
-		configure trigger parameters for 10-bit capture commands
-		The capture routines will wait till a rising edge of the input signal crosses the specified level.
-		The trigger will timeout within 8mS, and capture routines will start regardless.
-
-		These settings will not be used if the trigger option in the capture routines are set to False
-
-		.. tabularcolumns:: |p{3cm}|p{11cm}|
-
-		==============  =====================================================================================================================
-		**Arguments**
-		==============  =====================================================================================================================
-		chan            channel . 0, 1,2,3. corresponding to the channels being recorded by the capture routine(not the analog inputs)
-		name            the name of the channel. 'CH1'... 'V+'
-		voltage         The voltage level that should trigger the capture sequence(in Volts)
-		==============  =====================================================================================================================
-
-		**Example**
-
-		>>> I.configure_trigger(0,'CH1',1.1)
-		>>> I.capture_traces(4,800,2)
-		#Unless a timeout occured, the first point of this channel will be close to 1.1Volts
-		>>> I.fetch_trace(1)
-		#This channel was acquired simultaneously with channel 1,
-		#so it's triggered along with the first
-		>>> I.fetch_trace(2)
-
-		.. seealso::
-
-			:func:`capture_traces` , adc_example_
-
-		"""
-        prescaler = kwargs.get('prescaler', 0)
-        self.H.__sendByte__(CP.ADC)
-        self.H.__sendByte__(CP.CONFIGURE_TRIGGER)
-        self.H.__sendByte__(
-            (prescaler << 4) | (1 << chan))  # Trigger channel (4lsb) , trigger timeout prescaler (4msb)
-
-        if resolution == 12:
-            level = self.analogInputSources[name].voltToCode12(voltage)
-            level = np.clip(level, 0, 4095)
-        else:
-            level = self.analogInputSources[name].voltToCode10(voltage)
-            level = np.clip(level, 0, 1023)
-
-        if level > (2 ** resolution - 1):
-            level = (2 ** resolution - 1)
-        elif level < 0:
-            level = 0
-
-        self.H.__sendInt__(int(level))  # Trigger
-        self.H.__get_ack__()
-
-    def set_gain(self, channel, gain, Force=False):
-        """
-		set the gain of the selected PGA
-
-		.. tabularcolumns:: |p{3cm}|p{11cm}|
-
-		==============  ============================================================================================
-		**Arguments**
-		==============  ============================================================================================
-		channel         'CH1','CH2'
-		gain            (0-8) -> (1x,2x,4x,5x,8x,10x,16x,32x,1/11x)
-		Force			If True, the amplifier gain will be set even if it was previously set to the same value.
-		==============  ============================================================================================
-
-		.. note::
-			The gain value applied to a channel will result in better resolution for small amplitude signals.
-
-			However, values read using functions like :func:`get_average_voltage` or    :func:`capture_traces`
-			will not be 2x, or 4x times the input signal. These are calibrated to return accurate values of the original input signal.
-
-			in case the gain specified is 8 (1/11x) , an external 10MOhm resistor must be connected in series with the device. The input range will
-			be +/-160 Volts
-
-		>>> I.set_gain('CH1',7)  #gain set to 32x on CH1
-
-		"""
-        if gain < 0 or gain > 8:
-            print('Invalid gain parameter. 0-7 only.')
-            return
-        if self.analogInputSources[channel].gainPGA == None:
-            self.__print__('No amplifier exists on this channel :', channel)
-            return False
-
-        refresh = False
-        if self.gains[channel] != gain:
-            self.gains[channel] = gain
-            time.sleep(0.01)
-            refresh = True
-        if refresh or Force:
-            self.analogInputSources[channel].setGain(self.gain_values[gain])
-            if gain > 7: gain = 0  # external attenuator mode. set gain 1x
-            self.H.__sendByte__(CP.ADC)
-            self.H.__sendByte__(CP.SET_PGA_GAIN)
-            self.H.__sendByte__(self.analogInputSources[channel].gainPGA)  # send the channel. SPI, not multiplexer
-            self.H.__sendByte__(gain)  # send the gain
-            self.H.__get_ack__()
-            return self.gain_values[gain]
-
-        return refresh
-
-    def select_range(self, channel, voltage_range):
-        """
-		set the gain of the selected PGA
-
-		.. tabularcolumns:: |p{3cm}|p{11cm}|
-
-		==============  ============================================================================================
-		**Arguments**
-		==============  ============================================================================================
-		channel         'CH1','CH2'
-		voltage_range   choose from [16,8,4,3,2,1.5,1,.5,160]
-		==============  ============================================================================================
-
-		.. note::
-			Setting the right voltage range will result in better resolution.
-			in case the range specified is 160 , an external 10MOhm resistor must be connected in series with the device.
-
-			Note : this function internally calls set_gain with the appropriate gain value
-
-		>>> I.select_range('CH1',8)  #gain set to 2x on CH1. Voltage range +/-8V
-
-		"""
-        ranges = [16, 8, 4, 3, 2, 1.5, 1, .5, 160]
-        if voltage_range in ranges:
-            g = ranges.index(voltage_range)
-            return self.set_gain(channel, g)
-        else:
-            print('not a valid range. try : ', ranges)
-            return None
-
     def __calcCHOSA__(self, name):
         name = name.upper()
         source = self.analogInputSources[name]
@@ -1152,7 +357,7 @@ class ScienceLab():
         return g
 
     def __autoRangeScope__(self, tg):
-        x, y1, y2 = self.capture2(1000, tg)
+        x, y1, y2 = self.analog_channels.capture(2, 1000, tg)
         self.__autoSelectRange__('CH1', max(abs(y1)))
         self.__autoSelectRange__('CH2', max(abs(y2)))
 
@@ -2419,19 +1624,20 @@ class ScienceLab():
         self.H.__get_ack__()
 
     def __capture_capacitance__(self, samples, tg):
-        from PSL.analyticsClass import analyticsClass
-        self.AC = analyticsClass()
-        self.__charge_cap__(1, 50000)
-        x, y = self.capture_fullspeed_hr('CAP', samples, tg, 'READ_CAP')
-        fitres = self.AC.fit_exp(x * 1e-6, y)
-        if fitres:
-            cVal, newy = fitres
-            # from PSL import *
-            # plot(x,newy)
-            # show()
-            return x, y, newy, cVal
-        else:
-            return None
+        raise NotImplementedError
+#        from PSL.analyticsClass import analyticsClass
+#        self.AC = analyticsClass()
+#        self.__charge_cap__(1, 50000)
+#        x, y = self.capture_fullspeed_hr('CAP', samples, tg, 'READ_CAP')
+#        fitres = self.AC.fit_exp(x * 1e-6, y)
+#        if fitres:
+#            cVal, newy = fitres
+#            # from PSL import *
+#            # plot(x,newy)
+#            # show()
+#            return x, y, newy, cVal
+#        else:
+#            return None
 
     def capacitance_via_RC_discharge(self):
         cap = self.get_capacitor_range()[1]
@@ -2554,7 +1760,6 @@ class ScienceLab():
                 current_range]
         else:
             C = 0
-        # self.__print__('Current if C=470pF :',V*(470e-12+self.SOCKET_CAPACITANCE)/(Charge_Time*1e-6))
         return V, C
 
     def get_temperature(self):
@@ -2595,15 +1800,10 @@ class ScienceLab():
         self.H.__sendByte__(CP.GET_CTMU_VOLTAGE)
         self.H.__sendByte__((channel) | (Crange << 5) | (tgen << 7))
 
-        # V = [self.H.__getInt__() for a in range(16)]
-        # print(V)
-        # V=V[3:]
         v = self.H.__getInt__()  # 16*voltage across the current source
-        # v=sum(V)
 
         self.H.__get_ack__()
         V = 3.3 * v / 16 / 4095.
-        # print(V)
         return V
 
     def __start_ctmu__(self, Crange, trim, tgen=1):
@@ -2648,12 +1848,6 @@ class ScienceLab():
         self.H.__get_ack__()
         return ss
 
-    def __stoa__(self, s):
-        return [ord(a) for a in s.decode('utf-8')]
-
-    def __atos__(self, a):
-        return ''.join(chr(e) for e in a)
-
     def read_bulk_flash(self, page, numbytes):
         """
 		Reads BYTES from the specified location
@@ -2677,7 +1871,6 @@ class ScienceLab():
         self.H.__sendByte__(page)
         ss = self.H.fd.read(int(bytes_to_read))
         self.H.__get_ack__()
-        self.__print__('Read from ', page, ',', bytes_to_read, ' :', self.__stoa__(ss[:40]), '...')
         if numbytes % 2: return ss[:-1]  # Kill the extra character we read. Don't surprise the user with extra data
         return ss
 
@@ -2732,14 +1925,12 @@ class ScienceLab():
         if (type(data) == str): data = [ord(a) for a in data]
         if len(data) % 2 == 1: data.append(0)
 
-        # self.__print__('Dumping at',location,',',len(bytearray),' bytes into flash',bytearray[:10])
         self.H.__sendByte__(CP.FLASH)
         self.H.__sendByte__(CP.WRITE_BULK_FLASH)  # indicate a flash write coming through
         self.H.__sendInt__(len(data))  # send the length
         self.H.__sendByte__(location)
         for n in range(len(data)):
             self.H.__sendByte__(data[n])
-        # Printer('Bytes written: %d'%(n+1))
         self.H.__get_ack__()
 
         # verification by readback
@@ -2857,7 +2048,6 @@ class ScienceLab():
         self.H.__sendByte__(HIGHRES | (prescaler << 1))  # use larger table for low frequencies
         self.H.__sendInt__(wavelength - 1)
         self.H.__get_ack__()
-        # if self.sine1freq == None: time.sleep(0.2)
         self.sine1freq = freq
         return freq
 
@@ -2908,7 +2098,6 @@ class ScienceLab():
         self.H.__sendByte__(HIGHRES | (prescaler << 1))  # use larger table for low frequencies
         self.H.__sendInt__(wavelength - 1)
         self.H.__get_ack__()
-        # if self.sine2freq == None: time.sleep(0.2)
         self.sine2freq = freq
 
         return freq
@@ -3014,8 +2203,6 @@ class ScienceLab():
         self.H.__sendByte__((prescaler2 << 4) | (prescaler1 << 2) | (HIGHRES2 << 1) | (
             HIGHRES))  # use larger table for low frequencies
         self.H.__get_ack__()
-        # print ( phase_coarse,phase_fine)
-        # if self.sine1freq == None or self.sine2freq==None : time.sleep(0.2)
         self.sine1freq = retfreq
         self.sine2freq = retfreq2
 
@@ -3114,13 +2301,10 @@ class ScienceLab():
         elif (num == 2):
             self.H.__sendByte__(CP.LOAD_WAVEFORM2)
 
-        # print(max(y1),max(y2))
         for a in y1:
             self.H.__sendInt__(a)
-        # time.sleep(0.001)
         for a in y2:
             self.H.__sendByte__(CP.Byte.pack(a))
-        # time.sleep(0.001)
         time.sleep(0.01)
         self.H.__get_ack__()
 
@@ -3300,8 +2484,6 @@ class ScienceLab():
         B2 = int((h2 + p2) % 1 * wavelength)
         A3 = int(p3 % 1 * wavelength)
         B3 = int((h3 + p3) % 1 * wavelength)
-        # self.__print__(p1,h1,p2,h2,p3,h3)
-        # print(wavelength,int(wavelength*h0),A1,B1,A2,B2,A3,B3,prescaler)
 
         self.H.__sendByte__(CP.WAVEGEN)
         self.H.__sendByte__(CP.SQR4)
@@ -3483,14 +2665,12 @@ class ScienceLab():
         self.H.__sendByte__(pin)
         self.H.__sendByte__(len(cols) * 3)
         for col in cols:
-            # R=reverse_bits(int(col[0]));G=reverse_bits(int(col[1]));B=reverse_bits(int(col[2]))
             R = col[0]
             G = col[1]
             B = col[2]
             self.H.__sendByte__(G)
             self.H.__sendByte__(R)
             self.H.__sendByte__(B)
-        # print(col)
         self.H.__get_ack__()
 
     # -------------------------------------------------------------------------------------------------------------------#
@@ -3725,7 +2905,6 @@ class ScienceLab():
         B = self.H.__getLong__()
         tmt = self.H.__getInt__()
         self.H.__get_ack__()
-        # self.__print__(A,B)
         if (tmt >= timeout_msb or B == 0): return 0
         rtime = lambda t: t / 64e6
         return 330. * rtime(B - A + 20) / 2.
@@ -3809,16 +2988,3 @@ class ScienceLab():
         log = self.H.fd.readline().strip()
         self.H.__get_ack__()
         return log
-
-if __name__ == "__main__":
-    print(
-        """This is not an executable file. Use this library by importing PSL in a python project
->>> from PSL import sciencelab
->>> I = sciencelab.connect()
->>> I.get_average_voltage('CH1')\n""")
-    I = connect(verbose=True)
-    t = time.time()
-    for a in range(100):
-        s = I.read_flash(3, a)
-    # print(s.replace('\n','.'),len(s))
-    print(time.time() - t)
