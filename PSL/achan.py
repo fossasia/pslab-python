@@ -58,6 +58,7 @@ class AnalogInput:
 
         self._gain = 1
         self._resolution = 2 ** 10 - 1
+        self.samples_in_buffer = 0
         self.buffer_idx = None
         self._scale = np.poly1d(0)
         self._unscale = np.poly1d(0)

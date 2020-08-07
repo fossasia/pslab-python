@@ -88,7 +88,7 @@ class Oscilloscope:
 
         active_channels = ([self.channel_one_map] + self.CH234)[:channels]
         for e, c in enumerate(active_channels):
-            xy[e + 1] = self.fetch_data(c, samples)
+            xy[e + 1] = self.fetch_data(c)
 
         return xy
 
@@ -115,7 +115,7 @@ class Oscilloscope:
         >>> scope = Oscilloscope()
         >>> x = scope.capture_nonblocking(1, 3200, 1)
         >>> time.sleep(3200 * 1e-6)
-        >>> y = scope.fetch_data(0, 3200)
+        >>> y = scope.fetch_data("CH1")
 
         Returns
         -------
@@ -158,6 +158,7 @@ class Oscilloscope:
 
         CH123SA = 0  # TODO what is this?
         chosa = self.channels[self.channel_one_map].chosa
+        self.channels[self.channel_one_map].samples_in_buffer = samples
         self.channels[self.channel_one_map].buffer_idx = 0
         if channels == 1:
             if self.trigger_enabled:
@@ -172,13 +173,15 @@ class Oscilloscope:
                 self.device.send_byte(chosa)  # 10-bit mode
         elif channels == 2:
             self.channels["CH2"].resolution = 10
-            self.channels["CH2"].buffer_idx = 1
+            self.channels["CH2"].samples_in_buffer = samples
+            self.channels["CH2"].buffer_idx = 1 * samples
             self.device.send_byte(CP.CAPTURE_TWO)
             self.device.send_byte(chosa | (0x80 * self.trigger_enabled))
         else:
             for e, c in enumerate(self.CH234):
                 self.channels[c].resolution = 10
-                self.channels[c].buffer_idx = e + 1
+                self.channels[c].samples_in_buffer = samples
+                self.channels[c].buffer_idx = (e + 1) * samples
             self.device.send_byte(CP.CAPTURE_FOUR)
             self.device.send_byte(
                 chosa | (CH123SA << 4) | (0x80 * self.trigger_enabled)
@@ -188,34 +191,21 @@ class Oscilloscope:
         self.device.send_int(int(timegap * 8))  # 8 MHz clock
         self.device.get_ack()
 
-    def fetch_data(self, channel: str, samples: int) -> np.ndarray:
-        """Fetch the requested number of samples from specified buffer index.
-
-        The ADC hardware buffer can store up to 10000 samples. During simultaneous
-        sampling of multiple channels, the location of the stored samples are offset
-        based on the capturing channel. The first channel (which can be remapped with
-        the channel_one_map attribute of Oscilloscope instances) has an
-        offset of 0. The second, third, and fourth channels are offset by one, two, or
-        three multiplied by the number of requested samples.
+    def fetch_data(self, channel: str) -> np.ndarray:
+        """Fetch samples captured from specified channel.
 
         Parameters
         ----------
-        offset_index : {0, 1, 2, 3}
-            Zero-indexed capture channel from which to fetch data. Index 0 fetches data
-            from whichever channel was mapped to channel one during capture. Indices
-            1-3 fetch data from channels CH2, CH3, and MIC.
-        samples : int
-            Fetch this many samples from the buffer.
+        channel : {'CH1', 'CH2', 'CH3', 'MIC', 'CAP', 'SEN', 'AN8'}
+            Name of the channel from which to fetch captured data.
 
         Example
         -------
         >>> from PSL.oscilloscope import Oscilloscope
         >>> scope = Oscilloscope()
         >>> scope.capture_nonblocking(channels=2, samples=1600, timegap=1)
-        # Get the first 1600 samples in the buffer, i.e. indices 0-1599.
-        >>> y1 = scope.fetch_data(0, 1600)
-        # Get another 1600 samples from the buffer, starting from index 1600.
-        >>> y2 = scope.fetch_data(1, 1600)
+        >>> y1 = scope.fetch_data("CH1")
+        >>> y2 = scope.fetch_data("CH2")
 
         Returns
         -------
@@ -224,11 +214,12 @@ class Oscilloscope:
         """
         data = bytearray()
         channel = self.channels[channel]
+        samples = channel.samples_in_buffer
 
         for i in range(int(np.ceil(samples / self.data_splitting))):
             self.device.send_byte(CP.COMMON)
             self.device.send_byte(CP.RETRIEVE_BUFFER)
-            offset = channel.buffer_idx * samples + i * self.data_splitting
+            offset = channel.buffer_idx + i * self.data_splitting
             self.device.send_int(offset)
             self.device.send_int(self.data_splitting)  # Ints to read
             # Reading int by int sometimes causes a communication error.
