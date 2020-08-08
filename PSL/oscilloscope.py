@@ -49,14 +49,21 @@ class Oscilloscope:
         samples : int
             Number of samples to fetch. Maximum 10000 divided by number of channels.
         timegap : float
-            Timegap between samples in microseconds. Will be rounded to the closest
-            1 / 8 µs. The minimum timegap depends on the type of measurement:
-                When sampling a single, untriggered channel with 10 bits of resolution,
-                the timegap must be exactly 0.5 µs (2 Msps).
-                When sampling a single channel with 12 bits of resolution, the timegap
-                must be 2 µs or greater (500 ksps).
-                When sampling two or more channels, the timegap must be 0.875 µs or
-                greater (1.1 Msps).
+            Time gap between samples in microseconds. Will be rounded to the closest
+            1 / 8 µs. The minimum time gap depends on the type of measurement:
+                +--------------+------------+----------+------------+
+                | Simultaneous | No trigger | Trigger  | No trigger |
+                | channels     | (10-bit)   | (10-bit) | (12-bit)   |
+                +==============+============+==========+============+
+                | 1            | 0.5 µs     | 0.75 µs  | 1 µs       |
+                +--------------+------------+----------+------------+
+                | 2            | 0.875 µs   | 0.875 µs | N/A        |
+                +--------------+------------+----------+------------+
+                | 4            | 1.75 µs    | 1.75 µs  | N/A        |
+                +--------------+------------+----------+------------+
+            Sample resolution is set automatically based on the above limitations; i.e.
+            to get 12-bit samples only one channel may be sampled, there must be no
+            active trigger, and the time gap must be 1 µs or greater.
 
         Example
         -------
@@ -73,7 +80,7 @@ class Oscilloscope:
         Raises
         ------
         ValueError
-            If :channels: > 4 or
+            If :channels: is not 1, 2 or 4, or
             :samples: > 10000 / :channels:, or
             :channel_one_map: is not one of CH1, CH2, CH3, MIC, CAP, SEN, AN8, or
             :timegap: is too low.
@@ -109,7 +116,6 @@ class Oscilloscope:
         Example
         -------
         >>> import time
-        >>> import numpy as np
         >>> from PSL.oscilloscope import Oscilloscope
         >>> scope = Oscilloscope()
         >>> x = scope.capture_nonblocking(1, 3200, 1)
@@ -140,7 +146,7 @@ class Oscilloscope:
             e2 = f"{channels} channels."
             raise ValueError(e1 + e2)
 
-        min_timegap = 0.5 + 0.375 * (channels > 1 or self.trigger_enabled)
+        min_timegap = self._lookup_mininum_timegap(channels)
         if timegap < min_timegap:
             raise ValueError(f"timegap must be at least {min_timegap}.")
 
@@ -148,6 +154,16 @@ class Oscilloscope:
             e1 = f"{self.channel_one_map} is not a valid channel. "
             e2 = f"Valid channels are {list(self.channels.keys())}."
             raise ValueError(e1 + e2)
+
+    def _lookup_mininum_timegap(self, channels: int) -> float:
+        channels_idx = {
+            1: 0,
+            2: 1,
+            4: 2,
+        }
+        min_timegaps = [[0.5, 0.75], [0.875, 0.875], [1.75, 1.75]]
+
+        return min_timegaps[channels_idx[channels]][self.trigger_enabled]
 
     def _capture(self, channels: int, samples: int, timegap: float):
         self._invalidate_buffer()
@@ -191,7 +207,7 @@ class Oscilloscope:
         self.device.get_ack()
 
     def _invalidate_buffer(self):
-        for c in self.channels:
+        for c in self.channels.values():
             c.samples_in_buffer = 0
             c.buffer_idx = None
 
