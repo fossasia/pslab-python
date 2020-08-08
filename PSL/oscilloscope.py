@@ -12,9 +12,8 @@ from typing import Tuple, Union
 
 import numpy as np
 
-from PSL import achan
 import PSL.commands_proto as CP
-from PSL import packet_handler
+from PSL import achan, packet_handler
 
 
 class Oscilloscope:
@@ -151,8 +150,8 @@ class Oscilloscope:
             raise ValueError(e1 + e2)
 
     def _capture(self, channels: int, samples: int, timegap: float):
+        self._invalidate_buffer()
         chosa = self.channels[self.channel_one_map].chosa
-        self.channels[self.channel_one_map].buffer = 0
         self.channels[self.channel_one_map].resolution = 10
         self.device.send_byte(CP.ADC)
 
@@ -190,6 +189,11 @@ class Oscilloscope:
         self.device.send_int(samples)
         self.device.send_int(int(timegap * 8))  # 8 MHz clock
         self.device.get_ack()
+
+    def _invalidate_buffer(self):
+        for c in self.channels:
+            c.samples_in_buffer = 0
+            c.buffer_idx = None
 
     def fetch_data(self, channel: str) -> np.ndarray:
         """Fetch samples captured from specified channel.
