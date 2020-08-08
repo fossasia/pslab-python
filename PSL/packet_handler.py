@@ -7,10 +7,10 @@ Example
 >>> version = device.get_version()
 >>> device.disconnect()
 """
-from functools import partial
 import logging
 import struct
 import time
+from functools import partial
 from typing import List, Union
 
 import serial
