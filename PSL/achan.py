@@ -38,23 +38,21 @@ PIC_ADC_MULTIPLEX = {
     "AN8": 8,
 }
 
-MAX_SAMPLES = 10000
-
 
 class AnalogInput:
     """
     """
 
     def __init__(self, name: str, device: packet_handler.Handler):
-        self.name = name  # The generic name of the input. like 'CH1', 'IN1' etc.
-        self.device = device
+        self._name = name
+        self._device = device
 
-        if self.name == "CH1":
-            self.programmable_gain_amplifier = 1
-        elif self.name == "CH2":
-            self.programmable_gain_amplifier = 2
+        if self._name == "CH1":
+            self._programmable_gain_amplifier = 1
+        elif self._name == "CH2":
+            self._programmable_gain_amplifier = 2
         else:
-            self.programmable_gain_amplifier = None
+            self._programmable_gain_amplifier = None
 
         self._gain = 1
         self._resolution = 2 ** 10 - 1
@@ -62,7 +60,7 @@ class AnalogInput:
         self.buffer_idx = None
         self._scale = np.poly1d(0)
         self._unscale = np.poly1d(0)
-        self.chosa = PIC_ADC_MULTIPLEX[self.name]
+        self.chosa = PIC_ADC_MULTIPLEX[self._name]
         self._calibrate()
 
     @property
@@ -79,15 +77,15 @@ class AnalogInput:
         ValueError
             If a gain value other than 1, 2, 4, 5, 8, 10, 16, 32, 1 / 11 is set.
         """
-        if self.name in ("CH1", "CH2"):
+        if self._name in ("CH1", "CH2"):
             return self._gain
         else:
             return None
 
     @gain.setter
     def gain(self, value: Union[int, float]):
-        if self.name not in ("CH1", "CH2"):
-            raise TypeError(f"Analog gain is not available on {self.name}.")
+        if self._name not in ("CH1", "CH2"):
+            raise TypeError(f"Analog gain is not available on {self._name}.")
 
         if value not in GAIN_VALUES:
             raise ValueError(f"Invalid gain. Valid values are {GAIN_VALUES}.")
@@ -96,11 +94,11 @@ class AnalogInput:
             value = 1  # External attenuator mode. Set gain 1x.
 
         gain_idx = GAIN_VALUES.index(value)
-        self.device.send_byte(CP.ADC)
-        self.device.send_byte(CP.SET_PGA_GAIN)
-        self.device.send_byte(self.programmable_gain_amplifier)
-        self.device.send_byte(gain_idx)
-        self.device.get_ack()
+        self._device.send_byte(CP.ADC)
+        self._device.send_byte(CP.SET_PGA_GAIN)
+        self._device.send_byte(self._programmable_gain_amplifier)
+        self._device.send_byte(gain_idx)
+        self._device.get_ack()
         self._gain = value
         self._calibrate()
 
@@ -125,8 +123,8 @@ class AnalogInput:
         self._calibrate()
 
     def _calibrate(self):
-        A = INPUT_RANGES[self.name][0] / self._gain
-        B = INPUT_RANGES[self.name][1] / self._gain
+        A = INPUT_RANGES[self._name][0] / self._gain
+        B = INPUT_RANGES[self._name][1] / self._gain
         slope = B - A
         intercept = A
         self._scale = np.poly1d([slope / self._resolution, intercept])
