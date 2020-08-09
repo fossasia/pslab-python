@@ -1,3 +1,13 @@
+"""Objects related to the PSLab's analog input channels.
+
+This module contains several module level variables with details on the analog inputs'
+capabilities, including possible gain values, voltage ranges, and firmware-interal
+enumeration.
+
+This module also contains the AnalogInput class, an instance of which functions as a
+model of a particular analog input.
+"""
+
 from typing import List, Union
 
 import numpy as np
@@ -40,7 +50,27 @@ PIC_ADC_MULTIPLEX = {
 
 
 class AnalogInput:
-    """
+    """Model of the PSLab's analog inputs, used to scale raw values to voltages.
+
+    Parameters
+    ----------
+    name : {'CH1', 'CH2', 'CH3', 'MIC', 'CAP', 'SEN', 'AN8'}
+        Name of the analog channel to model.
+    device : :class:`Handler`
+        Serial interface for communicating with the PSLab device.
+
+    Attributes
+    ----------
+    gain
+    resolution
+    samples_in_buffer : int
+        Number of samples collected on this channel currently being held in the
+        device's ADC buffer.
+    buffer_idx : Union[int, None]
+        Location in the device's ADC buffer where the samples are stored. None if no
+        samples captured by this channel are currently held in the buffer.
+    chosa : int
+        Number used to refer to this channel in the firmware.
     """
 
     def __init__(self, name: str, device: packet_handler.Handler):
