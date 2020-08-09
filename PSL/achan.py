@@ -15,7 +15,7 @@ import numpy as np
 import PSL.commands_proto as CP
 from PSL import packet_handler
 
-GAIN_VALUES = (1, 2, 4, 5, 8, 10, 16, 32, 1 / 11)
+GAIN_VALUES = (1, 2, 4, 5, 8, 10, 16, 32)
 
 ANALOG_CHANNELS = (
     "CH1",
@@ -105,7 +105,7 @@ class AnalogInput:
         TypeError
             If gain is set on a channel which does not support it.
         ValueError
-            If a gain value other than 1, 2, 4, 5, 8, 10, 16, 32, 1 / 11 is set.
+            If a gain value other than 1, 2, 4, 5, 8, 10, 16, 32 is set.
         """
         if self._name in ("CH1", "CH2"):
             return self._gain
@@ -119,9 +119,6 @@ class AnalogInput:
 
         if value not in GAIN_VALUES:
             raise ValueError(f"Invalid gain. Valid values are {GAIN_VALUES}.")
-
-        if value == 1 / 11:
-            value = 1  # External attenuator mode. Set gain 1x.
 
         gain_idx = GAIN_VALUES.index(value)
         self._device.send_byte(CP.ADC)

@@ -353,15 +353,13 @@ class Oscilloscope:
     def select_range(self, channel: str, voltage_range: Union[int, float]):
         """Set appropriate gain automatically.
 
-        Setting the right voltage range will result in better resolution. In case the
-        range specified is 160, an external 10 MΩ resistor must be connected in series
-        with the device.
+        Setting the right voltage range will result in better resolution.
 
         Parameters
         ----------
         channel : {'CH1', 'CH2'}
             Channel on which to apply gain.
-        voltage_range : {16,8,4,3,2,1.5,1,.5,160}
+        voltage_range : {16,8,4,3,2,1.5,1,.5}
 
         Examples
         --------
@@ -370,7 +368,7 @@ class Oscilloscope:
         >>> scope.select_range('CH1', 8)
         # Gain set to 2x on CH1. Voltage range ±8 V.
         """
-        ranges = [16, 8, 4, 3, 2, 1.5, 1, 0.5, 160]
+        ranges = [16, 8, 4, 3, 2, 1.5, 1, 0.5]
         if voltage_range in ranges:
             idx = ranges.index(voltage_range)
             gain = achan.GAIN_VALUES[idx]
