@@ -112,7 +112,7 @@ class ScienceLab():
         self.hexid = ''
         if self.H.connected:
             for a in ['CH1', 'CH2']:
-                self.oscilloscope.channels[a].gain = 1
+                self.oscilloscope._channels[a].gain = 1
             for a in ['W1', 'W2']: self.load_equation(a, 'sine')
             self.SPI.set_parameters(1, 7, 1, 0)
             self.hexid = hex(self.device_id())
@@ -187,7 +187,7 @@ class ScienceLab():
 
     def voltmeter_autorange(self, channel_name):
         try:
-            self.oscilloscope.channels[channel_name].gain = 1
+            self.oscilloscope._channels[channel_name].gain = 1
         except TypeError:  # channel_name is not CH1 or CH2.
             return 1
         V = self.get_average_voltage(channel_name)
@@ -200,7 +200,7 @@ class ScienceLab():
             if abs(V) > a:
                 g = cutoffs[a]
                 break
-        self.oscilloscope.channels[channel_name].gain = g
+        self.oscilloscope._channels[channel_name].gain = g
         return g
 
     def __autoRangeScope__(self, tg):
@@ -233,8 +233,8 @@ class ScienceLab():
 		1.002
 
 		"""
-        self.oscilloscope.channels[channel_name].resolution = 12
-        scale = self.oscilloscope.channels[channel_name].scale
+        self.oscilloscope._channels[channel_name].resolution = 12
+        scale = self.oscilloscope._channels[channel_name].scale
         vals = [self.__get_raw_average_voltage__(channel_name, **kwargs) for a in range(int(kwargs.get('samples', 1)))]
         # if vals[0]>2052:print (vals)
         val = np.average([scale(a) for a in vals])
@@ -254,7 +254,7 @@ class ScienceLab():
 		==============  ============================================================================================================
 
 		"""
-        chosa = self.oscilloscope.channels[channel_name].chosa
+        chosa = self.oscilloscope._channels[channel_name].chosa
         self.H.__sendByte__(CP.ADC)
         self.H.__sendByte__(CP.GET_VOLTAGE_SUMMED)
         self.H.__sendByte__(chosa)
