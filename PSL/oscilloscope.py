@@ -372,7 +372,7 @@ class Oscilloscope:
         if voltage_range in ranges:
             idx = ranges.index(voltage_range)
             gain = achan.GAIN_VALUES[idx]
-            self._channels[channel] = gain
+            self._channels[channel].gain = gain
         else:
             e = f"Invalid range: {voltage_range}. Valid ranges are {ranges}."
             raise ValueError(e)
