@@ -17,7 +17,19 @@ from PSL import achan, packet_handler
 
 
 class Oscilloscope:
-    """
+    """Capture varying voltage signals on up to four channels simultaneously.
+
+    Parameters
+    ----------
+    device : :class:`Handler`, optional
+        Serial interface for communicating with the PSLab device. If not provided, a
+        new one will be created.
+
+    Attributes
+    ----------
+    channel_one_map : str
+        Remap the first sampled channel. The default value is "CH1".
+    trigger_enabled
     """
 
     MAX_SAMPLES = 10000
