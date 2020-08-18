@@ -64,8 +64,8 @@ class Handler:
         self.__getByte__ = partial(self._receive, size=1)
         self.__getInt__ = partial(self._receive, size=2)
         self.__getLong__ = partial(self._receive, size=4)
-        self.WaitForData = self.wait_for_data
-        self.SendBurst = self.send_burst
+        self.waitForData = self.wait_for_data
+        self.sendBurst = self.send_burst
         self.portname = self.interface.name
         self.listPorts = self._list_ports
 
