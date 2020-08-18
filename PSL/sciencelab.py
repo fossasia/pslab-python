@@ -641,7 +641,7 @@ class ScienceLab():
 
 		"""
         x, y = self.MeasureMultipleDigitalEdges(channel, channel, 'rising', 'falling', 2, 2, timeout, zero=True)
-        if x != None and y != None:  # Both timers registered something. did not timeout
+        if x is not None and y is not None:  # Both timers registered something. did not timeout
             if y[0] > 0:  # rising edge occured first
                 dt = [y[0], x[1]]
             else:  # falling edge occured first
@@ -681,7 +681,7 @@ class ScienceLab():
 
 		"""
         x, y = self.MeasureMultipleDigitalEdges(channel, channel, 'rising', 'falling', 2, 2, timeout, zero=True)
-        if x != None and y != None:  # Both timers registered something. did not timeout
+        if x is not None and y is not None:  # Both timers registered something. did not timeout
             if y[0] > 0:  # rising edge occured first
                 if PulseType == 'HIGH':
                     return y[0]
@@ -1001,10 +1001,10 @@ class ScienceLab():
         # trigger_channel    ['ID1','ID2','ID3','ID4','SEN','EXT','CNTR']
         # trigger_mode       same as channel_mode.
         #				   default_value : 3
-        self.clear_buffer(0, self.MAX_SAMPLES / 2)
+        self.clear_buffer(0, int(self.MAX_SAMPLES / 2))
         self.H.__sendByte__(CP.TIMING)
         self.H.__sendByte__(CP.START_ALTERNATE_ONE_CHAN_LA)
-        self.H.__sendInt__(self.MAX_SAMPLES / 4)
+        self.H.__sendInt__(self.MAX_SAMPLES // 4)
         aqchan = self.__calcDChan__(args.get('channel', 'ID1'))
         aqmode = args.get('channel_mode', 1)
         trchan = self.__calcDChan__(args.get('trigger_channel', 'ID1'))
@@ -1243,18 +1243,18 @@ class ScienceLab():
         self.H.__sendByte__(CP.TIMING)
         self.H.__sendByte__(CP.GET_INITIAL_DIGITAL_STATES)
         initial = self.H.__getInt__()
-        A = (self.H.__getInt__() - initial) / 2
-        B = (self.H.__getInt__() - initial) / 2 - self.MAX_SAMPLES / 4
-        C = (self.H.__getInt__() - initial) / 2 - 2 * self.MAX_SAMPLES / 4
-        D = (self.H.__getInt__() - initial) / 2 - 3 * self.MAX_SAMPLES / 4
+        A = (self.H.__getInt__() - initial) // 2
+        B = (self.H.__getInt__() - initial) // 2 - self.MAX_SAMPLES // 4
+        C = (self.H.__getInt__() - initial) // 2 - 2 * self.MAX_SAMPLES // 4
+        D = (self.H.__getInt__() - initial) // 2 - 3 * self.MAX_SAMPLES // 4
         s = self.H.__getByte__()
         s_err = self.H.__getByte__()
         self.H.__get_ack__()
 
-        if A == 0: A = self.MAX_SAMPLES / 4
-        if B == 0: B = self.MAX_SAMPLES / 4
-        if C == 0: C = self.MAX_SAMPLES / 4
-        if D == 0: D = self.MAX_SAMPLES / 4
+        if A == 0: A = self.MAX_SAMPLES // 4
+        if B == 0: B = self.MAX_SAMPLES // 4
+        if C == 0: C = self.MAX_SAMPLES // 4
+        if D == 0: D = self.MAX_SAMPLES // 4
 
         if A < 0: A = 0
         if B < 0: B = 0
