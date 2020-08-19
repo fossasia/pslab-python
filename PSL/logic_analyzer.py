@@ -14,7 +14,6 @@ class LogicAnalyzer:
         # logic analyzer section of the device.  It also contains methods to generate plottable data
         # from the original timestamp arrays.
         self.dchans = [digital_channel.digital_channel(a) for a in range(4)]
-        self.MAX_SAMPLES = CP.MAX_SAMPLES
 
     def __calcDChan__(self, name):
         """accepts a string represention of a digital input ['ID1','ID2','ID3','ID4','SEN','EXT','CNTR']
@@ -26,15 +25,6 @@ class LogicAnalyzer:
         else:
             # self.__print__('invalid channel', name, ' , selecting ID1 instead ')
             return 0
-
-    def __get_high_freq__backup__(self, pin):
-        self.H.__sendByte__(CP.COMMON)
-        self.H.__sendByte__(CP.GET_HIGH_FREQUENCY)
-        self.H.__sendByte__(self.__calcDChan__(pin))
-        scale = self.H.__getByte__()
-        val = self.H.__getLong__()
-        self.H.__get_ack__()
-        return scale * (val) / 1.0e-1  # 100mS sampling
 
     def get_high_freq(self, pin):
         """
@@ -128,42 +118,6 @@ class LogicAnalyzer:
         if (tmt): return 0
         return freq(x[1] - x[0])
 
-    '''
-	def r2r_time(self,channel='ID1',timeout=0.1):
-		"""
-		Returns the time interval between two rising edges
-		of input signal on ID1
-
-		.. tabularcolumns:: |p{3cm}|p{11cm}|
-
-		==============  ================================================================================================
-		**Arguments**
-		==============  ================================================================================================
-		channel         The input to measure time between two rising edges.['ID1','ID2','ID3','ID4','SEN','EXT','CNTR']
-		timeout         Use the timeout option if you're unsure of the input signal time period.
-						returns 0 if timed out
-		==============  ================================================================================================
-
-		:return float: time between two rising edges of input signal
-
-		.. seealso:: timing_example_
-
-		"""
-		self.H.__sendByte__(CP.TIMING)
-		self.H.__sendByte__(CP.GET_TIMING)
-		timeout_msb = int((timeout*64e6))>>16
-		self.H.__sendInt__(timeout_msb)
-		self.H.__sendByte__( EVERY_RISING_EDGE<<2 | 2)
-		self.H.__sendByte__(self.__calcDChan__(channel))
-		tmt = self.H.__getInt__()
-		x=[self.H.__getLong__() for a in range(2)]
-		self.H.__get_ack__()
-		if(tmt >= timeout_msb):return -1
-		rtime = lambda t: t/64e6
-		y=x[1]-x[0]
-		return rtime(y)
-	'''
-
     def r2r_time(self, channel, skip_cycle=0, timeout=5):
         """
 		Return a list of rising edges that occured within the timeout period.
@@ -186,7 +140,7 @@ class LogicAnalyzer:
         startTime = time.time()
         while time.time() - startTime < timeout:
             a, b, c, d, e = self.get_LA_initial_states()
-            if a == self.MAX_SAMPLES / 4:
+            if a == CP.MAX_SAMPLES / 4:
                 a = 0
             if a >= skip_cycle + 2:
                 tmp = self.fetch_long_data_from_LA(a, 1)
@@ -218,7 +172,7 @@ class LogicAnalyzer:
         startTime = time.time()
         while time.time() - startTime < timeout:
             a, b, c, d, e = self.get_LA_initial_states()
-            if a == self.MAX_SAMPLES / 4:
+            if a == CP.MAX_SAMPLES / 4:
                 a = 0
             if a >= skip_cycle + 2:
                 tmp = self.fetch_long_data_from_LA(a, 1)
@@ -515,138 +469,6 @@ class LogicAnalyzer:
         # data[4][0] -> initial state
         return tmp / 64e6
 
-    def start_one_channel_LA_backup__(self, trigger=1, channel='ID1', maximum_time=67, **args):
-        """
-		start logging timestamps of rising/falling edges on ID1
-
-		.. tabularcolumns:: |p{3cm}|p{11cm}|
-
-		================== ======================================================================================================
-		**Arguments**
-		================== ======================================================================================================
-		trigger            Bool . Enable edge trigger on ID1. use keyword argument edge='rising' or 'falling'
-		channel            ['ID1','ID2','ID3','ID4','SEN','EXT','CNTR']
-		maximum_time       Total time to sample. If total time exceeds 67 seconds, a prescaler will be used in the reference clock
-		kwargs
-		triggger_channels  array of digital input names that can trigger the acquisition.eg. trigger= ['ID1','ID2','ID3']
-						   will triggger when a logic change specified by the keyword argument 'edge' occurs
-						   on either or the three specified trigger inputs.
-		edge               'rising' or 'falling' . trigger edge type for trigger_channels.
-		================== ======================================================================================================
-
-		:return: Nothing
-
-		"""
-        self.clear_buffer(0, self.MAX_SAMPLES / 2)
-        self.H.__sendByte__(CP.TIMING)
-        self.H.__sendByte__(CP.START_ONE_CHAN_LA)
-        self.H.__sendInt__(self.MAX_SAMPLES / 4)
-        # trigchan bit functions
-        # b0 - trigger or not
-        # b1 - trigger edge . 1 => rising. 0 => falling
-        # b2, b3 - channel to acquire data from. ID1,ID2,ID3,ID4,COMPARATOR
-        # b4 - trigger channel ID1
-        # b5 - trigger channel ID2
-        # b6 - trigger channel ID3
-
-        if ('trigger_channels' in args) and trigger & 1:
-            trigchans = args.get('trigger_channels', 0)
-            if 'ID1' in trigchans: trigger |= (1 << 4)
-            if 'ID2' in trigchans: trigger |= (1 << 5)
-            if 'ID3' in trigchans: trigger |= (1 << 6)
-        else:
-            trigger |= 1 << (self.__calcDChan__(
-                channel) + 4)  # trigger on specified input channel if not trigger_channel argument provided
-
-        trigger |= 2 if args.get('edge', 0) == 'rising' else 0
-        trigger |= self.__calcDChan__(channel) << 2
-
-        self.H.__sendByte__(trigger)
-        self.H.__get_ack__()
-        self.digital_channels_in_buffer = 1
-        for a in self.dchans:
-            a.prescaler = 0
-            a.datatype = 'long'
-            a.length = self.MAX_SAMPLES / 4
-            a.maximum_time = maximum_time * 1e6  # conversion to uS
-            a.mode = self.EVERY_EDGE
-
-            # def start_one_channel_LA(self,**args):
-            """
-			start logging timestamps of rising/falling edges on ID1
-
-			.. tabularcolumns:: |p{3cm}|p{11cm}|
-
-			================== ======================================================================================================
-			**Arguments**
-			================== ======================================================================================================
-			args
-			channel             ['ID1','ID2','ID3','ID4','SEN','EXT','CNTR']
-			trigger_channel     ['ID1','ID2','ID3','ID4','SEN','EXT','CNTR']
-
-			channel_mode        acquisition mode\n
-								default value: 1(EVERY_EDGE)
-
-								- EVERY_SIXTEENTH_RISING_EDGE = 5
-								- EVERY_FOURTH_RISING_EDGE    = 4
-								- EVERY_RISING_EDGE           = 3
-								- EVERY_FALLING_EDGE          = 2
-								- EVERY_EDGE                  = 1
-								- DISABLED                    = 0
-
-			trigger_edge        1=Falling edge
-								0=Rising Edge
-								-1=Disable Trigger
-
-			================== ======================================================================================================
-
-			:return: Nothing
-
-			self.clear_buffer(0,self.MAX_SAMPLES/2);
-			self.H.__sendByte__(CP.TIMING)
-			self.H.__sendByte__(CP.START_ONE_CHAN_LA)
-			self.H.__sendInt__(self.MAX_SAMPLES/4)
-			aqchan = self.__calcDChan__(args.get('channel','ID1'))
-			aqmode = args.get('channel_mode',1)
-
-			if 'trigger_channel' in args:
-				trchan = self.__calcDChan__(args.get('trigger_channel','ID1'))
-				tredge = args.get('trigger_edge',0)
-				self.__print__('trigger chan',trchan,' trigger edge ',tredge)
-				if tredge!=-1:
-					self.H.__sendByte__((trchan<<4)|(tredge<<1)|1)
-				else:
-					self.H.__sendByte__(0)  #no triggering
-			elif 'trigger_edge' in args:
-				tredge = args.get('trigger_edge',0)
-				if tredge!=-1:
-					self.H.__sendByte__((aqchan<<4)|(tredge<<1)|1)  #trigger on acquisition channel
-				else:
-					self.H.__sendByte__(0)  #no triggering
-			else:
-				self.H.__sendByte__(0)  #no triggering
-
-			self.H.__sendByte__((aqchan<<4)|aqmode)
-
-
-			self.H.__get_ack__()
-			self.digital_channels_in_buffer = 1
-
-			a = self.dchans[0]
-			a.prescaler = 0
-			a.datatype='long'
-			a.length = self.MAX_SAMPLES/4
-			a.maximum_time = 67*1e6 #conversion to uS
-			a.mode = args.get('channel_mode',1)
-			a.initial_state_override=False
-			'''
-			if trmode in [3,4,5]:
-				a.initial_state_override = 2
-			elif trmode == 2:
-				a.initial_state_override = 1
-			'''
-			"""
-
     def start_one_channel_LA(self, **args):
         """
 		start logging timestamps of rising/falling edges on ID1
@@ -680,10 +502,10 @@ class LogicAnalyzer:
         # trigger_channel    ['ID1','ID2','ID3','ID4','SEN','EXT','CNTR']
         # trigger_mode       same as channel_mode.
         #				   default_value : 3
-        self.clear_buffer(0, int(self.MAX_SAMPLES / 2))
+        self.clear_buffer(0, int(CP.MAX_SAMPLES / 2))
         self.H.__sendByte__(CP.TIMING)
         self.H.__sendByte__(CP.START_ALTERNATE_ONE_CHAN_LA)
-        self.H.__sendInt__(self.MAX_SAMPLES // 4)
+        self.H.__sendInt__(CP.MAX_SAMPLES // 4)
         aqchan = self.__calcDChan__(args.get('channel', 'ID1'))
         aqmode = args.get('channel_mode', 1)
         trchan = self.__calcDChan__(args.get('trigger_channel', 'ID1'))
@@ -697,7 +519,7 @@ class LogicAnalyzer:
         a = self.dchans[0]
         a.prescaler = 0
         a.datatype = 'long'
-        a.length = self.MAX_SAMPLES / 4
+        a.length = CP.MAX_SAMPLES / 4
         a.maximum_time = 67 * 1e6  # conversion to uS
         a.mode = args.get('channel_mode', 1)
         a.name = args.get('channel', 'ID1')
@@ -758,10 +580,10 @@ class LogicAnalyzer:
         else:
             trigger = 0
 
-        self.clear_buffer(0, self.MAX_SAMPLES)
+        self.clear_buffer(0, CP.MAX_SAMPLES)
         self.H.__sendByte__(CP.TIMING)
         self.H.__sendByte__(CP.START_TWO_CHAN_LA)
-        self.H.__sendInt__(self.MAX_SAMPLES / 4)
+        self.H.__sendInt__(CP.MAX_SAMPLES / 4)
         self.H.__sendByte__(trigger)
 
         self.H.__sendByte__((modes[1] << 4) | modes[0])  # Modes. four bits each
@@ -770,7 +592,7 @@ class LogicAnalyzer:
         n = 0
         for a in self.dchans[:2]:
             a.prescaler = 0
-            a.length = self.MAX_SAMPLES / 4
+            a.length = CP.MAX_SAMPLES / 4
             a.datatype = 'long'
             a.maximum_time = maximum_time * 1e6  # conversion to uS
             a.mode = modes[n]
@@ -809,10 +631,10 @@ class LogicAnalyzer:
 		:return: Nothing
 
 		"""
-        self.clear_buffer(0, self.MAX_SAMPLES)
+        self.clear_buffer(0, CP.MAX_SAMPLES)
         self.H.__sendByte__(CP.TIMING)
         self.H.__sendByte__(CP.START_THREE_CHAN_LA)
-        self.H.__sendInt__(self.MAX_SAMPLES / 4)
+        self.H.__sendInt__(CP.MAX_SAMPLES / 4)
         modes = args.get('modes', [1, 1, 1, 1])
         trchan = self.__calcDChan__(args.get('trigger_channel', 'ID1'))
         trmode = args.get('trigger_mode', 3)
@@ -826,7 +648,7 @@ class LogicAnalyzer:
         n = 0
         for a in self.dchans[:3]:
             a.prescaler = 0
-            a.length = self.MAX_SAMPLES / 4
+            a.length = CP.MAX_SAMPLES / 4
             a.datatype = 'int'
             a.maximum_time = 1e3  # < 1 mS between each consecutive level changes in the input signal must be ensured to prevent rollover
             a.mode = modes[n]
@@ -875,7 +697,7 @@ class LogicAnalyzer:
 			Use :func:`fetch_long_data_from_LA` (points to read,x) to get data acquired from channel x.
 			The read data can be accessed from :class:`~ScienceLab.dchans` [x-1]
 		"""
-        self.clear_buffer(0, self.MAX_SAMPLES)
+        self.clear_buffer(0, CP.MAX_SAMPLES)
         prescale = 0
         """
 		if(maximum_time > 0.26):
@@ -890,7 +712,7 @@ class LogicAnalyzer:
 		"""
         self.H.__sendByte__(CP.TIMING)
         self.H.__sendByte__(CP.START_FOUR_CHAN_LA)
-        self.H.__sendInt__(self.MAX_SAMPLES / 4)
+        self.H.__sendInt__(CP.MAX_SAMPLES / 4)
         self.H.__sendInt__(mode[0] | (mode[1] << 4) | (mode[2] << 8) | (mode[3] << 12))
         self.H.__sendByte__(prescale)  # prescaler
         trigopts = 0
@@ -906,7 +728,7 @@ class LogicAnalyzer:
         n = 0
         for a in self.dchans:
             a.prescaler = prescale
-            a.length = self.MAX_SAMPLES / 4
+            a.length = CP.MAX_SAMPLES / 4
             a.datatype = 'int'
             a.name = a.digital_channel_names[n]
             a.maximum_time = maximum_time * 1e6  # conversion to uS
@@ -923,17 +745,17 @@ class LogicAnalyzer:
         self.H.__sendByte__(CP.GET_INITIAL_DIGITAL_STATES)
         initial = self.H.__getInt__()
         A = (self.H.__getInt__() - initial) // 2
-        B = (self.H.__getInt__() - initial) // 2 - self.MAX_SAMPLES // 4
-        C = (self.H.__getInt__() - initial) // 2 - 2 * self.MAX_SAMPLES // 4
-        D = (self.H.__getInt__() - initial) // 2 - 3 * self.MAX_SAMPLES // 4
+        B = (self.H.__getInt__() - initial) // 2 - CP.MAX_SAMPLES // 4
+        C = (self.H.__getInt__() - initial) // 2 - 2 * CP.MAX_SAMPLES // 4
+        D = (self.H.__getInt__() - initial) // 2 - 3 * CP.MAX_SAMPLES // 4
         s = self.H.__getByte__()
         s_err = self.H.__getByte__()
         self.H.__get_ack__()
 
-        if A == 0: A = self.MAX_SAMPLES // 4
-        if B == 0: B = self.MAX_SAMPLES // 4
-        if C == 0: C = self.MAX_SAMPLES // 4
-        if D == 0: D = self.MAX_SAMPLES // 4
+        if A == 0: A = CP.MAX_SAMPLES // 4
+        if B == 0: B = CP.MAX_SAMPLES // 4
+        if C == 0: C = CP.MAX_SAMPLES // 4
+        if D == 0: D = CP.MAX_SAMPLES // 4
 
         if A < 0: A = 0
         if B < 0: B = 0
