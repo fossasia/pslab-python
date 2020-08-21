@@ -583,7 +583,7 @@ class LogicAnalyzer:
         self.clear_buffer(0, CP.MAX_SAMPLES)
         self.H.__sendByte__(CP.TIMING)
         self.H.__sendByte__(CP.START_TWO_CHAN_LA)
-        self.H.__sendInt__(CP.MAX_SAMPLES / 4)
+        self.H.__sendInt__(CP.MAX_SAMPLES // 4)
         self.H.__sendByte__(trigger)
 
         self.H.__sendByte__((modes[1] << 4) | modes[0])  # Modes. four bits each
@@ -592,7 +592,7 @@ class LogicAnalyzer:
         n = 0
         for a in self.dchans[:2]:
             a.prescaler = 0
-            a.length = CP.MAX_SAMPLES / 4
+            a.length = CP.MAX_SAMPLES // 4
             a.datatype = 'long'
             a.maximum_time = maximum_time * 1e6  # conversion to uS
             a.mode = modes[n]
@@ -634,7 +634,7 @@ class LogicAnalyzer:
         self.clear_buffer(0, CP.MAX_SAMPLES)
         self.H.__sendByte__(CP.TIMING)
         self.H.__sendByte__(CP.START_THREE_CHAN_LA)
-        self.H.__sendInt__(CP.MAX_SAMPLES / 4)
+        self.H.__sendInt__(CP.MAX_SAMPLES // 4)
         modes = args.get('modes', [1, 1, 1, 1])
         trchan = self.__calcDChan__(args.get('trigger_channel', 'ID1'))
         trmode = args.get('trigger_mode', 3)
@@ -648,7 +648,7 @@ class LogicAnalyzer:
         n = 0
         for a in self.dchans[:3]:
             a.prescaler = 0
-            a.length = CP.MAX_SAMPLES / 4
+            a.length = CP.MAX_SAMPLES // 4
             a.datatype = 'int'
             a.maximum_time = 1e3  # < 1 mS between each consecutive level changes in the input signal must be ensured to prevent rollover
             a.mode = modes[n]
@@ -699,20 +699,20 @@ class LogicAnalyzer:
 		"""
         self.clear_buffer(0, CP.MAX_SAMPLES)
         prescale = 0
-        """
-		if(maximum_time > 0.26):
-			#self.__print__('too long for 4 channel. try 2/1 channels')
-			prescale = 3
-		elif(maximum_time > 0.0655):
-			prescale = 3
-		elif(maximum_time > 0.008191):
-			prescale = 2
-		elif(maximum_time > 0.0010239):
-			prescale = 1
-		"""
+
+        if(maximum_time > 0.26):
+            #self.__print__('too long for 4 channel. try 2/1 channels')
+            prescale = 3
+        elif(maximum_time > 0.0655):
+            prescale = 3
+        elif(maximum_time > 0.008191):
+            prescale = 2
+        elif(maximum_time > 0.0010239):
+            prescale = 1
+
         self.H.__sendByte__(CP.TIMING)
         self.H.__sendByte__(CP.START_FOUR_CHAN_LA)
-        self.H.__sendInt__(CP.MAX_SAMPLES / 4)
+        self.H.__sendInt__(CP.MAX_SAMPLES // 4)
         self.H.__sendInt__(mode[0] | (mode[1] << 4) | (mode[2] << 8) | (mode[3] << 12))
         self.H.__sendByte__(prescale)  # prescaler
         trigopts = 0
@@ -728,7 +728,7 @@ class LogicAnalyzer:
         n = 0
         for a in self.dchans:
             a.prescaler = prescale
-            a.length = CP.MAX_SAMPLES / 4
+            a.length = CP.MAX_SAMPLES // 4
             a.datatype = 'int'
             a.name = a.digital_channel_names[n]
             a.maximum_time = maximum_time * 1e6  # conversion to uS
