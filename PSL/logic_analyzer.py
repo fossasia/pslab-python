@@ -45,7 +45,7 @@ class LogicAnalyzer:
             # self.__print__('invalid channel', name, ' , selecting ID1 instead ')
             return 0
 
-    def get_high_freq(self, pin):
+    def get_high_freq(self, channel: str):
         """
         retrieves the frequency of the signal connected to ID1. for frequencies > 1MHz
         also good for lower frequencies, but avoid using it since
@@ -69,16 +69,16 @@ class LogicAnalyzer:
 
         :return: frequency
         """
-        self.H.__sendByte__(CP.COMMON)
-        self.H.__sendByte__(CP.GET_ALTERNATE_HIGH_FREQUENCY)
-        self.H.__sendByte__(self.__calcDChan__(pin))
-        scale = self.H.__getByte__()
-        val = self.H.__getLong__()
-        self.H.__get_ack__()
-        # self.__print__(hex(val))
-        return scale * (val) / 1.0e-1  # 100mS sampling
+        self._device.send_byte(CP.COMMON)
+        self._device.send_byte(CP.GET_ALTERNATE_HIGH_FREQUENCY)
+        self._device.send_byte(self._channels[channel].number)
+        scale = self._device.get_byte()
+        counter_value = self._device.get_long()
+        self._device.get_ack()
 
-    def get_freq(self, channel='CNTR', timeout=2):
+        return scale * counter_value / 1e-1  # 100 ms sampling
+
+    def get_freq(self, channel: str, timeout: float = 1):
         """
 		Frequency measurement on IDx.
 		Measures time taken for 16 rising edges of input signal.
@@ -120,86 +120,22 @@ class LogicAnalyzer:
 			(0.00025,6.25e-05)
 
 		"""
-        self.H.__sendByte__(CP.COMMON)
-        self.H.__sendByte__(CP.GET_FREQUENCY)
-        timeout_msb = int((timeout * 64e6)) >> 16
-        self.H.__sendInt__(timeout_msb)
-        self.H.__sendByte__(self.__calcDChan__(channel))
+        rising_edges = 16
+        self._device.send_byte(CP.COMMON)
+        self._device.send_byte(CP.GET_FREQUENCY)
+        self._device.send_int(int(timeout * CLOCK_RATE) >> rising_edges)
+        self._device.send_byte(self._channels[channel].number)
+        self._device.wait_for_data(timeout)
 
-        self.H.waitForData(timeout)
+        buffer_overflow_or_timeout = self._device.get_byte()
+        counter_diff = np.diff([self._device.get_long() for a in range(2)])[0]
+        self._device.get_ack()
+        frequency = rising_edges * CLOCK_RATE / counter_diff
 
-        tmt = self.H.__getByte__()
-        x = [self.H.__getLong__() for a in range(2)]
-        self.H.__get_ack__()
-        freq = lambda t: 16 * 64e6 / t if (t) else 0
-        # self.__print__(x,tmt,timeout_msb)
+        if buffer_overflow_or_timeout:
+            return 0
 
-        if (tmt): return 0
-        return freq(x[1] - x[0])
-
-    def r2r_time(self, channel, skip_cycle=0, timeout=5):
-        """
-		Return a list of rising edges that occured within the timeout period.
-
-		.. tabularcolumns:: |p{3cm}|p{11cm}|
-
-		==============  ==============================================================================================================
-		**Arguments**
-		==============  ==============================================================================================================
-		channel         The input to measure time between two rising edges.['ID1','ID2','ID3','ID4','SEN','EXT','CNTR']
-		skip_cycle      Number of points to skip. eg. Pendulums pass through light barriers twice every cycle. SO 1 must be skipped
-		timeout         Number of seconds to wait for datapoints. (Maximum 60 seconds)
-		==============  ==============================================================================================================
-
-		:return list: Array of points
-
-		"""
-        if timeout > 60: timeout = 60
-        self.start_one_channel_LA(channel=channel, channel_mode=3, trigger_mode=0)  # every rising edge
-        startTime = time.time()
-        while time.time() - startTime < timeout:
-            a, b, c, d, e = self.get_LA_initial_states()
-            if a == CP.MAX_SAMPLES / 4:
-                a = 0
-            if a >= skip_cycle + 2:
-                tmp = self.fetch_long_data_from_LA(a, 1)
-                self.dchans[0].load_data(e, tmp)
-                # print (self.dchans[0].timestamps)
-                return [1e-6 * (self.dchans[0].timestamps[skip_cycle + 1] - self.dchans[0].timestamps[0])]
-            time.sleep(0.1)
-        return []
-
-    def f2f_time(self, channel, skip_cycle=0, timeout=5):
-        """
-		Return a list of falling edges that occured within the timeout period.
-
-		.. tabularcolumns:: |p{3cm}|p{11cm}|
-
-		==============  ==============================================================================================================
-		**Arguments**
-		==============  ==============================================================================================================
-		channel         The input to measure time between two falling edges.['ID1','ID2','ID3','ID4','SEN','EXT','CNTR']
-		skip_cycle      Number of points to skip. eg. Pendulums pass through light barriers twice every cycle. SO 1 must be skipped
-		timeout         Number of seconds to wait for datapoints. (Maximum 60 seconds)
-		==============  ==============================================================================================================
-
-		:return list: Array of points
-
-		"""
-        if timeout > 60: timeout = 60
-        self.start_one_channel_LA(channel=channel, channel_mode=2, trigger_mode=0)  # every falling edge
-        startTime = time.time()
-        while time.time() - startTime < timeout:
-            a, b, c, d, e = self.get_LA_initial_states()
-            if a == CP.MAX_SAMPLES / 4:
-                a = 0
-            if a >= skip_cycle + 2:
-                tmp = self.fetch_long_data_from_LA(a, 1)
-                self.dchans[0].load_data(e, tmp)
-                # print (self.dchans[0].timestamps)
-                return [1e-6 * (self.dchans[0].timestamps[skip_cycle + 1] - self.dchans[0].timestamps[0])]
-            time.sleep(0.1)
-        return []
+        return frequency
 
     def MeasureInterval(self, channel1, channel2, edge1, edge2, timeout=0.1):
         """
@@ -435,59 +371,6 @@ class LogicAnalyzer:
         else:
             return rtime(A), rtime(B)
 
-    def capture_edges1(self, waiting_time=1., **args):
-        """
-		log timestamps of rising/falling edges on one digital input
-
-		.. tabularcolumns:: |p{3cm}|p{11cm}|
-
-		=================   ======================================================================================================
-		**Arguments**
-		=================   ======================================================================================================
-		waiting_time        Total time to allow the logic analyzer to collect data.
-							This is implemented using a simple sleep routine, so if large delays will be involved,
-							refer to :func:`start_one_channel_LA` to start the acquisition, and :func:`fetch_LA_channels` to
-							retrieve data from the hardware after adequate time. The retrieved data is stored
-							in the array self.dchans[0].timestamps.
-		keyword arguments
-		channel             'ID1',...,'ID4'
-		trigger_channel     'ID1',...,'ID4'
-		channel_mode        acquisition mode\n
-							default value: 3
-
-							- EVERY_SIXTEENTH_RISING_EDGE = 5
-							- EVERY_FOURTH_RISING_EDGE    = 4
-							- EVERY_RISING_EDGE           = 3
-							- EVERY_FALLING_EDGE          = 2
-							- EVERY_EDGE                  = 1
-							- DISABLED                    = 0
-
-		trigger_mode        same as channel_mode.
-							default_value : 3
-
-		=================   ======================================================================================================
-
-		:return:  timestamp array in Seconds
-
-		>>> I.capture_edges(0.2,channel='ID1',trigger_channel='ID1',channel_mode=3,trigger_mode = 3)
-		#captures rising edges only. with rising edge trigger on ID1
-
-		"""
-        aqchan = args.get('channel', 'ID1')
-        trchan = args.get('trigger_channel', aqchan)
-
-        aqmode = args.get('channel_mode', 3)
-        trmode = args.get('trigger_mode', 3)
-
-        self.start_one_channel_LA(channel=aqchan, channel_mode=aqmode, trigger_channel=trchan, trigger_mode=trmode)
-
-        time.sleep(waiting_time)
-
-        data = self.get_LA_initial_states()
-        tmp = self.fetch_long_data_from_LA(data[0], 1)
-        # data[4][0] -> initial state
-        return tmp / 64e6
-
     def capture(
         self,
         channels: int,
@@ -716,400 +599,13 @@ class LogicAnalyzer:
                 self.trigger_mode
             ]
 
-    def start_one_channel_LA(self, **args):
-        """
-		start logging timestamps of rising/falling edges on ID1
-
-		.. tabularcolumns:: |p{3cm}|p{11cm}|
-
-		================== ======================================================================================================
-		**Arguments**
-		================== ======================================================================================================
-		args
-		channel            ['ID1','ID2','ID3','ID4','SEN','EXT','CNTR']
-
-		channel_mode       acquisition mode.
-						   default value: 1
-
-							- EVERY_SIXTEENTH_RISING_EDGE = 5
-							- EVERY_FOURTH_RISING_EDGE    = 4
-							- EVERY_RISING_EDGE           = 3
-							- EVERY_FALLING_EDGE          = 2
-							- EVERY_EDGE                  = 1
-							- DISABLED                    = 0
-
-
-		================== ======================================================================================================
-
-		:return: Nothing
-
-		see :ref:`LA_video`
-
-		"""
-        # trigger_channel    ['ID1','ID2','ID3','ID4','SEN','EXT','CNTR']
-        # trigger_mode       same as channel_mode.
-        #				   default_value : 3
-        self.clear_buffer(0, int(CP.MAX_SAMPLES / 2))
-        self.H.__sendByte__(CP.TIMING)
-        self.H.__sendByte__(CP.START_ALTERNATE_ONE_CHAN_LA)
-        self.H.__sendInt__(CP.MAX_SAMPLES // 4)
-        aqchan = self.__calcDChan__(args.get('channel', 'ID1'))
-        aqmode = args.get('channel_mode', 1)
-        trchan = self.__calcDChan__(args.get('trigger_channel', 'ID1'))
-        trmode = args.get('trigger_mode', 3)
-
-        self.H.__sendByte__((aqchan << 4) | aqmode)
-        self.H.__sendByte__((trchan << 4) | trmode)
-        self.H.__get_ack__()
-        self.digital_channels_in_buffer = 1
-
-        a = self.dchans[0]
-        a.prescaler = 0
-        a.datatype = 'long'
-        a.length = CP.MAX_SAMPLES / 4
-        a.maximum_time = 67 * 1e6  # conversion to uS
-        a.mode = args.get('channel_mode', 1)
-        a.name = args.get('channel', 'ID1')
-
-        if trmode in [3, 4, 5]:
-            a.initial_state_override = 2
-        elif trmode == 2:
-            a.initial_state_override = 1
-
-    def start_two_channel_LA(self, **args):
-        """
-		start logging timestamps of rising/falling edges on ID1,AD2
-
-		.. tabularcolumns:: |p{3cm}|p{11cm}|
-
-		==============  =======================================================================================================
-		**Arguments**
-		==============  =======================================================================================================
-		trigger         Bool . Enable rising edge trigger on ID1
-		\*\*args
-		chans			Channels to acquire data from . default ['ID1','ID2']
-		modes               modes for each channel. Array .\n
-							default value: [1,1]
-
-							- EVERY_SIXTEENTH_RISING_EDGE = 5
-							- EVERY_FOURTH_RISING_EDGE    = 4
-							- EVERY_RISING_EDGE           = 3
-							- EVERY_FALLING_EDGE          = 2
-							- EVERY_EDGE                  = 1
-							- DISABLED                    = 0
-
-		maximum_time    Total time to sample. If total time exceeds 67 seconds, a prescaler will be used in the reference clock
-
-		==============  =======================================================================================================
-
-		::
-
-			"fetch_long_data_from_dma(samples,1)" to get data acquired from channel 1
-			"fetch_long_data_from_dma(samples,2)" to get data acquired from channel 2
-			The read data can be accessed from self.dchans[0 or 1]
-		"""
-        # Trigger not working up to expectations. DMA keeps dumping Null values even though not triggered.
-
-        # trigger         True/False  : Whether or not to trigger the Logic Analyzer using the first channel of the two.
-        # trig_type		'rising' / 'falling' .  Type of logic change to trigger on
-        # trig_chan		channel to trigger on . Any digital input. default chans[0]
-
-        modes = args.get('modes', [1, 1])
-        strchans = args.get('chans', ['ID1', 'ID2'])
-        chans = [self.__calcDChan__(strchans[0]), self.__calcDChan__(strchans[1])]  # Convert strings to index
-        maximum_time = args.get('maximum_time', 67)
-        trigger = args.get('trigger', 0)
-        if trigger:
-            trigger = 1
-            if args.get('edge', 'rising') == 'falling': trigger |= 2
-            trigger |= (self.__calcDChan__(args.get('trig_chan', strchans[0])) << 4)
-        # print (args.get('trigger',0),args.get('edge'),args.get('trig_chan',strchans[0]),hex(trigger),args)
-        else:
-            trigger = 0
-
-        self.clear_buffer(0, CP.MAX_SAMPLES)
-        self.H.__sendByte__(CP.TIMING)
-        self.H.__sendByte__(CP.START_TWO_CHAN_LA)
-        self.H.__sendInt__(CP.MAX_SAMPLES // 4)
-        self.H.__sendByte__(trigger)
-
-        self.H.__sendByte__((modes[1] << 4) | modes[0])  # Modes. four bits each
-        self.H.__sendByte__((chans[1] << 4) | chans[0])  # Channels. four bits each
-        self.H.__get_ack__()
-        n = 0
-        for a in self.dchans[:2]:
-            a.prescaler = 0
-            a.length = CP.MAX_SAMPLES // 4
-            a.datatype = 'long'
-            a.maximum_time = maximum_time * 1e6  # conversion to uS
-            a.mode = modes[n]
-            a.channel_number = chans[n]
-            a.name = strchans[n]
-            n += 1
-        self.digital_channels_in_buffer = 2
-
-    def start_three_channel_LA(self, **args):
-        """
-		start logging timestamps of rising/falling edges on ID1,ID2,ID3
-
-		.. tabularcolumns:: |p{3cm}|p{11cm}|
-
-		================== ======================================================================================================
-		**Arguments**
-		================== ======================================================================================================
-		args
-		trigger_channel     ['ID1','ID2','ID3','ID4','SEN','EXT','CNTR']
-
-		modes               modes for each channel. Array .\n
-							default value: [1,1,1]
-
-							- EVERY_SIXTEENTH_RISING_EDGE = 5
-							- EVERY_FOURTH_RISING_EDGE    = 4
-							- EVERY_RISING_EDGE           = 3
-							- EVERY_FALLING_EDGE          = 2
-							- EVERY_EDGE                  = 1
-							- DISABLED                    = 0
-
-		trigger_mode        same as modes(previously documented keyword argument)
-							default_value : 3
-
-		================== ======================================================================================================
-
-		:return: Nothing
-
-		"""
-        self.clear_buffer(0, CP.MAX_SAMPLES)
-        self.H.__sendByte__(CP.TIMING)
-        self.H.__sendByte__(CP.START_THREE_CHAN_LA)
-        self.H.__sendInt__(CP.MAX_SAMPLES // 4)
-        modes = args.get('modes', [1, 1, 1, 1])
-        trchan = self.__calcDChan__(args.get('trigger_channel', 'ID1'))
-        trmode = args.get('trigger_mode', 3)
-
-        self.H.__sendInt__(modes[0] | (modes[1] << 4) | (modes[2] << 8))
-        self.H.__sendByte__((trchan << 4) | trmode)
-
-        self.H.__get_ack__()
-        self.digital_channels_in_buffer = 3
-
-        n = 0
-        for a in self.dchans[:3]:
-            a.prescaler = 0
-            a.length = CP.MAX_SAMPLES // 4
-            a.datatype = 'int'
-            a.maximum_time = 1e3  # < 1 mS between each consecutive level changes in the input signal must be ensured to prevent rollover
-            a.mode = modes[n]
-            a.name = a.digital_channel_names[n]
-            if trmode in [3, 4, 5]:
-                a.initial_state_override = 2
-            elif trmode == 2:
-                a.initial_state_override = 1
-            n += 1
-
-    def start_four_channel_LA(self, trigger=1, maximum_time=0.001, mode=[1, 1, 1, 1], **args):
-        """
-		Four channel Logic Analyzer.
-		start logging timestamps from a 64MHz counter to record level changes on ID1,ID2,ID3,ID4.
-
-		.. tabularcolumns:: |p{3cm}|p{11cm}|
-
-		==============  ============================================================================================
-		**Arguments**
-		==============  ============================================================================================
-		trigger         Bool . Enable rising edge trigger on ID1
-
-		maximum_time    Maximum delay expected between two logic level changes.\n
-						If total time exceeds 1 mS, a prescaler will be used in the reference clock
-						However, this only refers to the maximum time between two successive level changes. If a delay larger
-						than .26 S occurs, it will be truncated by modulo .26 S.\n
-						If you need to record large intervals, try single channel/two channel modes which use 32 bit counters
-						capable of time interval up to 67 seconds.
-
-		mode            modes for each channel. List with four elements\n
-						default values: [1,1,1,1]
-
-						- EVERY_SIXTEENTH_RISING_EDGE = 5
-						- EVERY_FOURTH_RISING_EDGE    = 4
-						- EVERY_RISING_EDGE           = 3
-						- EVERY_FALLING_EDGE          = 2
-						- EVERY_EDGE                  = 1
-						- DISABLED                    = 0
-
-		==============  ============================================================================================
-
-		:return: Nothing
-
-		.. seealso::
-
-			Use :func:`fetch_long_data_from_LA` (points to read,x) to get data acquired from channel x.
-			The read data can be accessed from :class:`~ScienceLab.dchans` [x-1]
-		"""
-        self.clear_buffer(0, CP.MAX_SAMPLES)
-        prescale = 0
-
-        if(maximum_time > 0.26):
-            #self.__print__('too long for 4 channel. try 2/1 channels')
-            prescale = 3
-        elif(maximum_time > 0.0655):
-            prescale = 3
-        elif(maximum_time > 0.008191):
-            prescale = 2
-        elif(maximum_time > 0.0010239):
-            prescale = 1
-
-        self.H.__sendByte__(CP.TIMING)
-        self.H.__sendByte__(CP.START_FOUR_CHAN_LA)
-        self.H.__sendInt__(CP.MAX_SAMPLES // 4)
-        self.H.__sendInt__(mode[0] | (mode[1] << 4) | (mode[2] << 8) | (mode[3] << 12))
-        self.H.__sendByte__(prescale)  # prescaler
-        trigopts = 0
-        trigopts |= 4 if args.get('trigger_ID1', 0) else 0
-        trigopts |= 8 if args.get('trigger_ID2', 0) else 0
-        trigopts |= 16 if args.get('trigger_ID3', 0) else 0
-        if (trigopts == 0): trigger |= 4  # select one trigger channel(ID1) if none selected
-        trigopts |= 2 if args.get('edge', 0) == 'rising' else 0
-        trigger |= trigopts
-        self.H.__sendByte__(trigger)
-        self.H.__get_ack__()
-        self.digital_channels_in_buffer = 4
-        n = 0
-        for a in self.dchans:
-            a.prescaler = prescale
-            a.length = CP.MAX_SAMPLES // 4
-            a.datatype = 'int'
-            a.name = a.digital_channel_names[n]
-            a.maximum_time = maximum_time * 1e6  # conversion to uS
-            a.mode = mode[n]
-            n += 1
-
-    def get_LA_initial_states(self):
-        """
-		fetches the initial states of digital inputs that were recorded right before the Logic analyzer was started, and the total points each channel recorded
-
-		:return: chan1 progress,chan2 progress,chan3 progress,chan4 progress,[ID1,ID2,ID3,ID4]. eg. [1,0,1,1]
-		"""
-        self.H.__sendByte__(CP.TIMING)
-        self.H.__sendByte__(CP.GET_INITIAL_DIGITAL_STATES)
-        initial = self.H.__getInt__()
-        A = (self.H.__getInt__() - initial) // 2
-        B = (self.H.__getInt__() - initial) // 2 - CP.MAX_SAMPLES // 4
-        C = (self.H.__getInt__() - initial) // 2 - 2 * CP.MAX_SAMPLES // 4
-        D = (self.H.__getInt__() - initial) // 2 - 3 * CP.MAX_SAMPLES // 4
-        s = self.H.__getByte__()
-        s_err = self.H.__getByte__()
-        self.H.__get_ack__()
-
-        if A == 0: A = CP.MAX_SAMPLES // 4
-        if B == 0: B = CP.MAX_SAMPLES // 4
-        if C == 0: C = CP.MAX_SAMPLES // 4
-        if D == 0: D = CP.MAX_SAMPLES // 4
-
-        if A < 0: A = 0
-        if B < 0: B = 0
-        if C < 0: C = 0
-        if D < 0: D = 0
-
-        return A, B, C, D, {'ID1': (s & 1 != 0), 'ID2': (s & 2 != 0), 'ID3': (s & 4 != 0), 'ID4': (s & 8 != 0),
-                            'SEN': (s & 16 != 16)}  # SEN is inverted comparator output.
-
-    def stop_LA(self):
+    def stop(self):
         """
 		Stop any running logic analyzer function
 		"""
         self.H.__sendByte__(CP.TIMING)
         self.H.__sendByte__(CP.STOP_LA)
         self.H.__get_ack__()
-
-    def fetch_int_data_from_LA(self, bytes, chan=1):
-        """
-		fetches the data stored by DMA. integer address increments
-
-		.. tabularcolumns:: |p{3cm}|p{11cm}|
-
-		==============  ============================================================================================
-		**Arguments**
-		==============  ============================================================================================
-		bytes:          number of readings(integers) to fetch
-		chan:           channel number (1-4)
-		==============  ============================================================================================
-		"""
-        self.H.__sendByte__(CP.TIMING)
-        self.H.__sendByte__(CP.FETCH_INT_DMA_DATA)
-        self.H.__sendInt__(bytes)
-        self.H.__sendByte__(chan - 1)
-
-        ss = self.H.fd.read(int(bytes * 2))
-        t = np.zeros(int(bytes) * 2)
-        for a in range(int(bytes)):
-            t[a] = CP.ShortInt.unpack(ss[a * 2:a * 2 + 2])[0]
-
-        self.H.__get_ack__()
-
-        t = np.trim_zeros(t)
-        b = 1
-        rollovers = 0
-        while b < len(t):
-            if (t[b] < t[b - 1] and t[b] != 0):
-                rollovers += 1
-                t[b:] += 65535
-            b += 1
-        return t
-
-    def fetch_long_data_from_LA(self, bytes, chan=1):
-        """
-		fetches the data stored by DMA. long address increments
-
-		.. tabularcolumns:: |p{3cm}|p{11cm}|
-
-		==============  ============================================================================================
-		**Arguments**
-		==============  ============================================================================================
-		bytes:          number of readings(long integers) to fetch
-		chan:           channel number (1,2)
-		==============  ============================================================================================
-		"""
-        self.H.__sendByte__(CP.TIMING)
-        self.H.__sendByte__(CP.FETCH_LONG_DMA_DATA)
-        self.H.__sendInt__(bytes)
-        self.H.__sendByte__(chan - 1)
-        ss = self.H.fd.read(int(bytes * 4))
-        self.H.__get_ack__()
-        tmp = np.zeros(int(bytes))
-        for a in range(int(bytes)):
-            tmp[a] = CP.Integer.unpack(ss[a * 4:a * 4 + 4])[0]
-        tmp = np.trim_zeros(tmp)
-        return tmp
-
-    def fetch_LA_channels(self):
-        """
-		reads and stores the channels in self.dchans.
-
-		"""
-        data = self.get_LA_initial_states()
-        # print (data)
-        for a in range(4):
-            if (self.dchans[a].channel_number < self.digital_channels_in_buffer): self.__fetch_LA_channel__(a, data)
-        return True
-
-    def __fetch_LA_channel__(self, channel_number, initial_states):
-        s = initial_states[4]
-        a = self.dchans[channel_number]
-        if a.channel_number >= self.digital_channels_in_buffer:
-            # self.__print__('channel unavailable')
-            return False
-
-        samples = a.length
-        if a.datatype == 'int':
-            tmp = self.fetch_int_data_from_LA(initial_states[a.channel_number], a.channel_number + 1)
-            a.load_data(s, tmp)
-        else:
-            tmp = self.fetch_long_data_from_LA(initial_states[a.channel_number * 2], a.channel_number + 1)
-            a.load_data(s, tmp)
-
-        # offset=0
-        # a.timestamps -= offset
-        a.generate_axes()
-        return True
 
     def get_states(self):
         """
@@ -1123,27 +619,12 @@ class LogicAnalyzer:
         self.H.__sendByte__(CP.GET_STATES)
         s = self.H.__getByte__()
         self.H.__get_ack__()
-        return {'ID1': (s & 1 != 0), 'ID2': (s & 2 != 0), 'ID3': (s & 4 != 0), 'ID4': (s & 8 != 0)}
-
-    def get_state(self, input_id):
-        """
-		returns the logic level on the specified input (ID1,ID2,ID3, or ID4)
-
-		.. tabularcolumns:: |p{3cm}|p{11cm}|
-
-		==============  ============================================================================================
-		**Arguments**    Description
-		==============  ============================================================================================
-		input_id        the input channel
-							'ID1' -> state of ID1
-							'ID4' -> state of ID4
-		==============  ============================================================================================
-
-		>>> self.__print__(I.get_state(I.ID1))
-		False
-
-		"""
-        return self.get_states()[input_id]
+        return {
+            "ID1": (s & 1 != 0),
+            "ID2": (s & 2 != 0),
+            "ID3": (s & 4 != 0),
+            "ID4": (s & 8 != 0),
+        }
 
     def countPulses(self, channel='SEN'):
         """
