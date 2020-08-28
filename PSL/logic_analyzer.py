@@ -424,8 +424,8 @@ class LogicAnalyzer:
 
         p = CP.MAX_SAMPLES // 4
         progress = self._get_initial_states_and_progress()[1]
-        for i in range(len(active_channels)):
-            p = min(progress[i], p)
+        for e, a in enumerate(active_channels):
+            p = min(progress[e], p)
 
         return p
 
@@ -515,9 +515,9 @@ class LogicAnalyzer:
         """
 		Stop any running logic analyzer function
 		"""
-        self.H.__sendByte__(CP.TIMING)
-        self.H.__sendByte__(CP.STOP_LA)
-        self.H.__get_ack__()
+        self._device.send_byte(CP.TIMING)
+        self._device.send_byte(CP.STOP_LA)
+        self._device.get_ack()
 
     def get_states(self):
         """
@@ -527,10 +527,10 @@ class LogicAnalyzer:
 		{'ID1': True, 'ID2': True, 'ID3': True, 'ID4': False}
 
 		"""
-        self.H.__sendByte__(CP.DIN)
-        self.H.__sendByte__(CP.GET_STATES)
-        s = self.H.__getByte__()
-        self.H.__get_ack__()
+        self._device.send_byte(CP.DIN)
+        self._device.send_byte(CP.GET_STATES)
+        s = self._device.get_byte()
+        self._device.get_ack()
         return {
             "ID1": (s & 1 != 0),
             "ID2": (s & 2 != 0),
@@ -538,7 +538,7 @@ class LogicAnalyzer:
             "ID4": (s & 8 != 0),
         }
 
-    def countPulses(self, channel='SEN'):
+    def count_pulses(self, channel: str, interval: float = 1, block: bool = True):
         """
 
 		Count pulses on a digital input. Retrieve total pulses using readPulseCount
@@ -551,12 +551,19 @@ class LogicAnalyzer:
 		channel         The input pin to measure rising edges on : ['ID1','ID2','ID3','ID4','SEN','EXT','CNTR']
 		==============  ============================================================================================
 		"""
-        self.H.__sendByte__(CP.COMMON)
-        self.H.__sendByte__(CP.START_COUNTING)
-        self.H.__sendByte__(self._channels[channel].number)
-        self.H.__get_ack__()
+        self._device.send_byte(CP.COMMON)
+        self._device.send_byte(CP.START_COUNTING)
+        self._device.send_byte(self._channels[channel].number)
+        self._device.get_ack()
 
-    def readPulseCount(self):
+        if block:
+            time.sleep(interval)
+        else:
+            return
+
+        return self.fetch_pulse_count()
+
+    def fetch_pulse_count(self):
         """
 
 		Read pulses counted using a digital input. Call countPulses before using this.
@@ -568,10 +575,10 @@ class LogicAnalyzer:
 		==============  ============================================================================================
 		==============  ============================================================================================
 		"""
-        self.H.__sendByte__(CP.COMMON)
-        self.H.__sendByte__(CP.FETCH_COUNT)
-        count = self.H.__getInt__()
-        self.H.__get_ack__()
+        self._device.send_byte(CP.COMMON)
+        self._device.send_byte(CP.FETCH_COUNT)
+        count = self._device.get_int()
+        self._device.get_ack()
         return count
 
     def clear_buffer(self, starting_position, total_points):
