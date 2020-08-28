@@ -1,4 +1,5 @@
 import time
+from collections import OrderedDict
 from typing import List
 
 import numpy as np
@@ -386,11 +387,16 @@ class LogicAnalyzer:
         self._invalidate_buffer()
         self._configure_trigger(channels)
         modes = [digital_channel.MODES[m] for m in modes]
+        old_progress = self.get_progress()
 
-        for e, c in enumerate(("ID1", "ID2", "ID3", "ID4")[:channels]):
-            self._channels[c].samples_in_buffer = events
-            self._channels[c].datatype = "long" if channels < 3 else "int"
-            self._channels[c].logic_mode = modes[e]
+        for e, c in enumerate(
+            [self._channel_one_map, self._channel_two_map, "ID3", "ID4"][:channels]
+        ):
+            c = self._channels[c]
+            c.events_in_buffer = events
+            c.datatype = "long" if channels < 3 else "int"
+            c.buffer_idx = 2500 * e * (1 if c.datatype == "int" else 2)
+            c.logic_mode = modes[e]
 
         if channels == 1:
             self._capture_one()
@@ -401,41 +407,46 @@ class LogicAnalyzer:
 
         if block:
             start = time.time()
-            time.sleep(0.01)  # Wait a while for progress to update.
+            self._wait_for_progress(old_progress)
 
-            while self.progress() < events:
+            while self.get_progress() < events:
                 if timeout is not None:
                     if time.time() - start >= timeout:
                         break
         else:
             return
 
-        return self.fetch_data(self.initial_states())
+        return self.fetch_data()
 
     def _capture_one(self):
-        self._channels["ID1"].prescaler = 0
+        self._channels[self._channel_one_map].prescaler = 0
         self._device.send_byte(CP.TIMING)
         self._device.send_byte(CP.START_ALTERNATE_ONE_CHAN_LA)
         self._device.send_int(CP.MAX_SAMPLES // 4)
         self._device.send_byte(
-            (self._channels["ID1"].number << 4) | self._channels["ID1"].logic_mode
+            (self._channels[self._channel_one_map].number << 4)
+            | self._channels[self._channel_one_map].logic_mode
         )
-        self._device.send_byte((self._channels["ID1"].number << 4) | self._trigger_mode)
+        self._device.send_byte(
+            (self._channels[self._channel_one_map].number << 4) | self._trigger_mode
+        )
         self._device.get_ack()
 
     def _capture_two(self):
-        for c in ("ID1", "ID2"):
-            self._channels[c].prescaler = 0
+        for c in list(self._channels.values())[:2]:
+            c.prescaler = 0
 
         self._device.send_byte(CP.TIMING)
         self._device.send_byte(CP.START_TWO_CHAN_LA)
         self._device.send_int(CP.MAX_SAMPLES // 4)
-        self._device.send_byte((self.trigger_channel.number << 4) | self._trigger_mode)
+        self._device.send_byte((self._trigger_channel.number << 4) | self._trigger_mode)
         self._device.send_byte(
-            self._channels["ID1"].logic_mode | (self._channels["ID2"].logic_mode << 4)
+            self._channels[self._channel_one_map].logic_mode
+            | (self._channels[self._channel_two_map].logic_mode << 4)
         )
         self._device.send_byte(
-            self._channels["ID1"].number | (self._channels["ID2"].number << 4)
+            self._channels[self._channel_one_map].number
+            | (self._channels[self._channel_two_map].number << 4)
         )
         self._device.get_ack()
 
@@ -465,11 +476,11 @@ class LogicAnalyzer:
 
         try:
             trigger = {0: 4, 1: 8, 2: 16,}[
-                self.trigger_channel.number
+                self._trigger_channel.number
             ] | self._trigger_mode
         except KeyError:
             e = "Triggering is only possible on ID1, ID2, or ID3."
-            if self.trigger_channel.number == 3:
+            if self._trigger_channel.number == 3:
                 raise NotImplementedError(e)
             else:
                 raise TypeError(e)
@@ -477,10 +488,17 @@ class LogicAnalyzer:
         self._device.send_byte(trigger)
         self._device.get_ack()
 
-    def fetch_data(self, initial_states: dict):
+    def fetch_data(self):
         counter_values = []
-        for c in self._channels.values():
-            if c.samples_in_buffer:
+        channels = list(
+            OrderedDict.fromkeys(
+                [self._channel_one_map, self._channel_two_map, "ID3", "ID4"]
+            )
+        )
+        for c in channels:
+            c = self._channels[c]
+
+            if c.events_in_buffer:
                 if c.datatype == "long":
                     counter_values.append(self._fetch_long(c))
                 else:
@@ -492,15 +510,31 @@ class LogicAnalyzer:
         return timestamps
 
     def _fetch_long(self, channel: digital_channel.DigitalInput):
-        self._device.send_byte(CP.TIMING)
-        self._device.send_byte(CP.FETCH_LONG_DMA_DATA)
-        self._device.send_int(channel.samples_in_buffer)
-        self._device.send_byte(channel.number)
-        raw = self._device.interface.read(channel.samples_in_buffer * 4)
+        # First half of each long is stored in the first 2500 buffer positions,
+        # or positions 5001-7500 for channel two.
+        self._device.send_byte(CP.COMMON)
+        self._device.send_byte(CP.RETRIEVE_BUFFER)
+        self._device.send_int(channel.buffer_idx)
+        self._device.send_int(channel.events_in_buffer)
+        lsb = self._device.interface.read(channel.events_in_buffer * 2)
         self._device.get_ack()
+
+        # Second half of each long is stored in positions 2501-5000,
+        # or positions 7501-10000 for channel two.
+        self._device.send_byte(CP.COMMON)
+        self._device.send_byte(CP.RETRIEVE_BUFFER)
+        self._device.send_int(channel.buffer_idx + CP.MAX_SAMPLES // 4)
+        self._device.send_int(channel.events_in_buffer)
+        msb = self._device.interface.read(channel.events_in_buffer * 2)
+        self._device.get_ack()
+
+        # Interleave byte arrays.
+        lsb = [lsb[a * 2 : a * 2 + 2] for a in range(len(lsb) // 2)]
+        msb = [msb[a * 2 : a * 2 + 2] for a in range(len(msb) // 2)]
+        raw = [l + m for m, l in zip(msb, lsb)]
+
         raw_timestamps = [
-            CP.Integer.unpack(raw[a * 4 : a * 4 + 4])[0]
-            for a in range(channel.samples_in_buffer)
+            CP.Integer.unpack(raw[a])[0] for a in range(channel.events_in_buffer)
         ]
         raw_timestamps = np.array(raw_timestamps)
         raw_timestamps = np.trim_zeros(raw_timestamps)
@@ -508,12 +542,13 @@ class LogicAnalyzer:
         return raw_timestamps
 
     def _fetch_int(self, channel: digital_channel.DigitalInput):
-        self._device.send_byte(CP.TIMING)
-        self._device.send_byte(CP.FETCH_INT_DMA_DATA)
-        self._device.send_int(channel.samples_in_buffer)
-        self._device.send_byte(channel.number)
-        raw = self._device.interface.read(channel.samples_in_buffer * 2)
+        self._device.send_byte(CP.COMMON)
+        self._device.send_byte(CP.RETRIEVE_BUFFER)
+        self._device.send_int(channel.buffer_idx)
+        self._device.send_int(channel.events_in_buffer)
+        raw = self._device.interface.read(channel.events_in_buffer * 2)
         self._device.get_ack()
+
         raw_timestamps = [
             CP.ShortInt.unpack(raw[a * 2 : a * 2 + 2])[0]
             for a in range(channel.events_in_buffer)
@@ -546,7 +581,11 @@ class LogicAnalyzer:
     def get_xy(self, timestamps: np.ndarray):
         xy = []
 
-        for e, c in enumerate([self._channel_one_map, self._channel_two_map, "ID3", "ID4"][:len(timestamps)]):
+        for e, c in enumerate(
+            [self._channel_one_map, self._channel_two_map, "ID3", "ID4"][
+                : len(timestamps)
+            ]
+        ):
             c = self._channels[c]
             if c.events_in_buffer:
                 x, y = c.xy(self.get_initial_states()[c.name], timestamps[e])
@@ -581,6 +620,21 @@ class LogicAnalyzer:
                 progress[e] = 0
 
         return initial_states, progress
+
+    def _wait_for_progress(
+        self, old_progress: int = CP.MAX_SAMPLES // 4, timeout: float = None
+    ):
+        """Wait for GET_INITIAL_DIGITAL_STATES to reset.
+
+        Until the first event is detected, GET_INITIAL_DIGITAL_STATES returns
+        old progress.
+        """
+        timeout = 0.1 if timeout is None else timeout
+        start_time = time.time()
+        while self.get_progress() == old_progress:
+            if time.time() - start_time >= timeout:
+                break
+        return
 
     def configure_trigger(self, trigger_channel: str, trigger_mode: str):
         self._trigger_channel = self._channels[trigger_channel]
