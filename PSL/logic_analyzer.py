@@ -24,6 +24,7 @@ class LogicAnalyzer:
         self._channels = {
             d: digital_channel.DigitalInput(d) for d in digital_channel.DIGITAL_INPUTS
         }
+        self.trigger_channel = "ID1"
         self._trigger_channel = self._channels["ID1"]
         self.trigger_mode = "disabled"
         self._trigger_mode = 0
@@ -489,6 +490,7 @@ class LogicAnalyzer:
         return
 
     def configure_trigger(self, trigger_channel: str, trigger_mode: str):
+        self.trigger_channel = trigger_channel
         self._trigger_channel = self._channels[trigger_channel]
         self.trigger_mode = trigger_mode
 
