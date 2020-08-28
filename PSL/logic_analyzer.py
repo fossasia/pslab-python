@@ -114,7 +114,8 @@ class LogicAnalyzer:
 
         return t2 - t1
 
-    def _get_first_event(self, events: np.ndarray, mode: str, initial: bool):
+    @staticmethod
+    def _get_first_event(events: np.ndarray, mode: str, initial: bool):
         if mode == "every edge":
             return events[0]
         elif mode == "every rising edge":
@@ -170,7 +171,7 @@ class LogicAnalyzer:
         channels: int,
         events: int = CP.MAX_SAMPLES // 4,
         timeout: float = None,
-        modes: List[str] = 4 * ["every edge"],
+        modes: List[str] = 4 * ("every edge"),
         e2e_time: float = 0,
         block: bool = True,
     ):
@@ -362,8 +363,8 @@ class LogicAnalyzer:
 
         p = CP.MAX_SAMPLES // 4
         progress = self._get_initial_states_and_progress()[1]
-        for e, a in enumerate(active_channels):
-            p = min(progress[e], p)
+        for i in range(len(active_channels)):
+            p = min(progress[i], p)
 
         return p
 
