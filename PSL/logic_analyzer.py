@@ -90,33 +90,21 @@ class LogicAnalyzer:
         self._channel_two_map = channels[1]
 
         if channels[0] == channels[1]:
-            self.capture(1, 2500, modes=["every edge"], block=False)
-
-            t = []
-            start_time = time.time()
             # 34 edges contains 17 rising edges, i.e two
             # 'every sixteenth rising edge' events.
-            while len(t) < 34:
-                t = self.fetch_data()[0]
-                if time.time() - start_time >= timeout:
-                    break
-
+            t = self.capture(1, 34, modes=["every edge"], timeout=timeout)[0]
             initial = self.get_initial_states()[self._channel_one_map]
             t1 = self._get_first_event(t, modes[0], initial)
 
             if modes[0] == modes[1]:
-                t2 = self._get_first_event(t[1:], modes[1], not initial)
+                idx = 1 if modes[1] == "every edge" else 2
+                initial = initial if idx == 2 else not initial
+                t2 = self._get_first_event(t[idx:], modes[1], initial)
             else:
                 t2 = self._get_first_event(t, modes[1], initial)
         else:
-            self.capture(2, 2500, modes=modes, block=False)
-
-            t1, t2 = [], []
-            start_time = time.time()
-            while min(len(t1), len(t2)) < 1:
-                t1, t2 = self.fetch_data()
-                if time.time() - start_time >= timeout:
-                    break
+            # Getting two events because trigger sometimes puts zeros in buffer.
+            t1, t2 = self.capture(2, 2, modes=modes, timeout=timeout)
 
             t1, t2 = t1[0], t2[0]
 
@@ -166,16 +154,10 @@ class LogicAnalyzer:
         self.configure_trigger(trigger_channel=channel, trigger_mode="rising")
         tmp_map = self._channel_one_map
         self._channel_one_map = channel
-        self.capture(1, 2500, modes=["every edge"], block=False)
+        # Getting a few extra events in case some are zero (firmware bug).
+        t = self.capture(1, 4, modes=["every edge"], timeout=timeout)[0]
         self._channel_one_map = tmp_map
         self.configure_trigger(tmp_trigger_channel, tmp_trigger_mode)
-
-        t = []
-        start_time = time.time()
-        while len(t) < 2:
-            if time.time() - start_time >= timeout:
-                break
-            t = self.fetch_data()[0][:2]
 
         period = t[1]
         # First change is HIGH -> LOW since we trigger on rising.
@@ -216,12 +198,12 @@ class LogicAnalyzer:
 
         if block:
             start = time.time()
-            self._wait_for_progress(old_progress)
+            self._wait_for_progress(old_progress, timeout=timeout)
 
             while self.get_progress() < events:
                 if timeout is not None:
                     if time.time() - start >= timeout:
-                        break
+                        raise RuntimeError("Capture timed out.")
         else:
             return
 
