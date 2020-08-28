@@ -32,7 +32,22 @@ class LogicAnalyzer:
         self._channel_one_map = "ID1"
         self._channel_two_map = "ID2"
 
-    def get_high_freq(self, channel: str):
+    def get_frequency(self, channel: str, timeout: float = 1):
+        tmp = self._channel_one_map
+        self._channel_one_map = channel
+        t = self.capture(1, 2, modes=["every sixteenth rising edge"], timeout=timeout)[
+            0
+        ]
+        self._channel_one_map = tmp
+        period = (t[1] - t[0]) * 1e-6 / 16
+        frequency = period ** -1
+
+        if frequency >= 1e7:
+            frequency = self._get_high_frequency(channel)
+
+        return frequency
+
+    def _get_high_frequency(self, channel: str):
         """
         retrieves the frequency of the signal connected to ID1. for frequencies > 1MHz
         also good for lower frequencies, but avoid using it since
@@ -64,65 +79,6 @@ class LogicAnalyzer:
         self._device.get_ack()
 
         return scale * counter_value / 1e-1  # 100 ms sampling
-
-    def get_freq(self, channel: str, timeout: float = 1):
-        """
-		Frequency measurement on IDx.
-		Measures time taken for 16 rising edges of input signal.
-		returns the frequency in Hertz
-
-		.. tabularcolumns:: |p{3cm}|p{11cm}|
-
-		==============  ============================================================================================
-		**Arguments**
-		==============  ============================================================================================
-		channel         The input to measure frequency from. ['ID1','ID2','ID3','ID4','SEN','EXT','CNTR']
-		timeout         This is a blocking call which will wait for one full wavelength before returning the
-						calculated frequency.
-						Use the timeout option if you're unsure of the input signal.
-						returns 0 if timed out
-		==============  ============================================================================================
-
-		:return float: frequency
-
-
-		.. _timing_example:
-
-			* connect SQR1 to ID1
-
-			>>> I.sqr1(4000,25)
-			>>> self.__print__(I.get_freq('ID1'))
-			4000.0
-			>>> self.__print__(I.r2r_time('ID1'))
-			#time between successive rising edges
-			0.00025
-			>>> self.__print__(I.f2f_time('ID1'))
-			#time between successive falling edges
-			0.00025
-			>>> self.__print__(I.pulse_time('ID1'))
-			#may detect a low pulse, or a high pulse. Whichever comes first
-			6.25e-05
-			>>> I.duty_cycle('ID1')
-			#returns wavelength, high time
-			(0.00025,6.25e-05)
-
-		"""
-        self._device.send_byte(CP.COMMON)
-        self._device.send_byte(CP.GET_FREQUENCY)
-        self._device.send_int(int(timeout * CLOCK_RATE) >> 16)
-        self._device.send_byte(self._channels[channel].number)
-        self._device.wait_for_data(timeout)
-
-        buffer_overflow_or_timeout = self._device.get_byte()
-        counter_diff = np.diff([self._device.get_long() for a in range(2)])[0]
-        self._device.get_ack()
-        rising_edges = 16
-        frequency = rising_edges * CLOCK_RATE / counter_diff
-
-        if buffer_overflow_or_timeout:
-            return 0
-
-        return frequency
 
     def measure_interval(
         self, channels: List[str], modes: List[str], timeout: float = 0.1
