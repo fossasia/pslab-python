@@ -4,11 +4,11 @@ DIGITAL_INPUTS = ('ID1', 'ID2', 'ID3', 'ID4', 'SEN', 'EXT', 'CNTR')
 digital_channel_names = DIGITAL_INPUTS
 
 MODES = {
-    "every_sixteenth_rising_edge": 5,
-    "every_fourth_rising_edge": 4,
-    "every_rising_edge": 3,
-    "every_falling_edge": 2,
-    "every_edge": 1,
+    "every sixteenth rising edge": 5,
+    "every fourth rising edge": 4,
+    "every rising edge": 3,
+    "every falling edge": 2,
+    "every edge": 1,
     "disabled": 0,
 }
 
@@ -18,9 +18,9 @@ class DigitalInput:
         self.name = name
         self.number = DIGITAL_INPUTS.index(self.name)
         self.datatype = "long"
-        self.samples_in_buffer = 0
+        self.events_in_buffer = 0
         self.buffer_idx = None
-        self.logic_mode = MODES["every_edge"]
+        self.logic_mode = MODES["every edge"]
 
     def xy(self, initial_state: bool, timestamps: np.ndarray):
         x = np.repeat(timestamps, 3)
@@ -30,13 +30,13 @@ class DigitalInput:
 
         if self.logic_mode == MODES["disabled"]:
             y[:] = initial_state
-        elif self.logic_mode == MODES["every_edge"]:
+        elif self.logic_mode == MODES["every edge"]:
             y[0] = initial_state
             for i in range(1, len(x), 3):
                 y[i] = y[i - 1]  # Value before this timestamp.
                 y[i + 1] = not y[i]  # Value at this timestamp.
                 y[i + 2] = y[i + 1]  # Value leaving this timetamp.
-        elif self.logic_mode == MODES["every_falling_edge"]:
+        elif self.logic_mode == MODES["every falling edge"]:
             y[0] = True
             for i in range(1, len(x), 3):
                 y[i] = True  # Value before this timestamp.

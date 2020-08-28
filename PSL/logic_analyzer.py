@@ -23,10 +23,12 @@ class LogicAnalyzer:
         self._channels = {
             d: digital_channel.DigitalInput(d) for d in digital_channel.DIGITAL_INPUTS
         }
-        self.trigger_channel = self._channels["ID1"]
+        self._trigger_channel = self._channels["ID1"]
         self.trigger_mode = "disabled"
         self._trigger_mode = 0
         self.prescaler = 0
+        self._channel_one_map = "ID1"
+        self._channel_two_map = "ID2"
 
         self.digital_channel_names = digital_channel.digital_channel_names
         # This array of four instances of digital_channel is used to store data retrieved from the
@@ -120,16 +122,16 @@ class LogicAnalyzer:
 			(0.00025,6.25e-05)
 
 		"""
-        rising_edges = 16
         self._device.send_byte(CP.COMMON)
         self._device.send_byte(CP.GET_FREQUENCY)
-        self._device.send_int(int(timeout * CLOCK_RATE) >> rising_edges)
+        self._device.send_int(int(timeout * CLOCK_RATE) >> 16)
         self._device.send_byte(self._channels[channel].number)
         self._device.wait_for_data(timeout)
 
         buffer_overflow_or_timeout = self._device.get_byte()
         counter_diff = np.diff([self._device.get_long() for a in range(2)])[0]
         self._device.get_ack()
+        rising_edges = 16
         frequency = rising_edges * CLOCK_RATE / counter_diff
 
         if buffer_overflow_or_timeout:
@@ -376,7 +378,7 @@ class LogicAnalyzer:
         channels: int,
         events: int = CP.MAX_SAMPLES // 4,
         timeout: float = None,
-        modes: List[str] = 4 * ["every_edge"],
+        modes: List[str] = 4 * ["every edge"],
         e2e_time: float = 0,
         block: bool = True,
     ):
@@ -514,7 +516,7 @@ class LogicAnalyzer:
         self._device.get_ack()
         raw_timestamps = [
             CP.ShortInt.unpack(raw[a * 2 : a * 2 + 2])[0]
-            for a in range(channel.samples_in_buffer)
+            for a in range(channel.events_in_buffer)
         ]
         raw_timestamps = np.array(raw_timestamps)
         raw_timestamps = np.trim_zeros(raw_timestamps)
@@ -525,10 +527,10 @@ class LogicAnalyzer:
 
         return raw_timestamps
 
-    def progress(self):
+    def get_progress(self):
         active_channels = []
         for c in self._channels.values():
-            if c.samples_in_buffer:
+            if c.events_in_buffer:
                 active_channels.append(c)
 
         p = CP.MAX_SAMPLES // 4
@@ -538,15 +540,16 @@ class LogicAnalyzer:
 
         return p
 
-    def initial_states(self):
+    def get_initial_states(self):
         return self._get_initial_states_and_progress()[0]
 
-    def xy(self, timestamps: np.ndarray):
+    def get_xy(self, timestamps: np.ndarray):
         xy = []
 
-        for e, c in enumerate(self._channels.values()):
-            if c.samples_in_buffer:
-                x, y = c.xy(self.initial_states()[c.name], timestamps[e])
+        for e, c in enumerate([self._channel_one_map, self._channel_two_map, "ID3", "ID4"][:len(timestamps)]):
+            c = self._channels[c]
+            if c.events_in_buffer:
+                x, y = c.xy(self.get_initial_states()[c.name], timestamps[e])
                 xy.append(x)
                 xy.append(y)
 
@@ -580,7 +583,7 @@ class LogicAnalyzer:
         return initial_states, progress
 
     def configure_trigger(self, trigger_channel: str, trigger_mode: str):
-        self.trigger_channel = self._channels[trigger_channel]
+        self._trigger_channel = self._channels[trigger_channel]
         self.trigger_mode = trigger_mode
 
     def _configure_trigger(self, channels: int):
@@ -674,5 +677,5 @@ class LogicAnalyzer:
 
     def _invalidate_buffer(self):
         for c in self._channels.values():
-            c.samples_in_buffer = 0
+            c.events_in_buffer = 0
             c.buffer_idx = None
