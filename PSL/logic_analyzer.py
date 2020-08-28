@@ -372,6 +372,9 @@ class LogicAnalyzer:
         lsb = self._device.interface.read(channel.events_in_buffer * 2)
         self._device.get_ack()
 
+        while lsb[-1] == 0:
+            lsb = lsb[:-1]
+
         # Second half of each long is stored in positions 2501-5000,
         # or positions 7501-10000 for channel two.
         self._device.send_byte(CP.COMMON)
@@ -380,15 +383,13 @@ class LogicAnalyzer:
         self._device.send_int(channel.events_in_buffer)
         msb = self._device.interface.read(channel.events_in_buffer * 2)
         self._device.get_ack()
+        msb = msb[: len(lsb)]  # More data may have been added since we got LSB.
 
         # Interleave byte arrays.
         lsb = [lsb[a * 2 : a * 2 + 2] for a in range(len(lsb) // 2)]
         msb = [msb[a * 2 : a * 2 + 2] for a in range(len(msb) // 2)]
-        raw = [l + m for m, l in zip(msb, lsb)]
 
-        raw_timestamps = [
-            CP.Integer.unpack(raw[a])[0] for a in range(channel.events_in_buffer)
-        ]
+        raw_timestamps = [CP.Integer.unpack(b + a)[0] for a, b in zip(msb, lsb)]
         raw_timestamps = np.array(raw_timestamps)
         raw_timestamps = np.trim_zeros(raw_timestamps)
 
