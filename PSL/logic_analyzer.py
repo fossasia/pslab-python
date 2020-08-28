@@ -31,23 +31,6 @@ class LogicAnalyzer:
         self._channel_one_map = "ID1"
         self._channel_two_map = "ID2"
 
-        self.digital_channel_names = digital_channel.digital_channel_names
-        # This array of four instances of digital_channel is used to store data retrieved from the
-        # logic analyzer section of the device.  It also contains methods to generate plottable data
-        # from the original timestamp arrays.
-        self.dchans = [digital_channel.digital_channel(a) for a in range(4)]
-
-    def __calcDChan__(self, name):
-        """accepts a string represention of a digital input ['ID1','ID2','ID3','ID4','SEN','EXT','CNTR']
-        and returns a corresponding number
-        """
-
-        if name in self.digital_channel_names:
-            return self.digital_channel_names.index(name)
-        else:
-            # self.__print__('invalid channel', name, ' , selecting ID1 instead ')
-            return 0
-
     def get_high_freq(self, channel: str):
         """
         retrieves the frequency of the signal connected to ID1. for frequencies > 1MHz
@@ -140,75 +123,65 @@ class LogicAnalyzer:
 
         return frequency
 
-    def MeasureInterval(self, channel1, channel2, edge1, edge2, timeout=0.1):
-        """
-		Measures time intervals between two logic level changes on any two digital inputs(both can be the same)
+    def measure_interval(
+        self, channels: List[str], modes: List[str], timeout: float = 0.1
+    ):
+        tmp_trigger = self._trigger_channel.name
+        self.configure_trigger(channels[0], self.trigger_mode)
+        tmp_map = self._channel_one_map, self._channel_two_map
+        self._channel_one_map = channels[0]
+        self._channel_two_map = channels[1]
 
-		For example, one can measure the time interval between the occurence of a rising edge on ID1, and a falling edge on ID3.
-		If the returned time is negative, it simply means that the event corresponding to channel2 occurred first.
+        if channels[0] == channels[1]:
+            self.capture(1, 2500, modes=["every edge"], block=False)
 
-		returns the calculated time
+            t = []
+            start_time = time.time()
+            # 34 edges contains 17 rising edges, i.e two
+            # 'every sixteenth rising edge' events.
+            while len(t) < 34:
+                t = self.fetch_data()[0]
+                if time.time() - start_time >= timeout:
+                    break
 
+            initial = self.get_initial_states()[self._channel_one_map]
+            t1 = self._get_first_event(t, modes[0], initial)
 
-		.. tabularcolumns:: |p{3cm}|p{11cm}|
-
-		==============  ============================================================================================
-		**Arguments**
-		==============  ============================================================================================
-		channel1        The input pin to measure first logic level change
-		channel2        The input pin to measure second logic level change
-						 -['ID1','ID2','ID3','ID4','SEN','EXT','CNTR']
-		edge1           The type of level change to detect in order to start the timer
-							* 'rising'
-							* 'falling'
-							* 'four rising edges'
-		edge2           The type of level change to detect in order to stop the timer
-							* 'rising'
-							* 'falling'
-							* 'four rising edges'
-		timeout         Use the timeout option if you're unsure of the input signal time period.
-						returns -1 if timed out
-		==============  ============================================================================================
-
-		:return : time
-
-		.. seealso:: timing_example_
-
-
-		"""
-        self.H.__sendByte__(CP.TIMING)
-        self.H.__sendByte__(CP.INTERVAL_MEASUREMENTS)
-        timeout_msb = int((timeout * 64e6)) >> 16
-        self.H.__sendInt__(timeout_msb)
-
-        self.H.__sendByte__(self.__calcDChan__(channel1) | (self.__calcDChan__(channel2) << 4))
-
-        params = 0
-        if edge1 == 'rising':
-            params |= 3
-        elif edge1 == 'falling':
-            params |= 2
+            if modes[0] == modes[1]:
+                t2 = self._get_first_event(t[1:], modes[1], not initial)
+            else:
+                t2 = self._get_first_event(t, modes[1], initial)
         else:
-            params |= 4
+            self.capture(2, 2500, modes=modes, block=False)
 
-        if edge2 == 'rising':
-            params |= 3 << 3
-        elif edge2 == 'falling':
-            params |= 2 << 3
-        else:
-            params |= 4 << 3
+            t1, t2 = [], []
+            start_time = time.time()
+            while min(len(t1), len(t2)) < 1:
+                t1, t2 = self.fetch_data()
+                if time.time() - start_time >= timeout:
+                    break
 
-        self.H.__sendByte__(params)
-        A = self.H.__getLong__()
-        B = self.H.__getLong__()
-        tmt = self.H.__getInt__()
-        self.H.__get_ack__()
-        # self.__print__(A,B)
-        if (tmt >= timeout_msb or B == 0): return np.NaN
-        rtime = lambda t: t / 64e6
-        return rtime(B - A + 20)
+            t1, t2 = t1[0], t2[0]
 
-    def DutyCycle(self, channel='ID1', timeout=1.):
+        self.configure_trigger(tmp_trigger, self.trigger_mode)
+        self._channel_one_map = tmp_map[0]
+        self._channel_two_map = tmp_map[1]
+
+        return t2 - t1
+
+    def _get_first_event(self, events: np.ndarray, mode: str, initial: bool):
+        if mode == "every edge":
+            return events[0]
+        elif mode == "every rising edge":
+            return events[int(initial)]
+        elif mode == "every falling edge":
+            return events[int(not initial)]
+        elif mode == "every fourth rising edge":
+            return events[initial::2][3]
+        elif mode == "every sixteenth rising edge":
+            return events[initial::2][15]
+
+    def get_duty_cycle(self, channel="ID1", timeout=1.0):
         """
 		duty cycle measurement on channel
 
@@ -231,148 +204,27 @@ class LogicAnalyzer:
 		.. seealso:: timing_example_
 
 		"""
-        x, y = self.MeasureMultipleDigitalEdges(channel, channel, 'rising', 'falling', 2, 2, timeout, zero=True)
-        if x is not None and y is not None:  # Both timers registered something. did not timeout
-            if y[0] > 0:  # rising edge occured first
-                dt = [y[0], x[1]]
-            else:  # falling edge occured first
-                if y[1] > x[1]:
-                    return -1, -1  # Edge dropped. return False
-                dt = [y[1], x[1]]
-            # self.__print__(x,y,dt)
-            params = dt[1], dt[0] / dt[1]
-            # if params[1] > 0.5:
-            #     self.__print__(x, y, dt)
-            return params
-        else:
-            return -1, -1
+        tmp_trigger_mode = self.trigger_mode
+        tmp_trigger_channel = self._trigger_channel.name
+        self.configure_trigger(trigger_channel=channel, trigger_mode="rising")
+        tmp_map = self._channel_one_map
+        self._channel_one_map = channel
+        self.capture(1, 2500, modes=["every edge"], block=False)
+        self._channel_one_map = tmp_map
+        self.configure_trigger(tmp_trigger_channel, tmp_trigger_mode)
 
-    def PulseTime(self, channel='ID1', PulseType='LOW', timeout=0.1):
-        """
-		duty cycle measurement on channel
+        t = []
+        start_time = time.time()
+        while len(t) < 2:
+            if time.time() - start_time >= timeout:
+                break
+            t = self.fetch_data()[0][:2]
 
-		returns wavelength(seconds), and length of first half of pulse(high time)
+        period = t[1]
+        # First change is HIGH -> LOW since we trigger on rising.
+        duty_cycle = t[0] / t[1]
 
-		low time = (wavelength - high time)
-
-		.. tabularcolumns:: |p{3cm}|p{11cm}|
-
-		==============  ==============================================================================================
-		**Arguments**
-		==============  ==============================================================================================
-		channel         The input pin to measure wavelength and high time.['ID1','ID2','ID3','ID4','SEN','EXT','CNTR']
-		PulseType		Type of pulse to detect. May be 'HIGH' or 'LOW'
-		timeout         Use the timeout option if you're unsure of the input signal time period.
-						returns 0 if timed out
-		==============  ==============================================================================================
-
-		:return : pulse width
-
-		.. seealso:: timing_example_
-
-		"""
-        x, y = self.MeasureMultipleDigitalEdges(channel, channel, 'rising', 'falling', 2, 2, timeout, zero=True)
-        if x is not None and y is not None:  # Both timers registered something. did not timeout
-            if y[0] > 0:  # rising edge occured first
-                if PulseType == 'HIGH':
-                    return y[0]
-                elif PulseType == 'LOW':
-                    return x[1] - y[0]
-            else:  # falling edge occured first
-                if PulseType == 'HIGH':
-                    return y[1]
-                elif PulseType == 'LOW':
-                    return abs(y[0])
-        return -1, -1
-
-    def MeasureMultipleDigitalEdges(self, channel1, channel2, edgeType1, edgeType2, points1, points2, timeout=0.1,
-                                    **kwargs):
-        """
-		Measures a set of timestamped logic level changes(Type can be selected) from two different digital inputs.
-
-		Example
-			Aim : Calculate value of gravity using time of flight.
-			The setup involves a small metal nut attached to an electromagnet powered via SQ1.
-			When SQ1 is turned off, the set up is designed to make the nut fall through two
-			different light barriers(LED,detector pairs that show a logic change when an object gets in the middle)
-			placed at known distances from the initial position.
-
-			one can measure the timestamps for rising edges on ID1 ,and ID2 to determine the speed, and then obtain value of g
-
-
-		.. tabularcolumns:: |p{3cm}|p{11cm}|
-
-		==============  ============================================================================================
-		**Arguments**
-		==============  ============================================================================================
-		channel1        The input pin to measure first logic level change
-		channel2        The input pin to measure second logic level change
-						 -['ID1','ID2','ID3','ID4','SEN','EXT','CNTR']
-		edgeType1       The type of level change that should be recorded
-							* 'rising'
-							* 'falling'
-							* 'four rising edges' [default]
-		edgeType2       The type of level change that should be recorded
-							* 'rising'
-							* 'falling'
-							* 'four rising edges'
-		points1			Number of data points to obtain for input 1 (Max 4)
-		points2			Number of data points to obtain for input 2 (Max 4)
-		timeout         Use the timeout option if you're unsure of the input signal time period.
-						returns -1 if timed out
-		**kwargs
-		  SQ1			set the state of SQR1 output(LOW or HIGH) and then start the timer.  eg. SQR1='LOW'
-		  zero			subtract the timestamp of the first point from all the others before returning. default:True
-		==============  ============================================================================================
-
-		:return : time
-
-		.. seealso:: timing_example_
-
-
-		"""
-        self.H.__sendByte__(CP.TIMING)
-        self.H.__sendByte__(CP.TIMING_MEASUREMENTS)
-        timeout_msb = int((timeout * 64e6)) >> 16
-        # print ('timeout',timeout_msb)
-        self.H.__sendInt__(timeout_msb)
-        self.H.__sendByte__(self.__calcDChan__(channel1) | (self.__calcDChan__(channel2) << 4))
-        params = 0
-        if edgeType1 == 'rising':
-            params |= 3
-        elif edgeType1 == 'falling':
-            params |= 2
-        else:
-            params |= 4
-
-        if edgeType2 == 'rising':
-            params |= 3 << 3
-        elif edgeType2 == 'falling':
-            params |= 2 << 3
-        else:
-            params |= 4 << 3
-
-        if ('SQR1' in kwargs):  # User wants to toggle SQ1 before starting the timer
-            params |= (1 << 6)
-            if kwargs['SQR1'] == 'HIGH': params |= (1 << 7)
-        self.H.__sendByte__(params)
-        if points1 > 4: points1 = 4
-        if points2 > 4: points2 = 4
-        self.H.__sendByte__(points1 | (points2 << 4))  # Number of points to fetch from either channel
-
-        self.H.waitForData(timeout)
-
-        A = np.array([self.H.__getLong__() for a in range(points1)])
-        B = np.array([self.H.__getLong__() for a in range(points2)])
-        tmt = self.H.__getInt__()
-        self.H.__get_ack__()
-        # print(A,B)
-        if (tmt >= timeout_msb): return None, None
-        rtime = lambda t: t / 64e6
-        if (kwargs.get('zero', True)):  # User wants set a reference timestamp
-            return rtime(A - A[0]), rtime(B - A[0])
-        else:
-            return rtime(A), rtime(B)
+        return period, duty_cycle
 
     def capture(
         self,
@@ -698,7 +550,7 @@ class LogicAnalyzer:
 		"""
         self.H.__sendByte__(CP.COMMON)
         self.H.__sendByte__(CP.START_COUNTING)
-        self.H.__sendByte__(self.__calcDChan__(channel))
+        self.H.__sendByte__(self._channels[channel].number)
         self.H.__get_ack__()
 
     def readPulseCount(self):
