@@ -1,6 +1,15 @@
+"""Classes and functions related to the PSLab's logic analyzer instrument.
+
+Example
+-------
+>>> from PSL.logic_analyzer import LogicAnalyzer
+>>> la = LogicAnalyzer()
+>>> t = la.capture(channels=2, events=1600, modes=["falling", "any"])
+"""
+
 import time
 from collections import OrderedDict
-from typing import List
+from typing import Dict, List, Tuple, Union
 
 import numpy as np
 
@@ -18,8 +27,24 @@ PRESCALERS = {
 
 
 class LogicAnalyzer:
+    """Investigate digital signals on up to four channels simultaneously.
+
+    Parameters
+    ----------
+    device : :class:`Handler`, optional
+        Serial interface for communicating with the PSLab device. If not provided, a
+        new one will be created.
+
+    Attributes
+    ----------
+    trigger_channel : str
+        See :meth:`configure_trigger`.
+    trigger_mode : str
+        See :meth:`configure_trigger`.
+    """
+
     def __init__(self, device: packet_handler.Handler = None):
-        self._device = device
+        self._device = packet_handler.Handler() if device is None else device
         self._channels = {
             d: digital_channel.DigitalInput(d) for d in digital_channel.DIGITAL_INPUTS
         }
@@ -27,7 +52,7 @@ class LogicAnalyzer:
         self._trigger_channel = self._channels["ID1"]
         self.trigger_mode = "disabled"
         self._trigger_mode = 0
-        self.prescaler = 0
+        self._prescaler = 0
         self._channel_one_map = "ID1"
         self._channel_two_map = "ID2"
 
@@ -106,8 +131,33 @@ class LogicAnalyzer:
         return scale * counter_value / 1e-1  # 100 ms sampling
 
     def measure_interval(
-        self, channels: List[str], modes: List[str], timeout: float = 0.1
-    ):
+        self, channels: List[str], modes: List[str], timeout: float = 1
+    ) -> float:
+        """Measure the time between two events.
+
+        This method cannot be used at the same time as the oscilloscope.
+
+        Parameters
+        ----------
+        channels : List[str]
+            A pair of digital inputs, ID1, ID2, ID3, or ID4. Both can be the same.
+        modes : List[str]
+            Type of logic event to listen for on each channel. Must be one of
+                any
+                falling
+                rising
+                four rising
+                sixteen rising
+        timeout : float, optional
+            Timeout in seconds before cancelling measurement. The default value is
+            1 second.
+
+        Returns
+        -------
+        float
+            Time between events in microseconds. A negative value means that the event
+            on the second channel happend first.
+        """
         tmp_trigger = self._trigger_channel.name
         self.configure_trigger(channels[0], self.trigger_mode)
         tmp_map = self._channel_one_map, self._channel_two_map
@@ -139,7 +189,7 @@ class LogicAnalyzer:
         return t2 - t1
 
     @staticmethod
-    def _get_first_event(events: np.ndarray, mode: str, initial: bool):
+    def _get_first_event(events: np.ndarray, mode: str, initial: bool) -> np.ndarray:
         if mode == "any":
             return events[0]
         elif mode == "rising":
@@ -151,29 +201,24 @@ class LogicAnalyzer:
         elif mode == "sixteen rising":
             return events[initial::2][15]
 
-    def get_duty_cycle(self, channel="ID1", timeout=1.0):
+    def get_duty_cycle(self, channel: str, timeout: float = 1) -> Tuple[float]:
+        """Measure duty cycle and wavelength.
+
+        This method cannot be used at the same time as the oscilloscope.
+
+        Parameters
+        ----------
+        channel : {"ID1", "ID2", "ID3", "ID4"}
+            Digital input on which to measure.
+        timeout : float, optional
+            Timeout in seconds before cancelling measurement. The default value is
+            1 second.
+
+        Returns
+        -------
+        float, float
+            Wavelength in microseconds and duty cycle as a value between 0 - 1.
         """
-		duty cycle measurement on channel
-
-		returns wavelength(seconds), and length of first half of pulse(high time)
-
-		low time = (wavelength - high time)
-
-		.. tabularcolumns:: |p{3cm}|p{11cm}|
-
-		==============  ==============================================================================================
-		**Arguments**
-		==============  ==============================================================================================
-		channel         The input pin to measure wavelength and high time.['ID1','ID2','ID3','ID4','SEN','EXT','CNTR']
-		timeout         Use the timeout option if you're unsure of the input signal time period.
-						returns 0 if timed out
-		==============  ==============================================================================================
-
-		:return : wavelength,duty cycle
-
-		.. seealso:: timing_example_
-
-		"""
         tmp_trigger_mode = self.trigger_mode
         tmp_trigger_channel = self._trigger_channel.name
         self.configure_trigger(trigger_channel=channel, trigger_mode="rising")
@@ -197,7 +242,55 @@ class LogicAnalyzer:
         modes: List[str] = 4 * ("any",),
         e2e_time: float = None,
         block: bool = True,
-    ):
+    ) -> Union[List[np.ndarray], None]:
+        """Capture logic events.
+
+        This method cannot be used at the same time as the oscilloscope.
+
+        Parameters
+        ----------
+        channels : {1, 2, 3, 4}
+            Number of channels to capture events on. Events will be captured on ID1,
+            ID2, ID3, and ID4, in that order.
+        events : int, optional
+            Number of logic events to capture on each channel. The default and maximum
+            value is 2499.
+        timeout : float, optional
+            Timeout in seconds before cancelling measurement. By default there is
+            no timeout.
+        modes : List[str], optional
+            List of strings specifying the type of logic level change to capture on
+            each channel. The default value is ("any", "any", "any", "any").
+        e2e_time : float, optional
+            The maximum time between events in seconds. This is only required in three
+            and four channel mode, which uses 16-bit counters as opposed to 32-bit
+            counters which are used in one and two channel mode. The 16-bit counter
+            normally rolls over after 1.024 milliseconds, so if the time between events
+            is greater than that the timestamp calculations will be incorrect. By
+            setting this to a value greater than 1.024 ms, the counter will be slowed
+            down by a prescaler, which can extend the maximum allowed event-to-event
+            time gap to up to 0.26 seconds. If the time gap is greater than that, three
+            and four channel mode cannot be used. One and two channel mode supports
+            timegaps up to 67 seconds.
+        block : bool, optional
+            Whether to block while waiting for events to be captured. If this is False,
+            this method will return None and the captured events must be manually
+            fetched by calling :meth:`fetch_data`. The default value is True.
+
+        Returns
+        -------
+        Union[List[numpy.ndarray], None]
+            List of numpy.ndarrays containing timestamps in microseconds when logic
+            events were detected, or None if block is False. The length of the list is
+            equal to the number of channels that were used to capture events, and each
+            list element corresponds to a channel.
+
+        Raises
+        ------
+        ValueError if too many events are requested, or
+        ValueError if too many channels are selected, or
+        RuntimeError is the timeout is exceeded.
+        """
         self._check_arguments(channels, events)
         events += 1  # Capture an extra event in case we get a spurious zero.
         self.clear_buffer(0, CP.MAX_SAMPLES)
@@ -212,7 +305,7 @@ class LogicAnalyzer:
             c.events_in_buffer = events
             c.datatype = "long" if channels < 3 else "int"
             c.buffer_idx = 2500 * e * (1 if c.datatype == "int" else 2)
-            c.logic_mode = modes[e]
+            c._logic_mode = modes[e]
 
         if channels == 1:
             self._capture_one()
@@ -228,9 +321,7 @@ class LogicAnalyzer:
             return
 
         timestamps = self.fetch_data()
-        timestamps = [
-            t[: events - 1] for t in timestamps
-        ]  # Remove possible extra event.
+        timestamps = [t[: events - 1] for t in timestamps]  # Remove extra events.
 
         return timestamps[:channels]  # Discard 4:th channel if user asked for 3.
 
@@ -250,13 +341,13 @@ class LogicAnalyzer:
                     raise RuntimeError("Capture timed out.")
 
     def _capture_one(self):
-        self._channels[self._channel_one_map].prescaler = 0
+        self._channels[self._channel_one_map]._prescaler = 0
         self._device.send_byte(CP.TIMING)
         self._device.send_byte(CP.START_ALTERNATE_ONE_CHAN_LA)
         self._device.send_int(CP.MAX_SAMPLES // 4)
         self._device.send_byte(
             (self._channels[self._channel_one_map].number << 4)
-            | self._channels[self._channel_one_map].logic_mode
+            | self._channels[self._channel_one_map]._logic_mode
         )
         self._device.send_byte(
             (self._channels[self._channel_one_map].number << 4) | self._trigger_mode
@@ -265,15 +356,15 @@ class LogicAnalyzer:
 
     def _capture_two(self):
         for c in list(self._channels.values())[:2]:
-            c.prescaler = 0
+            c._prescaler = 0
 
         self._device.send_byte(CP.TIMING)
         self._device.send_byte(CP.START_TWO_CHAN_LA)
         self._device.send_int(CP.MAX_SAMPLES // 4)
         self._device.send_byte((self._trigger_channel.number << 4) | self._trigger_mode)
         self._device.send_byte(
-            self._channels[self._channel_one_map].logic_mode
-            | (self._channels[self._channel_two_map].logic_mode << 4)
+            self._channels[self._channel_one_map]._logic_mode
+            | (self._channels[self._channel_two_map]._logic_mode << 4)
         )
         self._device.send_byte(
             self._channels[self._channel_one_map].number
@@ -288,24 +379,24 @@ class LogicAnalyzer:
         if e2e_time > rollover_time * PRESCALERS[3]:
             raise ValueError("Timegap too big for four channel mode.")
         elif e2e_time > rollover_time * PRESCALERS[2]:
-            self.prescaler = 3
+            self._prescaler = 3
         elif e2e_time > rollover_time * PRESCALERS[1]:
-            self.prescaler = 2
+            self._prescaler = 2
         elif e2e_time > rollover_time:
-            self.prescaler = 1
+            self._prescaler = 1
         else:
-            self.prescaler = 0
+            self._prescaler = 0
 
         self._device.send_byte(CP.TIMING)
         self._device.send_byte(CP.START_FOUR_CHAN_LA)
         self._device.send_int(CP.MAX_SAMPLES // 4)
         self._device.send_int(
-            self._channels["ID1"].logic_mode
-            | (self._channels["ID2"].logic_mode << 4)
-            | (self._channels["ID3"].logic_mode << 8)
-            | (self._channels["ID4"].logic_mode << 12)
+            self._channels["ID1"]._logic_mode
+            | (self._channels["ID2"]._logic_mode << 4)
+            | (self._channels["ID3"]._logic_mode << 8)
+            | (self._channels["ID4"]._logic_mode << 12)
         )
-        self._device.send_byte(self.prescaler)
+        self._device.send_byte(self._prescaler)
 
         try:
             trigger = {0: 4, 1: 8, 2: 16,}[
@@ -321,7 +412,17 @@ class LogicAnalyzer:
         self._device.send_byte(trigger)
         self._device.get_ack()
 
-    def fetch_data(self):
+    def fetch_data(self) -> List[np.ndarray]:
+        """Collect captured logic events.
+
+        Returns
+        -------
+        List[numpy.ndarray]
+            List of numpy.ndarrays holding timestamps in microseconds when logic events
+            were detected. The length of the list is equal to the number of channels
+            that were used to capture events, and each list element corresponds to a
+            channel.
+        """
         counter_values = []
         channels = list(
             OrderedDict.fromkeys(
@@ -338,14 +439,24 @@ class LogicAnalyzer:
                     raw_timestamps = self._fetch_int(c)
                 counter_values.append(self._trim_zeros(c, raw_timestamps))
 
-        prescaler = [1 / 64, 1 / 8, 1.0, 4.0][self.prescaler]
+        prescaler = [1 / 64, 1 / 8, 1.0, 4.0][self._prescaler]
         timestamps = [cv * prescaler for cv in counter_values]
 
         return timestamps
 
     def _trim_zeros(
         self, channel: digital_channel.DigitalInput, timestamps: np.ndarray
-    ):
+    ) -> np.ndarray:
+        """Discard spurious zeros.
+
+        This is necessary because DMA will copy the current value of the timer to
+        the buffer any time the capture condition is fulfilled, even if the trigger
+        condition hasn't been fulfilled yet.
+
+        For example, if trigger_mode is 'falling' and logic_mode is 'rising' and a
+        rising edge occurs before a falling edge, DMA will copy the current value
+        of the timer (which is zero since it hasn't triggered yet) into the buffer.
+        """
         if "disabled" in (self.trigger_mode, channel.logic_mode):
             return timestamps
         elif self.trigger_mode == channel.logic_mode:
@@ -355,7 +466,7 @@ class LogicAnalyzer:
         else:
             return np.trim_zeros(timestamps)
 
-    def _fetch_long(self, channel: digital_channel.DigitalInput):
+    def _fetch_long(self, channel: digital_channel.DigitalInput) -> np.ndarray:
         # First half of each long is stored in the first 2500 buffer positions,
         # or positions 5001-7500 for channel two.
         self._device.send_byte(CP.COMMON)
@@ -389,7 +500,7 @@ class LogicAnalyzer:
 
         return raw_timestamps
 
-    def _fetch_int(self, channel: digital_channel.DigitalInput):
+    def _fetch_int(self, channel: digital_channel.DigitalInput) -> np.ndarray:
         self._device.send_byte(CP.COMMON)
         self._device.send_byte(CP.RETRIEVE_BUFFER)
         self._device.send_int(channel.buffer_idx)
@@ -415,7 +526,15 @@ class LogicAnalyzer:
 
         return raw_timestamps
 
-    def get_progress(self):
+    def get_progress(self) -> int:
+        """Return the number of captured events per channel currently held in buffer.
+
+        Returns
+        -------
+        int
+            Number of events held in buffer. If multiple channels have events in
+            buffer, the lowest value will be returned.
+        """
         active_channels = []
         for c in self._channels.values():
             if c.events_in_buffer:
@@ -428,10 +547,32 @@ class LogicAnalyzer:
 
         return p
 
-    def get_initial_states(self):
+    def get_initial_states(self) -> Dict[str, bool]:
+        """Return the initial state of each digital input at the beginning of capture.
+
+        Returns
+        -------
+        dict of four str: bool pairs
+            Dictionary containing pairs of channel names and the corresponding initial
+            state, e.g. {'ID1': True, 'ID2': True, 'ID3': True, 'ID4': False}.
+            True means HIGH, False means LOW.
+        """
         return self._get_initial_states_and_progress()[0]
 
-    def get_xy(self, timestamps: np.ndarray):
+    def get_xy(self, timestamps: List[np.ndarray]) -> List[np.ndarray]:
+        """Turn timestamps into plottable data.
+
+        Parameters
+        ----------
+        timestamps : List[numpy.ndarray]
+            List of timestamps as returned by :meth:`capture` or :meth:`fetch_data`.
+
+        Returns
+        -------
+        List[numpy.ndarray]
+            List of x, y pairs suitable for plotting using, for example,
+            matplotlib.pyplot.plot.
+        """
         xy = []
 
         for e, c in enumerate(
@@ -441,13 +582,13 @@ class LogicAnalyzer:
         ):
             c = self._channels[c]
             if c.events_in_buffer:
-                x, y = c.xy(self.get_initial_states()[c.name], timestamps[e])
+                x, y = c._get_xy(self.get_initial_states()[c.name], timestamps[e])
                 xy.append(x)
                 xy.append(y)
 
         return xy
 
-    def _get_initial_states_and_progress(self):
+    def _get_initial_states_and_progress(self) -> Tuple[Dict[str, bool], List[int]]:
         self._device.send_byte(CP.TIMING)
         self._device.send_byte(CP.GET_INITIAL_DIGITAL_STATES)
         initial = self._device.get_int()
@@ -490,6 +631,15 @@ class LogicAnalyzer:
         return
 
     def configure_trigger(self, trigger_channel: str, trigger_mode: str):
+        """Setup trigger channel and trigger condition.
+
+        Parameters
+        ----------
+        trigger_channel : {"ID1", "ID2", "ID3", "ID4"}
+            The digital input on which to trigger.
+        trigger_condition : {"disabled", "falling", "rising"}
+            The type of logic level change on which to trigger.
+        """
         self.trigger_channel = trigger_channel
         self._trigger_channel = self._channels[trigger_channel]
         self.trigger_mode = trigger_mode
@@ -516,21 +666,22 @@ class LogicAnalyzer:
             ]
 
     def stop(self):
+        """Stop a running :meth:`capture` function.
         """
-		Stop any running logic analyzer function
-		"""
         self._device.send_byte(CP.TIMING)
         self._device.send_byte(CP.STOP_LA)
         self._device.get_ack()
 
-    def get_states(self):
+    def get_states(self) -> Dict[str, bool]:
+        """Return the current state of the digital inputs.
+
+        Returns
+        -------
+        dict of four str: bool pairs
+            Dictionary containing pairs of channel names and the corresponding current
+            state, e.g. {'ID1': True, 'ID2': True, 'ID3': True, 'ID4': False}.
+            True means HIGH, False means LOW.
         """
-		gets the state of the digital inputs. returns dictionary with keys 'ID1','ID2','ID3','ID4'
-
-		>>> self.__print__(get_states())
-		{'ID1': True, 'ID2': True, 'ID3': True, 'ID4': False}
-
-		"""
         self._device.send_byte(CP.DIN)
         self._device.send_byte(CP.GET_STATES)
         s = self._device.get_byte()
@@ -542,19 +693,33 @@ class LogicAnalyzer:
             "ID4": (s & 8 != 0),
         }
 
-    def count_pulses(self, channel: str, interval: float = 1, block: bool = True):
+    def count_pulses(
+        self, channel: str, interval: float = 1, block: bool = True
+    ) -> Union[int, None]:
+        """	Count pulses on a digital input.
+
+        The counter is 16 bits, so it will roll over after 65535 pulses. This method
+        can be used at the same time as the oscilloscope.
+
+        Parameters
+        ----------
+        channel : {"ID1", "ID2", "ID3", "ID4"}
+            Digital input on which to count pulses.
+        interval : float, optional
+            Time in seconds during which to count pulses. The default value is
+            1 second.
+        block : bool, optional
+            Whether to block while counting pulses or not. If False, this method will
+            return None, and the pulses must be manually fetched using
+            :meth:`fetch_pulse_count`. Additionally, the interval argument has no
+            meaning if block is False, the counter will keep counting even after the
+            interval time has expired. The default value is True.
+
+        Returns
+        -------
+        Union[int, None]
+            Number of pulses counted during the interval, or None if block is False.
         """
-
-		Count pulses on a digital input. Retrieve total pulses using readPulseCount
-
-		.. tabularcolumns:: |p{3cm}|p{11cm}|
-
-		==============  ============================================================================================
-		**Arguments**
-		==============  ============================================================================================
-		channel         The input pin to measure rising edges on : ['ID1','ID2','ID3','ID4','SEN','EXT','CNTR']
-		==============  ============================================================================================
-		"""
         self._device.send_byte(CP.COMMON)
         self._device.send_byte(CP.START_COUNTING)
         self._device.send_byte(self._channels[channel].number)
@@ -567,33 +732,37 @@ class LogicAnalyzer:
 
         return self.fetch_pulse_count()
 
-    def fetch_pulse_count(self):
+    def fetch_pulse_count(self) -> int:
+        """Return the number of pulses counted since calling :meth:`count_pulses`.
+
+        Returns
+        -------
+        int
+            Number of pulses counted since calling :meth:`count_pulses`.
         """
-
-		Read pulses counted using a digital input. Call countPulses before using this.
-
-		.. tabularcolumns:: |p{3cm}|p{11cm}|
-
-		==============  ============================================================================================
-		**Arguments**
-		==============  ============================================================================================
-		==============  ============================================================================================
-		"""
         self._device.send_byte(CP.COMMON)
         self._device.send_byte(CP.FETCH_COUNT)
         count = self._device.get_int()
         self._device.get_ack()
         return count
 
-    def clear_buffer(self, starting_position, total_points):
+    def clear_buffer(self, starting_position: int, total_points: int):
+        """Clear a section of the ADC hardware buffer.
+
+        Parameters
+        ----------
+        starting_position : int
+            Starting position from which to clear the buffer. Should be a value between
+            0 and 9999.
+        total_points : int
+            Total points to clear from the buffer. Should be a value between 0 and
+            10000.
         """
-		clears a section of the ADC hardware buffer
-		"""
-        self.H.__sendByte__(CP.COMMON)
-        self.H.__sendByte__(CP.CLEAR_BUFFER)
-        self.H.__sendInt__(starting_position)
-        self.H.__sendInt__(total_points)
-        self.H.__get_ack__()
+        self._device.send_byte(CP.COMMON)
+        self._device.send_byte(CP.CLEAR_BUFFER)
+        self._device.send_int(starting_position)
+        self._device.send_int(total_points)
+        self._device.get_ack()
         self._invalidate_buffer()
 
     def _invalidate_buffer(self):

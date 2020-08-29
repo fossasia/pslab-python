@@ -1,7 +1,9 @@
+"""Objects related to the PSLab's digital input channels.
+"""
+
 import numpy as np
 
-DIGITAL_INPUTS = ('ID1', 'ID2', 'ID3', 'ID4', 'SEN', 'EXT', 'CNTR')
-digital_channel_names = DIGITAL_INPUTS
+DIGITAL_INPUTS = ("ID1", "ID2", "ID3", "ID4", "SEN", "EXT", "CNTR")
 
 MODES = {
     "sixteen rising": 5,
@@ -14,29 +16,72 @@ MODES = {
 
 
 class DigitalInput:
+    """Model of the PSLab's digital inputs.
+
+    Parameters
+    ----------
+    name : {"ID1", "ID2", "ID3", "ID4", "SEN", "EXT", "CNTR"}
+        Name of the digital channel to model.
+
+    Attributes
+    ----------
+    name : str
+        One of {"ID1", "ID2", "ID3", "ID4", "SEN", "EXT", "CNTR"}.
+    number : int
+        Number used to refer to this channel in the firmware.
+    datatype : str
+        Either "int" or "long", depending on if a 16 or 32-bit counter is used to
+        capture timestamps for this channel.
+    events_in_buffer : int
+        Number of logic events detected on this channel, the timestamps of which are
+        currently being held in the device's ADC buffer.
+    buffer_idx : Union[int, None]
+        Location in the device's ADC buffer where the events are stored. None if no
+        events captured by this channel are currently held in the buffer.
+    logic_mode
+    """
+
     def __init__(self, name: str):
         self.name = name
         self.number = DIGITAL_INPUTS.index(self.name)
         self.datatype = "long"
         self.events_in_buffer = 0
         self.buffer_idx = None
-        self.logic_mode = MODES["any"]
+        self._logic_mode = MODES["any"]
 
-    def xy(self, initial_state: bool, timestamps: np.ndarray):
+    @property
+    def logic_mode(self) -> str:
+        """Get or set the type of logic event which should be captured on this channel.
+
+        The options are:
+                disable:        Capture nothing.
+                any:            Capture every edge.
+                rising:         Capture every rising edge.
+                falling:        Capture every falling edge.
+                four rising:    Capture every fourth rising edge.
+                sixteen rising: Capture every fourth rising edge.
+        """
+        return {v: k for k, v in MODES.items()}[self._logic_mode]
+
+    @logic_mode.setter
+    def logic_mode(self, mode: str):
+        self._logic_mode = MODES[mode]
+
+    def _get_xy(self, initial_state: bool, timestamps: np.ndarray):
         x = np.repeat(timestamps, 3)
         x = np.insert(x, 0, 0)
         x[0] = 0
         y = np.zeros(len(x))
 
-        if self.logic_mode == MODES["disabled"]:
+        if self.logic_mode == "disabled":
             y[:] = initial_state
-        elif self.logic_mode == MODES["any"]:
+        elif self.logic_mode == "any":
             y[0] = initial_state
             for i in range(1, len(x), 3):
                 y[i] = y[i - 1]  # Value before this timestamp.
                 y[i + 1] = not y[i]  # Value at this timestamp.
                 y[i + 2] = y[i + 1]  # Value leaving this timetamp.
-        elif self.logic_mode == MODES["falling"]:
+        elif self.logic_mode == "falling":
             y[0] = True
             for i in range(1, len(x), 3):
                 y[i] = True  # Value before this timestamp.
