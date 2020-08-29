@@ -35,9 +35,7 @@ class LogicAnalyzer:
     def get_frequency(self, channel: str, timeout: float = 1):
         tmp = self._channel_one_map
         self._channel_one_map = channel
-        t = self.capture(1, 2, modes=["every sixteenth rising edge"], timeout=timeout)[
-            0
-        ]
+        t = self.capture(1, 2, modes=["sixteen rising"], timeout=timeout)[0]
         self._channel_one_map = tmp
         period = (t[1] - t[0]) * 1e-6 / 16
         frequency = period ** -1
@@ -92,19 +90,18 @@ class LogicAnalyzer:
         if channels[0] == channels[1]:
             # 34 edges contains 17 rising edges, i.e two
             # 'every sixteenth rising edge' events.
-            t = self.capture(1, 34, modes=["every edge"], timeout=timeout)[0]
+            t = self.capture(1, 34, modes=["any"], timeout=timeout)[0]
             initial = self.get_initial_states()[self._channel_one_map]
             t1 = self._get_first_event(t, modes[0], initial)
 
             if modes[0] == modes[1]:
-                idx = 1 if modes[1] == "every edge" else 2
+                idx = 1 if modes[1] == "any" else 2
                 initial = initial if idx == 2 else not initial
                 t2 = self._get_first_event(t[idx:], modes[1], initial)
             else:
                 t2 = self._get_first_event(t, modes[1], initial)
         else:
-            # Getting two events because trigger sometimes puts zeros in buffer.
-            t1, t2 = self.capture(2, 2, modes=modes, timeout=timeout)
+            t1, t2 = self.capture(2, 1, modes=modes, timeout=timeout)
 
             t1, t2 = t1[0], t2[0]
 
@@ -116,15 +113,15 @@ class LogicAnalyzer:
 
     @staticmethod
     def _get_first_event(events: np.ndarray, mode: str, initial: bool):
-        if mode == "every edge":
+        if mode == "any":
             return events[0]
-        elif mode == "every rising edge":
+        elif mode == "rising":
             return events[int(initial)]
-        elif mode == "every falling edge":
+        elif mode == "falling":
             return events[int(not initial)]
-        elif mode == "every fourth rising edge":
+        elif mode == "four rising":
             return events[initial::2][3]
-        elif mode == "every sixteenth rising edge":
+        elif mode == "sixteen rising":
             return events[initial::2][15]
 
     def get_duty_cycle(self, channel="ID1", timeout=1.0):
@@ -155,8 +152,7 @@ class LogicAnalyzer:
         self.configure_trigger(trigger_channel=channel, trigger_mode="rising")
         tmp_map = self._channel_one_map
         self._channel_one_map = channel
-        # Getting a few extra events in case some are zero (firmware bug).
-        t = self.capture(1, 4, modes=["every edge"], timeout=timeout)[0]
+        t = self.capture(1, 2, modes=["any"], timeout=timeout)[0]
         self._channel_one_map = tmp_map
         self.configure_trigger(tmp_trigger_channel, tmp_trigger_mode)
 
@@ -169,12 +165,13 @@ class LogicAnalyzer:
     def capture(
         self,
         channels: int,
-        events: int = CP.MAX_SAMPLES // 4,
+        events: int = CP.MAX_SAMPLES // 4 - 1,
         timeout: float = None,
-        modes: List[str] = 4 * ("every edge"),
         e2e_time: float = 0,
+        modes: List[str] = 4 * ("any",),
         block: bool = True,
     ):
+        events += 1  # Capture an extra event in case we get a spurious zero.
         self.clear_buffer(0, CP.MAX_SAMPLES)
         self._invalidate_buffer()
         self._configure_trigger(channels)
@@ -208,7 +205,12 @@ class LogicAnalyzer:
         else:
             return
 
-        return self.fetch_data()
+        timestamps = self.fetch_data()
+        timestamps = [
+            t[: events - 1] for t in timestamps
+        ]  # Remove possible extra event.
+
+        return timestamps[:channels]  # Discard 4:th channel if user asked for 3.
 
     def _capture_one(self):
         self._channels[self._channel_one_map].prescaler = 0
@@ -292,14 +294,27 @@ class LogicAnalyzer:
 
             if c.events_in_buffer:
                 if c.datatype == "long":
-                    counter_values.append(self._fetch_long(c))
+                    raw_timestamps = self._fetch_long(c)
                 else:
-                    counter_values.append(self._fetch_int(c))
+                    raw_timestamps = self._fetch_int(c)
+                counter_values.append(self._trim_zeros(c, raw_timestamps))
 
         prescaler = [1 / 64, 1 / 8, 1.0, 4.0][self.prescaler]
         timestamps = [cv * prescaler for cv in counter_values]
 
         return timestamps
+
+    def _trim_zeros(
+        self, channel: digital_channel.DigitalInput, timestamps: np.ndarray
+    ):
+        if "disabled" in (self.trigger_mode, channel.logic_mode):
+            return timestamps
+        elif self.trigger_mode == channel.logic_mode:
+            return timestamps
+        elif self.trigger_mode == "any":
+            return timestamps
+        else:
+            return np.trim_zeros(timestamps)
 
     def _fetch_long(self, channel: digital_channel.DigitalInput):
         # First half of each long is stored in the first 2500 buffer positions,
@@ -312,6 +327,8 @@ class LogicAnalyzer:
         self._device.get_ack()
 
         while lsb[-1] == 0:
+            if len(lsb) == 0:
+                return np.array([])
             lsb = lsb[:-1]
 
         # Second half of each long is stored in positions 2501-5000,
@@ -324,13 +341,12 @@ class LogicAnalyzer:
         self._device.get_ack()
         msb = msb[: len(lsb)]  # More data may have been added since we got LSB.
 
-        # Interleave byte arrays.
         lsb = [lsb[a * 2 : a * 2 + 2] for a in range(len(lsb) // 2)]
         msb = [msb[a * 2 : a * 2 + 2] for a in range(len(msb) // 2)]
-
+        # Interleave byte arrays.
         raw_timestamps = [CP.Integer.unpack(b + a)[0] for a, b in zip(msb, lsb)]
         raw_timestamps = np.array(raw_timestamps)
-        raw_timestamps = np.trim_zeros(raw_timestamps)
+        raw_timestamps = np.trim_zeros(raw_timestamps, trim="b")
 
         return raw_timestamps
 
@@ -347,7 +363,12 @@ class LogicAnalyzer:
             for a in range(channel.events_in_buffer)
         ]
         raw_timestamps = np.array(raw_timestamps)
-        raw_timestamps = np.trim_zeros(raw_timestamps)
+
+        if raw_timestamps[0] == 0:
+            raw_timestamps = np.trim_zeros(raw_timestamps)
+            raw_timestamps = np.insert(raw_timestamps, 0, 0)
+        else:
+            raw_timestamps = np.trim_zeros(raw_timestamps)
 
         for i, diff in enumerate(np.diff(raw_timestamps)):
             if diff <= 0:  # Counter has rolled over.
@@ -438,9 +459,14 @@ class LogicAnalyzer:
         # For some reason firmware uses different values for trigger_mode
         # depending on number of channels.
         if channels == 1:
-            self._trigger_mode = {"disabled": 0, "falling": 2, "rising": 3,}[
-                self.trigger_mode
-            ]
+            self._trigger_mode = {
+                "disabled": 0,
+                "any": 1,
+                "falling": 2,
+                "rising": 3,
+                "four rising": 4,
+                "sixteen rising": 5,
+            }[self.trigger_mode]
         elif channels == 2:
             self._trigger_mode = {"disabled": 0, "falling": 3, "rising": 1,}[
                 self.trigger_mode
