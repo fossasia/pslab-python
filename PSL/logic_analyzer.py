@@ -19,7 +19,6 @@ PRESCALERS = {
 
 class LogicAnalyzer:
     def __init__(self, device: packet_handler.Handler = None):
-        self.H = device
         self._device = device
         self._channels = {
             d: digital_channel.DigitalInput(d) for d in digital_channel.DIGITAL_INPUTS
@@ -167,13 +166,13 @@ class LogicAnalyzer:
         channels: int,
         events: int = CP.MAX_SAMPLES // 4 - 1,
         timeout: float = None,
-        e2e_time: float = 0,
         modes: List[str] = 4 * ("any",),
+        e2e_time: float = None,
         block: bool = True,
     ):
+        self._check_arguments(channels, events)
         events += 1  # Capture an extra event in case we get a spurious zero.
         self.clear_buffer(0, CP.MAX_SAMPLES)
-        self._invalidate_buffer()
         self._configure_trigger(channels)
         modes = [digital_channel.MODES[m] for m in modes]
         old_progress = self.get_progress()
@@ -191,17 +190,12 @@ class LogicAnalyzer:
             self._capture_one()
         elif channels == 2:
             self._capture_two()
-        elif channels == 4:
+        else:
             self._capture_four(e2e_time)
 
         if block:
-            start = time.time()
-            self._wait_for_progress(old_progress, timeout=timeout)
-
-            while self.get_progress() < events:
-                if timeout is not None:
-                    if time.time() - start >= timeout:
-                        raise RuntimeError("Capture timed out.")
+            self._wait_for_progress(old_progress, timeout)
+            self._timeout(events, timeout)
         else:
             return
 
@@ -211,6 +205,21 @@ class LogicAnalyzer:
         ]  # Remove possible extra event.
 
         return timestamps[:channels]  # Discard 4:th channel if user asked for 3.
+
+    @staticmethod
+    def _check_arguments(channels: int, events: int):
+        max_events = CP.MAX_SAMPLES // 4 - 1
+        if events > max_events:
+            raise ValueError(f"Events must be fewer than {max_events}.")
+        elif channels < 0 or channels > 4:
+            raise ValueError("Channels must be between 1-4.")
+
+    def _timeout(self, events: int, timeout: float):
+        start = time.time()
+        while self.get_progress() < events:
+            if timeout is not None:
+                if time.time() - start >= timeout:
+                    raise RuntimeError("Capture timed out.")
 
     def _capture_one(self):
         self._channels[self._channel_one_map].prescaler = 0
@@ -246,6 +255,8 @@ class LogicAnalyzer:
 
     def _capture_four(self, e2e_time: float):
         rollover_time = (2 ** 16 - 1) / CLOCK_RATE
+        e2e_time = 0 if e2e_time is None else e2e_time
+
         if e2e_time > rollover_time * PRESCALERS[3]:
             raise ValueError("Timegap too big for four channel mode.")
         elif e2e_time > rollover_time * PRESCALERS[2]:
@@ -555,6 +566,7 @@ class LogicAnalyzer:
         self.H.__sendInt__(starting_position)
         self.H.__sendInt__(total_points)
         self.H.__get_ack__()
+        self._invalidate_buffer()
 
     def _invalidate_buffer(self):
         for c in self._channels.values():
