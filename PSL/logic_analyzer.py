@@ -31,43 +31,71 @@ class LogicAnalyzer:
         self._channel_one_map = "ID1"
         self._channel_two_map = "ID2"
 
-    def get_frequency(self, channel: str, timeout: float = 1):
-        tmp = self._channel_one_map
-        self._channel_one_map = channel
-        t = self.capture(1, 2, modes=["sixteen rising"], timeout=timeout)[0]
-        self._channel_one_map = tmp
-        period = (t[1] - t[0]) * 1e-6 / 16
-        frequency = period ** -1
+    def get_frequency(
+        self, channel: str, simultaneous_oscilloscope: bool = False, timeout: float = 1
+    ) -> float:
+        """Measure the frequency of a signal.
 
-        if frequency >= 1e7:
-            frequency = self._get_high_frequency(channel)
+        Parameters
+        ----------
+        channel : {"ID1", "ID2", "ID3", "ID4"}
+            Name of the digital input channel in which to measure the frequency.
+        simultaneous_oscilloscope: bool, optional
+            Set this to True if you need to use the oscilloscope at the same time.
+            Uses firmware instead of software to measure the frequency, which may fail
+            and return 0. Will not give accurate results above 10 MHz. The default
+            value is False.
+        timeout : float, optional
+            Timeout in seconds before cancelling measurement. The default value is
+            1 second.
 
-        return frequency
-
-    def _get_high_frequency(self, channel: str):
+        Returns
+        -------
+        float
+            The signal's frequency in Hz.
         """
-        retrieves the frequency of the signal connected to ID1. for frequencies > 1MHz
-        also good for lower frequencies, but avoid using it since
-        the oscilloscope cannot be used simultaneously due to hardware limitations.
+        if simultaneous_oscilloscope:
+            return self._get_frequency_firmware(channel, timeout)
+        else:
+            tmp = self._channel_one_map
+            self._channel_one_map = channel
+            t = self.capture(1, 2, modes=["sixteen rising"], timeout=timeout)[0]
+            self._channel_one_map = tmp
+            period = (t[1] - t[0]) * 1e-6 / 16
+            frequency = period ** -1
 
-        The input frequency is fed to a 32 bit counter for a period of 100mS.
-        The value of the counter at the end of 100mS is used to calculate the frequency.
+            if frequency >= 1e7:
+                frequency = self._get_high_frequency(channel)
 
-        see :ref:`freq_video`
+            return frequency
 
+    def _get_frequency_firmware(
+        self, channel: str, timeout: float, retry: bool = True
+    ) -> float:
+        self._device.send_byte(CP.COMMON)
+        self._device.send_byte(CP.GET_FREQUENCY)
+        self._device.send_int(int(timeout * 64e6) >> 16)
+        self._device.send_byte(self._channels[channel].number)
+        self._device.wait_for_data(timeout)
 
-        .. seealso:: :func:`get_freq`
+        error = self._device.get_byte()
+        t = [self._device.get_long() for a in range(2)]
+        self._device.get_ack()
+        edges = 16
+        period = (t[1] - t[0]) / edges / CLOCK_RATE
 
-        .. tabularcolumns:: |p{3cm}|p{11cm}|
+        if error or period == 0:
+            # Retry once.
+            if retry:
+                return self._get_frequency_firmware(channel, timeout, False)
+            else:
+                return 0
+        else:
+            return period ** -1
 
-        ==============  ============================================================================================
-        **Arguments**
-        ==============  ============================================================================================
-        pin             The input pin to measure frequency from : ['ID1','ID2','ID3','ID4','SEN','EXT','CNTR']
-        ==============  ============================================================================================
-
-        :return: frequency
-        """
+    def _get_high_frequency(self, channel: str) -> float:
+        # The input frequency is fed to a 32 bit counter for a period of 100 ms. The
+        # value of the counter at the end of 100 ms is used to calculate the frequency.
         self._device.send_byte(CP.COMMON)
         self._device.send_byte(CP.GET_ALTERNATE_HIGH_FREQUENCY)
         self._device.send_byte(self._channels[channel].number)
