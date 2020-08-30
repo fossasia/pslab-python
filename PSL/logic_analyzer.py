@@ -469,8 +469,8 @@ class LogicAnalyzer:
         self._device.send_byte(CP.COMMON)
         self._device.send_byte(CP.RETRIEVE_BUFFER)
         self._device.send_int(channel.buffer_idx)
-        self._device.send_int(channel.events_in_buffer)
-        lsb = self._device.interface.read(channel.events_in_buffer * 2)
+        self._device.send_int(channel._events_in_buffer)
+        lsb = self._device.interface.read(channel._events_in_buffer * 2)
         self._device.get_ack()
 
         while lsb[-1] == 0:
@@ -483,8 +483,8 @@ class LogicAnalyzer:
         self._device.send_byte(CP.COMMON)
         self._device.send_byte(CP.RETRIEVE_BUFFER)
         self._device.send_int(channel.buffer_idx + CP.MAX_SAMPLES // 4)
-        self._device.send_int(channel.events_in_buffer)
-        msb = self._device.interface.read(channel.events_in_buffer * 2)
+        self._device.send_int(channel._events_in_buffer)
+        msb = self._device.interface.read(channel._events_in_buffer * 2)
         self._device.get_ack()
         msb = msb[: len(lsb)]  # More data may have been added since we got LSB.
 
@@ -501,13 +501,13 @@ class LogicAnalyzer:
         self._device.send_byte(CP.COMMON)
         self._device.send_byte(CP.RETRIEVE_BUFFER)
         self._device.send_int(channel.buffer_idx)
-        self._device.send_int(channel.events_in_buffer)
-        raw = self._device.interface.read(channel.events_in_buffer * 2)
+        self._device.send_int(channel._events_in_buffer)
+        raw = self._device.interface.read(channel._events_in_buffer * 2)
         self._device.get_ack()
 
         raw_timestamps = [
             CP.ShortInt.unpack(raw[a * 2 : a * 2 + 2])[0]
-            for a in range(channel.events_in_buffer)
+            for a in range(channel._events_in_buffer)
         ]
         raw_timestamps = np.array(raw_timestamps)
 
@@ -765,4 +765,5 @@ class LogicAnalyzer:
     def _invalidate_buffer(self):
         for c in self._channels.values():
             c.events_in_buffer = 0
+            c._events_in_buffer = 0
             c.buffer_idx = None
