@@ -62,10 +62,6 @@ class DigitalInput:
         """
         return {v: k for k, v in MODES.items()}[self._logic_mode]
 
-    @logic_mode.setter
-    def logic_mode(self, mode: str):
-        self._logic_mode = MODES[mode]
-
     def _get_xy(self, initial_state: bool, timestamps: np.ndarray):
         x = np.repeat(timestamps, 3)
         x = np.insert(x, 0, 0)
