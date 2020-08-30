@@ -142,12 +142,8 @@ class LogicAnalyzer:
         channels : List[str]
             A pair of digital inputs, ID1, ID2, ID3, or ID4. Both can be the same.
         modes : List[str]
-            Type of logic event to listen for on each channel. Must be one of
-                any
-                falling
-                rising
-                four rising
-                sixteen rising
+            Type of logic event to listen for on each channel. See
+            :class:`DigitalInput` for available modes.
         timeout : float, optional
             Timeout in seconds before cancelling measurement. The default value is
             1 second.
@@ -260,7 +256,8 @@ class LogicAnalyzer:
             no timeout.
         modes : List[str], optional
             List of strings specifying the type of logic level change to capture on
-            each channel. The default value is ("any", "any", "any", "any").
+            each channel. See :class:`DigitalInput` for available modes. The default
+            value is ("any", "any", "any", "any").
         e2e_time : float, optional
             The maximum time between events in seconds. This is only required in three
             and four channel mode, which uses 16-bit counters as opposed to 32-bit
@@ -457,7 +454,7 @@ class LogicAnalyzer:
         rising edge occurs before a falling edge, DMA will copy the current value
         of the timer (which is zero since it hasn't triggered yet) into the buffer.
         """
-        if "disabled" in (self.trigger_mode, channel.logic_mode):
+        if self.trigger_mode == "disabled":
             return timestamps
         elif self.trigger_mode == channel.logic_mode:
             return timestamps
