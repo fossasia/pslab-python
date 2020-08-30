@@ -66,7 +66,7 @@ class DigitalInput:
         x = np.repeat(timestamps, 3)
         x = np.insert(x, 0, 0)
         x[0] = 0
-        y = np.zeros(len(x))
+        y = np.array(len(x) * [False])
 
         if self.logic_mode == "any":
             y[0] = initial_state
