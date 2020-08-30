@@ -220,20 +220,20 @@ class LogicAnalyzer:
         self.configure_trigger(trigger_channel=channel, trigger_mode="rising")
         tmp_map = self._channel_one_map
         self._channel_one_map = channel
-        t = self.capture(1, 2, modes=["any"], timeout=timeout)[0]
+        t = self.capture(1, 3, modes=["any"], timeout=timeout)[0]
         self._channel_one_map = tmp_map
         self.configure_trigger(tmp_trigger_channel, tmp_trigger_mode)
 
-        period = t[1]
+        period = t[2]
         # First change is HIGH -> LOW since we trigger on rising.
-        duty_cycle = t[0] / t[1]
+        duty_cycle = t[1] / t[2]
 
         return period, duty_cycle
 
     def capture(
         self,
         channels: int,
-        events: int = CP.MAX_SAMPLES // 4 - 1,
+        events: int = CP.MAX_SAMPLES // 4 - 2,
         timeout: float = None,
         modes: List[str] = 4 * ("any",),
         e2e_time: float = None,
@@ -250,7 +250,7 @@ class LogicAnalyzer:
             ID2, ID3, and ID4, in that order.
         events : int, optional
             Number of logic events to capture on each channel. The default and maximum
-            value is 2499.
+            value is 2498.
         timeout : float, optional
             Timeout in seconds before cancelling measurement. By default there is
             no timeout.
@@ -289,7 +289,6 @@ class LogicAnalyzer:
         RuntimeError is the timeout is exceeded.
         """
         self._check_arguments(channels, events)
-        events += 1  # Capture an extra event in case we get a spurious zero.
         self.clear_buffer(0, CP.MAX_SAMPLES)
         self._configure_trigger(channels)
         modes = [digital_channel.MODES[m] for m in modes]
@@ -300,6 +299,8 @@ class LogicAnalyzer:
         ):
             c = self._channels[c]
             c.events_in_buffer = events
+            # Capture an extra event in case we get a spurious zero.
+            c._events_in_buffer = events + 2
             c.datatype = "long" if channels < 3 else "int"
             c.buffer_idx = 2500 * e * (1 if c.datatype == "int" else 2)
             c._logic_mode = modes[e]
@@ -312,19 +313,16 @@ class LogicAnalyzer:
             self._capture_four(e2e_time)
 
         if block:
-            self._wait_for_progress(old_progress, timeout)
-            self._timeout(events, timeout)
+            self._wait_for_progress(timeout)
+            self._timeout(events + 2, start_time, timeout)
         else:
             return
 
-        timestamps = self.fetch_data()
-        timestamps = [t[: events - 1] for t in timestamps]  # Remove extra events.
-
-        return timestamps[:channels]  # Discard 4:th channel if user asked for 3.
+        return self.fetch_data()[:channels]  # Discard 4:th channel if user asked for 3.
 
     @staticmethod
     def _check_arguments(channels: int, events: int):
-        max_events = CP.MAX_SAMPLES // 4 - 1
+        max_events = CP.MAX_SAMPLES // 4 - 2
         if events > max_events:
             raise ValueError(f"Events must be fewer than {max_events}.")
         elif channels < 0 or channels > 4:
@@ -434,7 +432,10 @@ class LogicAnalyzer:
                     raw_timestamps = self._fetch_long(c)
                 else:
                     raw_timestamps = self._fetch_int(c)
-                counter_values.append(self._trim_zeros(c, raw_timestamps))
+                # Remove extra events.
+                raw_timestamps = self._trim_zeros(c, raw_timestamps)
+                raw_timestamps = raw_timestamps[: c.events_in_buffer]
+                counter_values.append(raw_timestamps)
 
         prescaler = [1 / 64, 1 / 8, 1.0, 4.0][self._prescaler]
         timestamps = [cv * prescaler for cv in counter_values]
@@ -474,8 +475,6 @@ class LogicAnalyzer:
         self._device.get_ack()
 
         while lsb[-1] == 0:
-            if len(lsb) == 0:
-                return np.array([])
             lsb = lsb[:-1]
 
         # Second half of each long is stored in positions 2501-5000,
@@ -533,14 +532,16 @@ class LogicAnalyzer:
             buffer, the lowest value will be returned.
         """
         active_channels = []
+        a = 0
         for c in self._channels.values():
             if c.events_in_buffer:
-                active_channels.append(c)
+                active_channels.append(a * (1 if c.datatype == "int" else 2))
+                a += 1
 
         p = CP.MAX_SAMPLES // 4
         progress = self._get_initial_states_and_progress()[1]
-        for i in range(len(active_channels)):
-            p = min(progress[i], p)
+        for a in active_channels:
+            p = min(progress[a], p)
 
         return p
 
