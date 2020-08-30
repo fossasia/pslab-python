@@ -56,7 +56,7 @@ class LogicAnalyzer:
         self._channel_one_map = "ID1"
         self._channel_two_map = "ID2"
 
-    def get_frequency(
+    def measure_frequency(
         self, channel: str, simultaneous_oscilloscope: bool = False, timeout: float = 1
     ) -> float:
         """Measure the frequency of a signal.
@@ -80,7 +80,7 @@ class LogicAnalyzer:
             The signal's frequency in Hz.
         """
         if simultaneous_oscilloscope:
-            return self._get_frequency_firmware(channel, timeout)
+            return self._measure_frequency_firmware(channel, timeout)
         else:
             tmp = self._channel_one_map
             self._channel_one_map = channel
@@ -94,7 +94,7 @@ class LogicAnalyzer:
 
             return frequency
 
-    def _get_frequency_firmware(
+    def _measure_frequency_firmware(
         self, channel: str, timeout: float, retry: bool = True
     ) -> float:
         self._device.send_byte(CP.COMMON)
@@ -112,7 +112,7 @@ class LogicAnalyzer:
         if error or period == 0:
             # Retry once.
             if retry:
-                return self._get_frequency_firmware(channel, timeout, False)
+                return self._measure_frequency_firmware(channel, timeout, False)
             else:
                 return 0
         else:
@@ -197,7 +197,7 @@ class LogicAnalyzer:
         elif mode == "sixteen rising":
             return events[initial::2][15]
 
-    def get_duty_cycle(self, channel: str, timeout: float = 1) -> Tuple[float]:
+    def measure_duty_cycle(self, channel: str, timeout: float = 1) -> Tuple[float]:
         """Measure duty cycle and wavelength.
 
         This method cannot be used at the same time as the oscilloscope.
