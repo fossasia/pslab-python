@@ -46,6 +46,7 @@ class DigitalInput:
         self.number = DIGITAL_INPUTS.index(self.name)
         self.datatype = "long"
         self.events_in_buffer = 0
+        self._events_in_buffer = 0
         self.buffer_idx = None
         self._logic_mode = MODES["any"]
 
