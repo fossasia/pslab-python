@@ -718,6 +718,7 @@ class LogicAnalyzer:
         Union[int, None]
             Number of pulses counted during the interval, or None if block is False.
         """
+        self._reset_prescaler()
         self._device.send_byte(CP.COMMON)
         self._device.send_byte(CP.START_COUNTING)
         self._device.send_byte(self._channels[channel].number)
@@ -743,6 +744,16 @@ class LogicAnalyzer:
         count = self._device.get_int()
         self._device.get_ack()
         return count
+
+    def _reset_prescaler(self):
+        self._device.send_byte(CP.TIMING)
+        self._device.send_byte(CP.START_FOUR_CHAN_LA)
+        self._device.send_int(0)
+        self._device.send_int(0)
+        self._device.send_byte(0)
+        self._device.send_byte(0)
+        self._device.get_ack()
+        self.stop()
 
     def clear_buffer(self, starting_position: int, total_points: int):
         """Clear a section of the ADC hardware buffer.
