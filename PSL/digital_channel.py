@@ -54,7 +54,6 @@ class DigitalInput:
         """Get or set the type of logic event which should be captured on this channel.
 
         The options are:
-                disable:        Capture nothing.
                 any:            Capture every edge.
                 rising:         Capture every rising edge.
                 falling:        Capture every falling edge.
@@ -73,9 +72,7 @@ class DigitalInput:
         x[0] = 0
         y = np.zeros(len(x))
 
-        if self.logic_mode == "disabled":
-            y[:] = initial_state
-        elif self.logic_mode == "any":
+        if self.logic_mode == "any":
             y[0] = initial_state
             for i in range(1, len(x), 3):
                 y[i] = y[i - 1]  # Value before this timestamp.
