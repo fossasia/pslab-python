@@ -289,10 +289,11 @@ class LogicAnalyzer:
         RuntimeError is the timeout is exceeded.
         """
         self._check_arguments(channels, events)
+        self.stop()
         self.clear_buffer(0, CP.MAX_SAMPLES)
         self._configure_trigger(channels)
         modes = [digital_channel.MODES[m] for m in modes]
-        old_progress = self.get_progress()
+        start_time = time.time()
 
         for e, c in enumerate(
             [self._channel_one_map, self._channel_two_map, "ID3", "ID4"][:channels]
@@ -328,11 +329,10 @@ class LogicAnalyzer:
         elif channels < 0 or channels > 4:
             raise ValueError("Channels must be between 1-4.")
 
-    def _timeout(self, events: int, timeout: float):
-        start = time.time()
+    def _timeout(self, events: int, start_time: float, timeout: float):
         while self.get_progress() < events:
             if timeout is not None:
-                if time.time() - start >= timeout:
+                if time.time() - start_time >= timeout:
                     raise RuntimeError("Capture timed out.")
 
     def _capture_one(self):
@@ -399,10 +399,7 @@ class LogicAnalyzer:
             ] | self._trigger_mode
         except KeyError:
             e = "Triggering is only possible on ID1, ID2, or ID3."
-            if self._trigger_channel.number == 3:
-                raise NotImplementedError(e)
-            else:
-                raise TypeError(e)
+            raise NotImplementedError(e)
 
         self._device.send_byte(trigger)
         self._device.get_ack()
@@ -460,6 +457,10 @@ class LogicAnalyzer:
         elif self.trigger_mode == channel.logic_mode:
             return timestamps
         elif self.trigger_mode == "any":
+            return timestamps
+        elif channel.logic_mode == "any":
+            while timestamps[1] == 0:
+                timestamps = timestamps[1:]
             return timestamps
         else:
             return np.trim_zeros(timestamps)
@@ -613,14 +614,13 @@ class LogicAnalyzer:
 
         return initial_states, progress
 
-    def _wait_for_progress(
-        self, old_progress: int = CP.MAX_SAMPLES // 4, timeout: float = None
-    ):
+    def _wait_for_progress(self, timeout: float = None):
         """Wait for GET_INITIAL_DIGITAL_STATES to reset.
 
         Until the first event is detected, GET_INITIAL_DIGITAL_STATES returns
         old progress.
         """
+        old_progress = self.get_progress()
         timeout = 0.1 if timeout is None else timeout
         start_time = time.time()
         while self.get_progress() == old_progress:
