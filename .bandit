@@ -1,0 +1,3 @@
+# codacy:
+# Don't flag valid Python "assert" statements
+skips: ['B101']
