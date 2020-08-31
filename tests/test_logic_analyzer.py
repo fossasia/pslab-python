@@ -67,7 +67,7 @@ def test_capture_four_low_frequency():
 
     la = logic_analyzer.LogicAnalyzer(psl.H)
     e2e_time = (frequency ** -1) / 2
-    t1, t2, t3, t4 = la.capture(4, 10, e2e_time=e2e_time)
+    t1 = la.capture(4, 10, e2e_time=e2e_time)[0]
     assert np.array(9 * [e2e_time * MICROSECONDS]) == pytest.approx(
         np.diff(t1), rel=RELTOL
     )
@@ -89,7 +89,7 @@ def test_capture_four_lower_frequency():
 
     la = logic_analyzer.LogicAnalyzer(psl.H)
     e2e_time = (frequency ** -1) / 2
-    t1, t2, t3, t4 = la.capture(4, 10, e2e_time=e2e_time)
+    t1 = la.capture(4, 10, e2e_time=e2e_time)[0]
     assert np.array(9 * [e2e_time * MICROSECONDS]) == pytest.approx(
         np.diff(t1), rel=RELTOL
     )
@@ -111,7 +111,7 @@ def test_capture_four_lowest_frequency():
 
     la = logic_analyzer.LogicAnalyzer(psl.H)
     e2e_time = (frequency ** -1) * 4
-    t1, t2, t3, t4 = la.capture(4, 10, modes=4 * ["four rising"], e2e_time=e2e_time)
+    t1 = la.capture(4, 10, modes=4 * ["four rising"], e2e_time=e2e_time)[0]
     assert np.array(9 * [e2e_time * MICROSECONDS]) == pytest.approx(
         np.diff(t1), rel=RELTOL
     )
