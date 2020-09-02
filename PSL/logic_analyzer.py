@@ -466,34 +466,24 @@ class LogicAnalyzer:
             return np.trim_zeros(timestamps)
 
     def _fetch_long(self, channel: digital_channel.DigitalInput) -> np.ndarray:
-        # First half of each long is stored in the first 2500 buffer positions,
-        # or positions 5001-7500 for channel two.
-        self._device.send_byte(CP.COMMON)
-        self._device.send_byte(CP.RETRIEVE_BUFFER)
-        self._device.send_int(channel.buffer_idx)
+        self._device.send_byte(CP.TIMING)
+        self._device.send_byte(CP.FETCH_LONG_DMA_DATA)
         self._device.send_int(channel._events_in_buffer)
-        lsb = self._device.interface.read(channel._events_in_buffer * 2)
+        self._device.send_byte(channel.buffer_idx // 5000)
+        raw = self._device.read(int(channel._events_in_buffer * 4))
         self._device.get_ack()
 
-        while lsb[-1] == 0:
-            lsb = lsb[:-1]
-
-        # Second half of each long is stored in positions 2501-5000,
-        # or positions 7501-10000 for channel two.
-        self._device.send_byte(CP.COMMON)
-        self._device.send_byte(CP.RETRIEVE_BUFFER)
-        self._device.send_int(channel.buffer_idx + CP.MAX_SAMPLES // 4)
-        self._device.send_int(channel._events_in_buffer)
-        msb = self._device.interface.read(channel._events_in_buffer * 2)
-        self._device.get_ack()
-        msb = msb[: len(lsb)]  # More data may have been added since we got LSB.
-
-        lsb = [lsb[a * 2 : a * 2 + 2] for a in range(len(lsb) // 2)]
-        msb = [msb[a * 2 : a * 2 + 2] for a in range(len(msb) // 2)]
-        # Interleave byte arrays.
-        raw_timestamps = [CP.Integer.unpack(b + a)[0] for a, b in zip(msb, lsb)]
+        raw_timestamps = [
+            CP.Integer.unpack(raw[a * 4 : a * 4 + 4])[0]
+            for a in range(channel._events_in_buffer)
+        ]
         raw_timestamps = np.array(raw_timestamps)
-        raw_timestamps = np.trim_zeros(raw_timestamps, trim="b")
+
+        if raw_timestamps[0] == 0:
+            raw_timestamps = np.trim_zeros(raw_timestamps)
+            raw_timestamps = np.insert(raw_timestamps, 0, 0)
+        else:
+            raw_timestamps = np.trim_zeros(raw_timestamps)
 
         return raw_timestamps
 
