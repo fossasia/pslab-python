@@ -328,3 +328,68 @@ class Handler:
         self.input_queue_size = 0
 
         return list(acks)
+
+
+RECORDED_TRAFFIC = iter([])
+"""An iterator returning (request, response) pairs.
+
+The request is checked against data written to the dummy serial port, and if it matches
+the response can be read back. Both request and response should be bytes-like.
+
+Intended to be monkey-patched by the calling test module.
+"""
+
+
+class MockHandler(Handler):
+    """Mock implementation of :class:`Handler` for testing.
+
+    Parameters
+    ----------
+    See :meth:`connect. <PSL.packet_handler.Handler.connect>`.
+    """
+
+    VERSION = "PSLab vMOCK"
+
+    def __init__(
+        self, port: str = None, baudrate: int = 1000000, timeout: float = 1.0,
+    ):
+        self._in_buffer = b""
+        super().__init__(port, baudrate, timeout)
+
+    def connect(
+        self, port: str = None, baudrate: int = 1000000, timeout: float = 1.0,
+    ):
+        self.version = self.get_version()
+
+    def disconnect():
+        pass
+
+    def reconnect():
+        pass
+
+    def get_version(self):
+        return self.VERSION
+
+    def read(self, number_of_bytes: int) -> bytes:
+        read_bytes = self._in_buffer[:number_of_bytes]
+        self._in_buffer = self._in_buffer[number_of_bytes:]
+        return read_bytes
+
+    def write(self, data: bytes):
+        try:
+            tx, rx = next(RECORDED_TRAFFIC)
+            if tx == data:
+                self._in_buffer += rx
+        except StopIteration:
+            # No more recorded traffic, calling method should timeout.
+            raise RuntimeError
+
+    def wait_for_data(self, timeout: float = 0.2) -> bool:
+        start_time = time.time()
+
+        while time.time() - start_time < timeout:
+            if self._in_buffer:
+                return True
+            time.sleep(0.02)
+
+        return False
