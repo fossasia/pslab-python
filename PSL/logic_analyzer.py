@@ -492,7 +492,7 @@ class LogicAnalyzer:
         self._device.send_byte(CP.RETRIEVE_BUFFER)
         self._device.send_int(channel.buffer_idx)
         self._device.send_int(channel._events_in_buffer)
-        raw = self._device.interface.read(channel._events_in_buffer * 2)
+        raw = self._device.read(channel._events_in_buffer * 2)
         self._device.get_ack()
 
         raw_timestamps = [
