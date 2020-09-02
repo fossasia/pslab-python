@@ -46,13 +46,15 @@ class Handler:
         self.load_burst = False
         self.input_queue_size = 0
         self.version = ""
+        self._log = b""
+        self._logging = False
         self.interface = serial.Serial()
-        self.connect(port=port, baudrate=baudrate, timeout=timeout)
         self.send_byte = partial(self._send, size=1)
         self.send_int = partial(self._send, size=2)
         self.get_byte = partial(self._receive, size=1)
         self.get_int = partial(self._receive, size=2)
         self.get_long = partial(self._receive, size=4)
+        self.connect(port=port, baudrate=baudrate, timeout=timeout)
 
         # Backwards compatibility
         self.fd = self.interface
@@ -165,9 +167,11 @@ class Handler:
         str
             Version string.
         """
-        self.interface.write(CP.COMMON)
-        self.interface.write(CP.GET_VERSION)
-        return self.interface.readline().decode("utf-8")
+        self.send_byte(CP.COMMON)
+        self.send_byte(CP.GET_VERSION)
+        version = self.interface.readline()
+        self._write_log(version, "RX")
+        return version.decode("utf-8")
 
     def get_ack(self) -> int:  # Make _internal?
         """Get response code from PSLab.
@@ -183,7 +187,7 @@ class Handler:
                 3 FAILED
         """
         if not self.load_burst:
-            response = self.interface.read(1)
+            response = self.read(1)
         else:
             self.input_queue_size += 1
             return 1
@@ -229,8 +233,7 @@ class Handler:
         if self.load_burst:
             self.burst_buffer += packet
         else:
-            self.interface.write(packet)
-        # return self.get_ack?
+            self.write(packet)
 
     def _receive(self, size: int) -> int:
         """Read and unpack the specified number of bytes from the serial port.
@@ -245,7 +248,7 @@ class Handler:
         int
             Unpacked bytes, or -1 if too few bytes were read.
         """
-        received = self.interface.read(size)
+        received = self.read(size)
 
         if len(received) == size:
             if size in (1, 2, 4):
@@ -260,6 +263,19 @@ class Handler:
             retval = -1  # raise an exception instead?
 
         return retval
+
+    def read(self, number_of_bytes: int) -> bytes:
+        data = self.interface.read(number_of_bytes)
+        self._write_log(data, "RX")
+        return data
+
+    def write(self, data: bytes):
+        self.interface.write(data)
+        self._write_log(data, "TX")
+
+    def _write_log(self, data: bytes, direction: str):
+        if self._logging:
+            self._log += direction.encode() + data + "STOP".encode()
 
     def wait_for_data(self, timeout: float = 0.2) -> bool:
         """Wait for :timeout: seconds or until there is data in the input buffer.
@@ -305,10 +321,10 @@ class Handler:
             List of response codes
             (see :meth:`get_ack <PSL.packet_handler.Handler.get_ack>`).
         """
-        self.interface.write(self.burst_buffer)
+        self.write(self.burst_buffer)
         self.burst_buffer = b""
         self.load_burst = False
-        acks = self.interface.read(self.input_queue_size)
+        acks = self.read(self.input_queue_size)
         self.input_queue_size = 0
 
         return list(acks)
