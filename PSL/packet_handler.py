@@ -361,13 +361,15 @@ class MockHandler(Handler):
     ):
         self.version = self.get_version()
 
-    def disconnect():
+    def disconnect(self):
         pass
 
-    def reconnect():
+    def reconnect(
+        self, port: str = None, baudrate: int = None, timeout: float = None,
+    ):
         pass
 
-    def get_version(self):
+    def get_version(self, *args) -> str:
         return self.VERSION
 
     def read(self, number_of_bytes: int) -> bytes:
