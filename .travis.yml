@@ -11,8 +11,8 @@ before_install:
     - sudo chmod a+rw /builds
 
 install:
-    - pip3 install flake8 -r requirements.txt
+    - pip3 install coverage flake8 -r requirements.txt
     - flake8 . --select=E9,F63,F7,F82 --show-source --statistics
     - sudo python setup.py install
 
-script: nosetests
+script: coverage run -m pytest tests
