@@ -211,13 +211,6 @@ def test_capture_too_many_channels(scaffold):
         scaffold.capture(5)
 
 
-def test_capture_timeout(scaffold):
-    events = 100
-    timeout = (events * LOW_FREQUENCY ** -1) / 4
-    with pytest.raises(RuntimeError):
-        scaffold.capture(1, timeout=timeout)
-
-
 def test_measure_frequency(scaffold):
     frequency = scaffold.measure_frequency("ID1", timeout=0.1)
     assert FREQUENCY == pytest.approx(frequency, rel=RELTOL)

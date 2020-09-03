@@ -384,19 +384,10 @@ class MockHandler(Handler):
 
     def write(self, data: bytes):
         """Add recorded RX data to buffer if written data equals recorded TX data.
-
-        Raises
-        ------
-        RuntimeError
-            If data is written when no more recorded data is available.
         """
-        try:
-            tx, rx = next(RECORDED_TRAFFIC)
-            if tx == data:
-                self._in_buffer += rx
-        except StopIteration:
-            # No more recorded traffic, calling method should timeout.
-            raise RuntimeError
+        tx, rx = next(RECORDED_TRAFFIC)
+        if tx == data:
+            self._in_buffer += rx
 
     def wait_for_data(self, timeout: float = 0.2) -> bool:
         """Return True if there is data in buffer, or return False after timeout.
