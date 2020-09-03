@@ -3,8 +3,8 @@
 Before running the tests, connect SQ1<->ID1, SQ2<->ID2, SQ3<->ID3, and SQ4<->ID4.
 """
 
+import json
 import os.path
-import pickle
 import time
 
 import numpy as np
@@ -76,9 +76,10 @@ def get_handler(monkeypatch, test_name: str, integration: bool = True):
         )
         return psl.H
     else:
-        logfile = os.path.join(LOGDIR, test_name + ".pkl")
-        recorded_traffic = pickle.load(open(logfile, "rb"))
-        monkeypatch.setattr(packet_handler, "RECORDED_TRAFFIC", recorded_traffic)
+        logfile = os.path.join(LOGDIR, test_name + ".json")
+        tx, rx = json.load(open(logfile, "r"))
+        traffic = ((bytes(t), bytes(r)) for t, r in zip(tx, rx))
+        monkeypatch.setattr(packet_handler, "RECORDED_TRAFFIC", traffic)
         return packet_handler.MockHandler()
 
 
@@ -90,15 +91,16 @@ def record_traffic(test_name: str, log: list):
         direction = b[:2]
         data = b[2:]
         if direction == b"TX":
-            tx.append(data)
-            rx.append(b"")
+            tx.append(list(data))
+            rx.append([])
         elif direction == b"RX":
-            rx[-1] += data
+            rx[-1] += list(data)
         else:
             raise ValueError("Unknown direction: {direction}")
 
-    logfile = os.path.join(LOGDIR, test_name + ".pkl")
-    pickle.dump(zip(tx, rx), open(logfile, "wb"))
+    logfile = os.path.join(LOGDIR, test_name + ".json")
+    print([tx, rx])
+    json.dump([tx, rx], open(logfile, "w"))
 
 
 def test_capture_one_channel(scaffold):
