@@ -234,7 +234,7 @@ class LogicAnalyzer:
         self,
         channels: int,
         events: int = CP.MAX_SAMPLES // 4 - 2,
-        timeout: float = None,
+        timeout: float = 1,
         modes: List[str] = 4 * ("any",),
         e2e_time: float = None,
         block: bool = True,
@@ -252,8 +252,9 @@ class LogicAnalyzer:
             Number of logic events to capture on each channel. The default and maximum
             value is 2498.
         timeout : float, optional
-            Timeout in seconds before cancelling measurement. By default there is
-            no timeout.
+            Timeout in seconds before cancelling measurement in blocking mode. If the
+            timeout is reached, the events captured up to that point will be returned.
+            The default value is 1 second.
         modes : List[str], optional
             List of strings specifying the type of logic level change to capture on
             each channel. See :class:`DigitalInput` for available modes. The default
@@ -285,8 +286,7 @@ class LogicAnalyzer:
         Raises
         ------
         ValueError if too many events are requested, or
-        ValueError if too many channels are selected, or
-        RuntimeError is the timeout is exceeded.
+        ValueError if too many channels are selected.
         """
         self._check_arguments(channels, events)
         self.stop()
@@ -315,7 +315,11 @@ class LogicAnalyzer:
 
         if block:
             self._wait_for_progress(timeout)
-            self._timeout(events + 2, start_time, timeout)
+            try:
+                self._timeout(events + 2, start_time, timeout)
+            except RuntimeError:
+                # Timeout exceeded, stop capture before fetching data.
+                self.stop()
         else:
             return
 
@@ -406,6 +410,11 @@ class LogicAnalyzer:
 
     def fetch_data(self) -> List[np.ndarray]:
         """Collect captured logic events.
+
+        It is possible to call fetch_data while the capture routine is still running.
+        Doing so will not interrupt the capture process. In multi-channel mode, the
+        number of timestamps may differ between channels when fetch_data is called
+        before the capture is complete.
 
         Returns
         -------
