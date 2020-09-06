@@ -55,6 +55,7 @@ class LogicAnalyzer:
         self._prescaler = 0
         self._channel_one_map = "ID1"
         self._channel_two_map = "ID2"
+        self._trimmed = 0
 
     def measure_frequency(
         self, channel: str, simultaneous_oscilloscope: bool = False, timeout: float = 1
@@ -224,16 +225,16 @@ class LogicAnalyzer:
         self._channel_one_map = tmp_map
         self.configure_trigger(tmp_trigger_channel, tmp_trigger_mode)
 
-        period = t[2]
+        period = t[2] - t[0]
         # First change is HIGH -> LOW since we trigger on rising.
-        duty_cycle = t[1] / t[2]
+        duty_cycle = (t[1] - t[0]) / period
 
         return period, duty_cycle
 
     def capture(
         self,
         channels: int,
-        events: int = CP.MAX_SAMPLES // 4 - 2,
+        events: int = CP.MAX_SAMPLES // 4,
         timeout: float = 1,
         modes: List[str] = 4 * ("any",),
         e2e_time: float = None,
@@ -250,7 +251,7 @@ class LogicAnalyzer:
             ID2, ID3, and ID4, in that order.
         events : int, optional
             Number of logic events to capture on each channel. The default and maximum
-            value is 2498.
+            value is 2500.
         timeout : float, optional
             Timeout in seconds before cancelling measurement in blocking mode. If the
             timeout is reached, the events captured up to that point will be returned.
@@ -300,8 +301,7 @@ class LogicAnalyzer:
         ):
             c = self._channels[c]
             c.events_in_buffer = events
-            # Capture an extra event in case we get a spurious zero.
-            c._events_in_buffer = events + 2
+            c._events_in_buffer = events
             c.datatype = "long" if channels < 3 else "int"
             c.buffer_idx = 2500 * e * (1 if c.datatype == "int" else 2)
             c._logic_mode = modes[e]
@@ -314,30 +314,31 @@ class LogicAnalyzer:
             self._capture_four(e2e_time)
 
         if block:
-            self._wait_for_progress(timeout)
-            try:
-                self._timeout(events + 2, start_time, timeout)
-            except RuntimeError:
-                # Timeout exceeded, stop capture before fetching data.
-                self.stop()
+            # Discard 4:th channel if user asked for 3.
+            timestamps = self.fetch_data()[:channels]
+            progress = min([len(t) for t in timestamps])
+            while progress < events:
+                timestamps = self.fetch_data()[:channels]
+                progress = min([len(t) for t in timestamps])
+                if time.time() - start_time >= timeout:
+                    break
+                if progress >= CP.MAX_SAMPLES // 4 - self._trimmed:
+                    break
         else:
             return
 
-        return self.fetch_data()[:channels]  # Discard 4:th channel if user asked for 3.
+        for e, t in enumerate(timestamps):
+            timestamps[e] = t[:events]  # Don't surprise the user with extra events.
+
+        return timestamps
 
     @staticmethod
     def _check_arguments(channels: int, events: int):
-        max_events = CP.MAX_SAMPLES // 4 - 2
+        max_events = CP.MAX_SAMPLES // 4
         if events > max_events:
             raise ValueError(f"Events must be fewer than {max_events}.")
         elif channels < 0 or channels > 4:
             raise ValueError("Channels must be between 1-4.")
-
-    def _timeout(self, events: int, start_time: float, timeout: float):
-        while self.get_progress() < events:
-            if timeout is not None:
-                if time.time() - start_time >= timeout:
-                    raise RuntimeError("Capture timed out.")
 
     def _capture_one(self):
         self._channels[self._channel_one_map]._prescaler = 0
@@ -438,61 +439,31 @@ class LogicAnalyzer:
                     raw_timestamps = self._fetch_long(c)
                 else:
                     raw_timestamps = self._fetch_int(c)
-                # Remove extra events.
-                raw_timestamps = self._trim_zeros(c, raw_timestamps)
-                raw_timestamps = raw_timestamps[: c.events_in_buffer]
                 counter_values.append(raw_timestamps)
 
         prescaler = [1 / 64, 1 / 8, 1.0, 4.0][self._prescaler]
         timestamps = [cv * prescaler for cv in counter_values]
 
+
         return timestamps
-
-    def _trim_zeros(
-        self, channel: digital_channel.DigitalInput, timestamps: np.ndarray
-    ) -> np.ndarray:
-        """Discard spurious zeros.
-
-        This is necessary because DMA will copy the current value of the timer to
-        the buffer any time the capture condition is fulfilled, even if the trigger
-        condition hasn't been fulfilled yet.
-
-        For example, if trigger_mode is 'falling' and logic_mode is 'rising' and a
-        rising edge occurs before a falling edge, DMA will copy the current value
-        of the timer (which is zero since it hasn't triggered yet) into the buffer.
-        """
-        if self.trigger_mode == "disabled":
-            return timestamps
-        elif self.trigger_mode == channel.logic_mode:
-            return timestamps
-        elif self.trigger_mode == "any":
-            return timestamps
-        elif channel.logic_mode == "any":
-            while timestamps[1] == 0:
-                timestamps = timestamps[1:]
-            return timestamps
-        else:
-            return np.trim_zeros(timestamps)
 
     def _fetch_long(self, channel: digital_channel.DigitalInput) -> np.ndarray:
         self._device.send_byte(CP.TIMING)
         self._device.send_byte(CP.FETCH_LONG_DMA_DATA)
-        self._device.send_int(channel._events_in_buffer)
+        self._device.send_int(CP.MAX_SAMPLES // 4)
         self._device.send_byte(channel.buffer_idx // 5000)
-        raw = self._device.read(int(channel._events_in_buffer * 4))
+        raw = self._device.read(CP.MAX_SAMPLES)
         self._device.get_ack()
 
         raw_timestamps = [
             CP.Integer.unpack(raw[a * 4 : a * 4 + 4])[0]
-            for a in range(channel._events_in_buffer)
+            for a in range(CP.MAX_SAMPLES // 4)
         ]
         raw_timestamps = np.array(raw_timestamps)
-
-        if raw_timestamps[0] == 0:
-            raw_timestamps = np.trim_zeros(raw_timestamps)
-            raw_timestamps = np.insert(raw_timestamps, 0, 0)
-        else:
-            raw_timestamps = np.trim_zeros(raw_timestamps)
+        raw_timestamps = np.trim_zeros(raw_timestamps, "b")
+        pretrim = len(raw_timestamps)
+        raw_timestamps = np.trim_zeros(raw_timestamps, "f")
+        self._trimmed = pretrim - len(raw_timestamps)
 
         return raw_timestamps
 
@@ -500,21 +471,19 @@ class LogicAnalyzer:
         self._device.send_byte(CP.COMMON)
         self._device.send_byte(CP.RETRIEVE_BUFFER)
         self._device.send_int(channel.buffer_idx)
-        self._device.send_int(channel._events_in_buffer)
-        raw = self._device.read(channel._events_in_buffer * 2)
+        self._device.send_int(CP.MAX_SAMPLES // 4)
+        raw = self._device.read(CP.MAX_SAMPLES // 2)
         self._device.get_ack()
 
         raw_timestamps = [
             CP.ShortInt.unpack(raw[a * 2 : a * 2 + 2])[0]
-            for a in range(channel._events_in_buffer)
+            for a in range(CP.MAX_SAMPLES // 4)
         ]
         raw_timestamps = np.array(raw_timestamps)
-
-        if raw_timestamps[0] == 0:
-            raw_timestamps = np.trim_zeros(raw_timestamps)
-            raw_timestamps = np.insert(raw_timestamps, 0, 0)
-        else:
-            raw_timestamps = np.trim_zeros(raw_timestamps)
+        raw_timestamps = np.trim_zeros(raw_timestamps, "b")
+        pretrim = len(raw_timestamps)
+        raw_timestamps = np.trim_zeros(raw_timestamps, "f")
+        self._trimmed = pretrim - len(raw_timestamps)
 
         for i, diff in enumerate(np.diff(raw_timestamps)):
             if diff <= 0:  # Counter has rolled over.
@@ -612,20 +581,6 @@ class LogicAnalyzer:
                 progress[e] = 0
 
         return initial_states, progress
-
-    def _wait_for_progress(self, timeout: float = None):
-        """Wait for GET_INITIAL_DIGITAL_STATES to reset.
-
-        Until the first event is detected, GET_INITIAL_DIGITAL_STATES returns
-        old progress.
-        """
-        old_progress = self.get_progress()
-        timeout = 0.1 if timeout is None else timeout
-        start_time = time.time()
-        while self.get_progress() == old_progress:
-            if time.time() - start_time >= timeout:
-                break
-        return
 
     def configure_trigger(self, trigger_channel: str, trigger_mode: str):
         """Setup trigger channel and trigger condition.
