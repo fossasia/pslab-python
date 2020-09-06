@@ -22,7 +22,7 @@ PRESCALERS = {
     0: 1,
     1: 8,
     2: 64,
-    3: 254,
+    3: 256,
 }
 
 
@@ -42,6 +42,10 @@ class LogicAnalyzer:
     trigger_mode : str
         See :meth:`configure_trigger`.
     """
+
+    # When capturing multiple channels, there is a two clock cycle
+    # delay between channels.
+    CAPTURE_DELAY = 2
 
     def __init__(self, device: packet_handler.Handler = None):
         self._device = packet_handler.Handler() if device is None else device
@@ -291,6 +295,7 @@ class LogicAnalyzer:
         """
         self._check_arguments(channels, events)
         self.stop()
+        self._prescaler = 0
         self.clear_buffer(0, CP.MAX_SAMPLES)
         self._configure_trigger(channels)
         modes = [digital_channel.MODES[m] for m in modes]
@@ -442,8 +447,12 @@ class LogicAnalyzer:
                 counter_values.append(raw_timestamps)
 
         prescaler = [1 / 64, 1 / 8, 1.0, 4.0][self._prescaler]
-        timestamps = [cv * prescaler for cv in counter_values]
 
+        timestamps = []
+        capture_delay = LogicAnalyzer.CAPTURE_DELAY if self._prescaler == 0 else 0
+        for e, cv in enumerate(counter_values):
+            adjusted_counter = cv + e * capture_delay
+            timestamps.append(adjusted_counter * prescaler)
 
         return timestamps
 
@@ -708,6 +717,7 @@ class LogicAnalyzer:
         self._device.send_byte(0)
         self._device.get_ack()
         self.stop()
+        self._prescaler = 0
 
     def clear_buffer(self, starting_position: int, total_points: int):
         """Clear a section of the ADC hardware buffer.
