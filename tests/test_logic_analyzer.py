@@ -27,7 +27,7 @@ from PSL import sciencelab
 
 LOGDIR = os.path.join("tests", "recordings", "logic_analyzer")
 
-MAX_SAMPLES = CP.MAX_SAMPLES // 4 - 2
+EVENTS = 2495
 FREQUENCY = 1e5
 LOW_FREQUENCY = 100
 LOWER_FREQUENCY = 10
@@ -127,18 +127,18 @@ def record_traffic(test_name: str, log: list):
 
 
 def test_capture_one_channel(scaffold):
-    t = scaffold.capture(1)
-    assert len(t[0]) == MAX_SAMPLES
+    t = scaffold.capture(1, EVENTS)
+    assert len(t[0]) == EVENTS
 
 
 def test_capture_two_channels(scaffold):
-    t1, t2 = scaffold.capture(2)
-    assert len(t1) == len(t2) == MAX_SAMPLES
+    t1, t2 = scaffold.capture(2, EVENTS)
+    assert len(t1) == len(t2) == EVENTS
 
 
 def test_capture_four_channels(scaffold):
-    t1, t2, t3, t4 = scaffold.capture(4)
-    assert len(t1) == len(t2) == len(t3) == len(t4) == MAX_SAMPLES
+    t1, t2, t3, t4 = scaffold.capture(4, EVENTS)
+    assert len(t1) == len(t2) == len(t3) == len(t4) == EVENTS
 
 
 def test_capture_four_low_frequency(scaffold):
@@ -174,10 +174,10 @@ def test_capture_four_too_low_frequency(scaffold):
 
 
 def test_capture_nonblocking(scaffold):
-    scaffold.capture(1, block=False)
-    time.sleep(MAX_SAMPLES * FREQUENCY ** -1)
+    scaffold.capture(1, EVENTS, block=False)
+    time.sleep(EVENTS * FREQUENCY ** -1)
     t = scaffold.fetch_data()
-    assert len(t[0]) == MAX_SAMPLES
+    assert len(t[0]) >= EVENTS
 
 
 def test_capture_rising_edges(scaffold):
@@ -203,7 +203,7 @@ def test_capture_sixteen_rising_edges(scaffold):
 
 def test_capture_too_many_events(scaffold):
     with pytest.raises(ValueError):
-        scaffold.capture(1, MAX_SAMPLES + 1)
+        scaffold.capture(1, CP.MAX_SAMPLES // 4 + 1)
 
 
 def test_capture_too_many_channels(scaffold):
@@ -312,14 +312,14 @@ def test_get_xy_falling_capture(scaffold):
 
 
 def test_stop(scaffold):
-    scaffold.capture(1, modes=["sixteen rising"], block=False)
-    time.sleep(MAX_SAMPLES * FREQUENCY ** -1)
+    scaffold.capture(1, EVENTS, modes=["sixteen rising"], block=False)
+    time.sleep(EVENTS * FREQUENCY ** -1)
     progress_time = time.time()
     progress = scaffold.get_progress()
     scaffold.stop()
     stop_time = time.time()
-    time.sleep(MAX_SAMPLES * FREQUENCY ** -1)
-    assert progress < 2500
+    time.sleep(EVENTS * FREQUENCY ** -1)
+    assert progress < CP.MAX_SAMPLES // 4
     abstol = FREQUENCY * (stop_time - progress_time)
     assert progress == pytest.approx(scaffold.get_progress(), abs=abstol)
 
