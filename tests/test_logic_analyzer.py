@@ -35,6 +35,7 @@ def la(handler, request):
         psl.H.disconnect()
         psl.H = handler
         enable_pwm(psl, request.node.name)
+        handler._logging = True
     return logic_analyzer.LogicAnalyzer(handler)
 
 
