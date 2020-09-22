@@ -1,102 +1,127 @@
-import unittest
-from unittest.mock import patch
-
 import numpy as np
+import pytest
+from scipy.optimize import curve_fit
 
 import PSL.commands_proto as CP
+from PSL import achan
 from PSL import oscilloscope
+from PSL import packet_handler
+from PSL import sciencelab
+
+FREQUENCY = 1000
+AMPLITUDE = 3
+ABSTOL = 0.25  # 250 mV
+MICROSECONDS = 1e-6
 
 
-class TestOscilloscope(unittest.TestCase):
-    def setUp(self):
-        self.Handler_patcher = patch("PSL.oscilloscope.packet_handler.Handler")
-        self.mock_device = self.Handler_patcher.start()
-        example_signal = np.sin(np.arange(200) / 20)
-        self.scope = oscilloscope.Oscilloscope(device=self.mock_device)
-        unscale = self.scope._channels["CH1"].unscale
-        example_raw_signal = [unscale(s) for s in example_signal]
-        example_incoming_bytes = b""
-        for r in example_raw_signal:
-            example_incoming_bytes += CP.ShortInt.pack(r)
-        self.mock_device.interface.read.return_value = example_incoming_bytes
-        self.mock_device.get_byte.return_value = 1
-        self.mock_device.get_int.return_value = 200
+@pytest.fixture
+def scope(handler):
+    """Return an Oscilloscope instance.
 
-    def tearDown(self):
-        self.Handler_patcher.stop()
+    In integration test mode, this function also enables the analog output.
+    """
+    if not isinstance(handler, packet_handler.MockHandler):
+        psl = sciencelab.connect()
+        psl.H.disconnect()
+        psl.H = handler
+        psl.set_sine1(1000)
+        handler._logging = True
+    return oscilloscope.Oscilloscope(handler)
 
-    def test_capture_one_12bit(self):
-        xy = self.scope.capture(channels=1, samples=200, timegap=2)
-        self.assertEqual(np.shape(xy), (2, 200))
-        self.assertEqual(self.scope._channels["CH1"].resolution, 12)
 
-    def test_capture_one_high_speed(self):
-        xy = self.scope.capture(channels=1, samples=200, timegap=0.5)
-        self.assertEqual(np.shape(xy), (2, 200))
-        self.assertEqual(self.scope._channels["CH1"].resolution, 10)
+def estimate_sin(x, y):
+    phase = estimate_phase(x, y)
+    return sinfunc(x, phase)
 
-    def test_capture_one_trigger(self):
-        self.scope.trigger_enabled = True
-        xy = self.scope.capture(channels=1, samples=200, timegap=1)
-        self.assertEqual(np.shape(xy), (2, 200))
-        self.assertEqual(self.scope._channels["CH1"].resolution, 10)
 
-    def test_capture_two(self):
-        xy = self.scope.capture(channels=2, samples=200, timegap=2)
-        self.assertEqual(np.shape(xy), (3, 200))
+def sinfunc(x, phase):
+    return AMPLITUDE * np.sin(2 * np.pi * FREQUENCY * MICROSECONDS * x + phase)
 
-    def test_capture_four(self):
-        xy = self.scope.capture(channels=4, samples=200, timegap=2)
-        self.assertEqual(np.shape(xy), (5, 200))
 
-    def test_capture_invalid_channel_one(self):
-        self.scope.channel_one_map = "BAD"
-        with self.assertRaises(ValueError):
-            self.scope.capture(channels=1, samples=200, timegap=2)
+def estimate_phase(x, y):
+    return curve_fit(sinfunc, x, y)[0][0]
 
-    def test_capture_timegap_too_small(self):
-        with self.assertRaises(ValueError):
-            self.scope.capture(channels=1, samples=200, timegap=0.2)
 
-    def test_capture_too_many_channels(self):
-        with self.assertRaises(ValueError):
-            self.scope.capture(channels=5, samples=200, timegap=2)
+def test_capture_one_12bit(scope):
+    _, y = scope.capture(channels=1, samples=1000, timegap=1)
+    y.sort()
+    resolution = min(np.diff(y)[np.diff(y) > 0])
+    irange = achan.INPUT_RANGES["CH1"][0] - achan.INPUT_RANGES["CH1"][1]
+    assert resolution == pytest.approx(irange / (2 ** 12 - 1))
 
-    def test_capture_too_many_samples(self):
-        with self.assertRaises(ValueError):
-            self.scope.capture(channels=4, samples=3000, timegap=2)
 
-    def test_invalidate_buffer(self):
-        self.scope._channels["CH1"].samples_in_buffer = 100
-        self.scope._channels["CH1"].buffer_idx = 0
-        self.scope.channel_one_map = "CH2"
-        self.scope.capture(channels=1, samples=200, timegap=2)
-        self.assertEqual(self.scope._channels["CH1"].samples_in_buffer, 0)
-        self.assertIsNone(self.scope._channels["CH1"].buffer_idx)
+def test_capture_one_high_speed(scope):
+    x, y = scope.capture(channels=1, samples=2000, timegap=0.5)
+    expected = estimate_sin(x, y)
+    assert y == pytest.approx(expected, abs=ABSTOL)
 
-    def test_configure_trigger(self):
-        self.scope.configure_trigger(channel="CH3", voltage=1.5)
-        self.assertTrue(self.scope.trigger_enabled)
-        self.mock_device.send_byte.assert_any_call(CP.CONFIGURE_TRIGGER)
 
-    def test_configure_trigger_on_unmapped(self):
-        with self.assertRaises(TypeError):
-            self.scope.configure_trigger(channel="AN8", voltage=1.5)
+def test_capture_one_trigger(scope):
+    scope.trigger_enabled = True
+    _, y = scope.capture(channels=1, samples=1, timegap=1)
+    assert y[0] == pytest.approx(0, abs=ABSTOL)
 
-    def test_configure_trigger_on_remapped_ch1(self):
-        self.scope.channel_one_map = "CAP"
-        with self.assertRaises(TypeError):
-            self.scope.configure_trigger(channel="CH1", voltage=1.5)
 
-    def test_trigger_enabled(self):
-        self.scope.trigger_enabled = True
-        self.mock_device.send_byte.assert_any_call(CP.CONFIGURE_TRIGGER)
+def test_capture_two(scope):
+    x, y1, y2 = scope.capture(channels=2, samples=500, timegap=2)
+    expected = estimate_sin(x, y1)
+    assert y1 == pytest.approx(expected, abs=ABSTOL)
+    assert y2 == pytest.approx(expected, abs=ABSTOL)
 
-    def test_select_range(self):
-        self.scope.select_range("CH1", 1.5)
-        self.mock_device.send_byte.assert_called()
-        self.assertEqual(self.scope._channels["CH1"].gain, 10)
 
-    def test_select_range_invalid(self):
-        with self.assertRaises(ValueError):
-            self.scope.select_range("CH1", 15)
+def test_capture_four(scope):
+    x, y1, y2, y3, _ = scope.capture(channels=4, samples=500, timegap=2)
+    expected = estimate_sin(x, y1)
+    assert y1 == pytest.approx(expected, abs=ABSTOL)
+    assert y2 == pytest.approx(expected, abs=ABSTOL)
+    assert y3 == pytest.approx(expected, abs=ABSTOL)
+
+
+def test_capture_invalid_channel_one(scope):
+    scope.channel_one_map = "BAD"
+    with pytest.raises(ValueError):
+        scope.capture(channels=1, samples=200, timegap=2)
+
+
+def test_capture_timegap_too_small(scope):
+    with pytest.raises(ValueError):
+        scope.capture(channels=1, samples=200, timegap=0.2)
+
+
+def test_capture_too_many_channels(scope):
+    with pytest.raises(ValueError):
+        scope.capture(channels=5, samples=200, timegap=2)
+
+
+def test_capture_too_many_samples(scope):
+    with pytest.raises(ValueError):
+        scope.capture(channels=4, samples=3000, timegap=2)
+
+
+def test_configure_trigger(scope):
+    scope.channel_one_map = "CH3"
+    scope.configure_trigger(channel="CH3", voltage=1.5)
+    _, y = scope.capture(channels=1, samples=1, timegap=1)
+    assert y[0] == pytest.approx(1.5, abs=ABSTOL)
+
+
+def test_configure_trigger_on_unmapped(scope):
+    with pytest.raises(TypeError):
+        scope.configure_trigger(channel="AN8", voltage=1.5)
+
+
+def test_configure_trigger_on_remapped_ch1(scope):
+    scope.channel_one_map = "CAP"
+    with pytest.raises(TypeError):
+        scope.configure_trigger(channel="CH1", voltage=1.5)
+
+
+def test_select_range(scope):
+    scope.select_range("CH1", 1.5)
+    _, y = scope.capture(channels=1, samples=1000, timegap=1)
+    assert 1.5 <= max(y) <= 1.65
+
+
+def test_select_range_invalid(scope):
+    with pytest.raises(ValueError):
+        scope.select_range("CH1", 15)

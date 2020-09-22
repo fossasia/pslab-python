@@ -36,8 +36,7 @@ def logdir(request):
 def handler(monkeypatch, request, logdir):
     """Return a Handler instance.
 
-    When running unit tests, the Handler is a MockHandler. When running integration
-    tests, this method also sets up the PWM signals before returning the Handler.
+    When running unit tests, the Handler is a MockHandler.
     """
     record = request.config.getoption("--record")
     integration = request.config.getoption("--integration") or record
