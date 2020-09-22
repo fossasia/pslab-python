@@ -254,7 +254,7 @@ class Oscilloscope:
             self._device.send_int(offset)
             self._device.send_int(CP.DATA_SPLITTING)  # Ints to read
             # Reading int by int sometimes causes a communication error.
-            data += self._device.interface.read(CP.DATA_SPLITTING * 2)
+            data += self._device.read(CP.DATA_SPLITTING * 2)
             self._device.get_ack()
 
         data = [CP.ShortInt.unpack(data[s * 2 : s * 2 + 2])[0] for s in range(samples)]
