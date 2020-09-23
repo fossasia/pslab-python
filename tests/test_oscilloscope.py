@@ -1,3 +1,10 @@
+"""Tests for PSL.oscilloscope.
+
+When integration testing, the PSLab's analog output is used to generate a signal
+which is sampled by the oscilloscope. Before running the integration tests,
+connect SI1->CH1->CH2->CH3.
+"""
+
 import numpy as np
 import pytest
 from scipy.optimize import curve_fit
@@ -24,7 +31,7 @@ def scope(handler):
         psl = sciencelab.connect()
         psl.H.disconnect()
         psl.H = handler
-        psl.set_sine1(1000)
+        psl.set_sine1(FREQUENCY)
         handler._logging = True
     return oscilloscope.Oscilloscope(handler)
 
