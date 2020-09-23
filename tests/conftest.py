@@ -74,7 +74,7 @@ def record_traffic(log: list, logfile: str):
         elif direction == b"RX":
             rx[-1] += list(data)
         else:
-            raise ValueError("Unknown direction: {direction}")
+            raise ValueError(f"Unknown direction: {direction}")
 
     print([tx, rx])
     json.dump([tx, rx], open(logfile, "w"))
