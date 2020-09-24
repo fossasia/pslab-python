@@ -1,24 +1,20 @@
 """Tests for PSL.oscilloscope.
 
-When integration testing, the PSLab's analog output is used to generate a signal
-which is sampled by the oscilloscope. Before running the integration tests,
-connect SI1->CH1->CH2->CH3.
+When integration testing, the PSLab's analog output is used to generate a
+signal which is sampled by the oscilloscope. Before running the integration
+tests, connect SI1->CH1->CH2->CH3.
 """
 
 import numpy as np
 import pytest
-from scipy.optimize import curve_fit
 
-import PSL.commands_proto as CP
-from PSL import achan
 from PSL import oscilloscope
 from PSL import packet_handler
 from PSL import sciencelab
 
 FREQUENCY = 1000
-AMPLITUDE = 3
-ABSTOL = 0.25  # 250 mV
 MICROSECONDS = 1e-6
+ABSTOL = 2 * (16.5 - (-16.5)) / (2 ** 10 - 1)  # Two times CH1 resolution.
 
 
 @pytest.fixture
@@ -36,31 +32,31 @@ def scope(handler):
     return oscilloscope.Oscilloscope(handler)
 
 
-def estimate_sin(x, y):
-    phase = estimate_phase(x, y)
-    return sinfunc(x, phase)
+def count_zero_crossings(y):
+    zero_crossings = np.where(np.diff(np.sign(y)))[0]
+    real_crossings = np.where(~(np.diff(zero_crossings) == 1))
+    real_crossings = np.append(real_crossings, True)
+    zero_crossings = zero_crossings[real_crossings]
+    return len(zero_crossings)
 
 
-def sinfunc(x, phase):
-    return AMPLITUDE * np.sin(2 * np.pi * FREQUENCY * MICROSECONDS * x + phase)
-
-
-def estimate_phase(x, y):
-    return curve_fit(sinfunc, x, y)[0][0]
+def verify_periods(y, channel, periods=1):
+    zero_crossings = count_zero_crossings(y)
+    assert zero_crossings == 2 * periods
+    assert y[0] == pytest.approx(y[-1], abs=ABSTOL)
 
 
 def test_capture_one_12bit(scope):
     _, y = scope.capture(channels=1, samples=1000, timegap=1)
     y.sort()
     resolution = min(np.diff(y)[np.diff(y) > 0])
-    irange = achan.INPUT_RANGES["CH1"][0] - achan.INPUT_RANGES["CH1"][1]
-    assert resolution == pytest.approx(irange / (2 ** 12 - 1))
+    expected = (16.5 - (-16.5)) / (2 ** 12 - 1)
+    assert resolution == pytest.approx(expected)
 
 
 def test_capture_one_high_speed(scope):
-    x, y = scope.capture(channels=1, samples=2000, timegap=0.5)
-    expected = estimate_sin(x, y)
-    assert y == pytest.approx(expected, abs=ABSTOL)
+    _, y = scope.capture(channels=1, samples=2000, timegap=0.5)
+    verify_periods(y, scope._channels["CH1"])
 
 
 def test_capture_one_trigger(scope):
@@ -70,18 +66,16 @@ def test_capture_one_trigger(scope):
 
 
 def test_capture_two(scope):
-    x, y1, y2 = scope.capture(channels=2, samples=500, timegap=2)
-    expected = estimate_sin(x, y1)
-    assert y1 == pytest.approx(expected, abs=ABSTOL)
-    assert y2 == pytest.approx(expected, abs=ABSTOL)
+    _, y1, y2 = scope.capture(channels=2, samples=500, timegap=2)
+    verify_periods(y1, scope._channels["CH1"])
+    verify_periods(y2, scope._channels["CH2"])
 
 
 def test_capture_four(scope):
-    x, y1, y2, y3, _ = scope.capture(channels=4, samples=500, timegap=2)
-    expected = estimate_sin(x, y1)
-    assert y1 == pytest.approx(expected, abs=ABSTOL)
-    assert y2 == pytest.approx(expected, abs=ABSTOL)
-    assert y3 == pytest.approx(expected, abs=ABSTOL)
+    _, y1, y2, y3, _ = scope.capture(channels=4, samples=500, timegap=2)
+    verify_periods(y1, scope._channels["CH1"])
+    verify_periods(y2, scope._channels["CH2"])
+    verify_periods(y3, scope._channels["CH3"])
 
 
 def test_capture_invalid_channel_one(scope):
