@@ -359,7 +359,7 @@ class Oscilloscope:
         ----------
         channel : {'CH1', 'CH2'}
             Channel on which to apply gain.
-        voltage_range : {16,8,4,3,2,1.5,1,.5}
+        voltage_range : {16, 8, 4, 3, 2, 1.5, 1, .5}
 
         Examples
         --------
