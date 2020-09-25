@@ -14,7 +14,7 @@ from PSL import sciencelab
 
 FREQUENCY = 1000
 MICROSECONDS = 1e-6
-ABSTOL = 2 * (16.5 - (-16.5)) / (2 ** 10 - 1)  # Two times CH1 resolution.
+ABSTOL = 4 * (16.5 - (-16.5)) / (2 ** 10 - 1)  # Four times lowest CH1/CH2 resolution.
 
 
 @pytest.fixture
@@ -32,16 +32,22 @@ def scope(handler):
     return oscilloscope.Oscilloscope(handler)
 
 
-def count_zero_crossings(y):
+def count_zero_crossings(x, y):
+    sample_rate = (np.diff(x)[0] * MICROSECONDS) ** -1
+    samples_per_period = sample_rate / FREQUENCY
     zero_crossings = np.where(np.diff(np.sign(y)))[0]
-    real_crossings = np.where(~(np.diff(zero_crossings) == 1))
+    real_crossings = np.where(np.diff(zero_crossings) > samples_per_period * 0.01)
     real_crossings = np.append(real_crossings, True)
-    zero_crossings = zero_crossings[real_crossings]
-    return len(zero_crossings)
+
+    if len(real_crossings) % 1:
+        if y[0] * y[-1] <= 0:
+            return len(real_crossings) + 1
+
+    return len(real_crossings)
 
 
-def verify_periods(y, channel, periods=1):
-    zero_crossings = count_zero_crossings(y)
+def verify_periods(x, y, channel, periods=1):
+    zero_crossings = count_zero_crossings(x, y)
     assert zero_crossings == 2 * periods
     assert y[0] == pytest.approx(y[-1], abs=ABSTOL)
 
@@ -55,8 +61,8 @@ def test_capture_one_12bit(scope):
 
 
 def test_capture_one_high_speed(scope):
-    _, y = scope.capture(channels=1, samples=2000, timegap=0.5)
-    verify_periods(y, scope._channels["CH1"])
+    x, y = scope.capture(channels=1, samples=2000, timegap=0.5)
+    verify_periods(x, y, scope._channels["CH1"])
 
 
 def test_capture_one_trigger(scope):
@@ -66,16 +72,16 @@ def test_capture_one_trigger(scope):
 
 
 def test_capture_two(scope):
-    _, y1, y2 = scope.capture(channels=2, samples=500, timegap=2)
-    verify_periods(y1, scope._channels["CH1"])
-    verify_periods(y2, scope._channels["CH2"])
+    x, y1, y2 = scope.capture(channels=2, samples=500, timegap=2)
+    verify_periods(x, y1, scope._channels["CH1"])
+    verify_periods(x, y2, scope._channels["CH2"])
 
 
 def test_capture_four(scope):
-    _, y1, y2, y3, _ = scope.capture(channels=4, samples=500, timegap=2)
-    verify_periods(y1, scope._channels["CH1"])
-    verify_periods(y2, scope._channels["CH2"])
-    verify_periods(y3, scope._channels["CH3"])
+    x, y1, y2, y3, _ = scope.capture(channels=4, samples=500, timegap=2)
+    verify_periods(x, y1, scope._channels["CH1"])
+    verify_periods(x, y2, scope._channels["CH2"])
+    verify_periods(x, y3, scope._channels["CH3"])
 
 
 def test_capture_invalid_channel_one(scope):
