@@ -44,15 +44,15 @@ Done!
 
 ### How to Install on Windows
 
-**Step 1**: Install the latest Python version on your computer and configure `PATH` variable to have both Python installation directory and the Scripts directory to access `pip` tools. In Windows, Python is installed in `C:` drive by default. We can set `$PATH` by opening the **Environment variables** dialog box by following the steps below:
+**Step 1**: Install the latest Python version on your computer and configure `PATH` variable to have both the Python installation directory and the Scripts directory to access `pip` tools. In Windows, Python is installed in `C:` drive by default. We can set `$PATH` by opening the **Environment variables** dialog box by following the steps below:
 
 1. [Right click on My Computer] 
-2. Select "Properties"
-3. Open "System Properties"
-4. Click "Advanced" tab
-5. Click "Environment Variables" button
-6. Look for "**_PATH_**" in "System Variables" section and click on it and press "Edit" button
-7. To the end of "Variable value" text box, append "`C:\Python34\;C:\Python34\Scripts\;`" (without quotes and `34` may differ depending on the python version installed. It could be 35, 37 ...)
+2. Select the "Properties"
+3. Open the "System Properties"
+4. Click the "Advanced" tab
+5. Click the "Environment Variables" button
+6. Look for "**_PATH_**" in the "System Variables" section and click on it and press the "Edit" button
+7. To the end of the "Variable Value" text box, append "`C:\Python34\;C:\Python34\Scripts\;`" (without quotes and `34` may differ depending on the python version installed. It could be 35, 37 ...)
 8. Click "OK" twice to save and move out from path windows
 
 **Step 2**: Open up command prompt and execute the following commands to install the required dependencies.
