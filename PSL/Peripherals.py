@@ -2,6 +2,7 @@ from __future__ import print_function
 import PSL.commands_proto as CP
 import numpy as np
 import time
+from functools import partial
 
 
 class I2C():
@@ -39,11 +40,20 @@ class I2C():
     tg = 100
     MAX_SAMPLES = 10000
 
-    def __init__(self, H):
+    def __init__(self, H, address=None):
         self.H = H
         from PSL import sensorlist
         self.SENSORS = sensorlist.sensors
         self.buff = np.zeros(10000)
+
+        if address is not None:
+            self.start = partial(self.start, address)
+            self.restart = partial(self.restart, address)
+            self.simpleRead = partial(self.simpleRead, address)
+            self.readBulk = partial(self.readBulk, address)
+            self.writeBulk = partial(self.writeBulk, address)
+            self.__captureStart__ = partial(self.__captureStart__, address)
+            self.capture = partial(self.capture, address)
 
     def init(self):
         self.H.__sendByte__(CP.I2C_HEADER)
@@ -232,7 +242,7 @@ class I2C():
         """
         data = []
 
-        for a in range(length - 1):
+        for _ in range(length - 1):
             self.H.__sendByte__(CP.I2C_HEADER)
             self.H.__sendByte__(CP.I2C_READ_MORE)
             data.append(self.H.__getByte__())
