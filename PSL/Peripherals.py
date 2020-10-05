@@ -55,6 +55,13 @@ class I2C():
             self.__captureStart__ = partial(self.__captureStart__, address)
             self.capture = partial(self.capture, address)
 
+            self.simpleRead_byte = partial(self.simpleRead_byte, address)
+            self.simpleRead_word = partial(self.simpleRead_word, address)
+            self.simpleRead_dword = partial(self.simpleRead_dword, address)
+            self.readBulk_byte = partial(self.readBulk_byte, address)
+            self.readBulk_word = partial(self.readBulk_word, address)
+            self.readBulk_dword = partial(self.readBulk_dword, address)
+
     def init(self):
         self.H.__sendByte__(CP.I2C_HEADER)
         self.H.__sendByte__(CP.I2C_INIT)
@@ -227,6 +234,20 @@ class I2C():
         vals = self.read(numbytes)
         return vals
 
+    def simpleRead_byte(self, addr):
+        vals = self.simpleRead(addr, 1)
+        return vals[0]
+
+    def simpleRead_word(self, addr):
+        vals = self.simpleRead(addr, 2)
+        bytes_ = bytearray(vals)
+        return CP.ShortInt.unpack(bytes_)[0]
+
+    def simpleRead_dword(self, addr):
+        vals = self.simpleRead(addr, 4)
+        bytes_ = bytearray(vals)
+        return CP.Integer.unpack(bytes_)[0]
+
     def read(self, length):
         """
         Reads a fixed number of data bytes from I2C device. Fetches length-1 bytes with acknowledge bits for each, +1 byte
@@ -288,6 +309,23 @@ class I2C():
         except:
             print('Transaction failed')
             return False
+
+    def readBulk_byte(self, device_address, register_address):
+        data = self.readBulk(device_address, register_address, 1)
+        if data:
+            return data[0]
+
+    def readBulk_word(self, device_address, register_address):
+        data = self.readBulk(device_address, register_address, 2)
+        if data:
+            bytes_ = bytearray(data)
+            return CP.ShortInt.unpack(bytes_)[0]
+
+    def readBulk_dword(self, device_address, register_address):
+        data = self.readBulk(device_address, register_address, 4)
+        if data:
+            bytes_ = bytearray(data)
+            return CP.Integer.unpack(bytes_)[0]
 
     def writeBulk(self, device_address, bytestream):
         """
