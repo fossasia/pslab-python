@@ -114,7 +114,7 @@ def test_configure_trigger(scope):
 
 def test_configure_trigger_on_unmapped(scope):
     with pytest.raises(TypeError):
-        scope.configure_trigger(channel="AN8", voltage=1.5)
+        scope.configure_trigger(channel="VOL", voltage=1.5)
 
 
 def test_configure_trigger_on_remapped_ch1(scope):

@@ -50,7 +50,7 @@ This section has commands related to analog measurement and control. These inclu
 
 + Blocking call that fetches an oscilloscope trace from the specified input channel
 + Arguments
-	+ ch: Channel to select as input. ['CH1'..'CH3','SEN']
+	+ ch: Channel to select as input. ['CH1'..'CH3','RES']
 	+ ns: Number of samples to fetch. Maximum 10000
 	+ tg: Timegap between samples in microseconds
 + Return: Arrays X(timestamps),Y(Corresponding Voltage values)
@@ -124,7 +124,7 @@ This section has commands related to analog measurement and control. These inclu
 ```
 >>> from pylab import *
 >>> I = sciencelab.ScienceLab()
->>> x,y1,y2,y3,y4 = I.capture_multiple(800,1.75,'CH1','CH2','MIC','SEN')
+>>> x,y1,y2,y3,y4 = I.capture_multiple(800,1.75,'CH1','CH2','MIC','RES')
 >>> plot(x,y1)
 >>> plot(x,y2)
 >>> plot(x,y3)
@@ -140,7 +140,7 @@ This section has commands related to analog measurement and control. These inclu
 + Blocking call that fetches oscilloscope traces from a single oscilloscope channel at a maximum speed of 2MSPS
 
 + Arguments
-	+ chan: Channel name 'CH1' / 'CH2' ... 'SEN'
+	+ chan: Channel name 'CH1' / 'CH2' ... 'RES'
 	+ samples: Number of samples to fetch. Maximum 10000/(total specified channels)
 	+ \*args: Specify if SQR1 must be toggled right before capturing.
 		+ 'SET_LOW': Set SQR1 to 0V
@@ -344,7 +344,7 @@ The following events take place when the above snippet runs
 
 + Return the voltage on the selected channel
 + Arguments
-	+ channel_name : 'CH1','CH2','CH3', 'MIC','IN1','SEN','V+'
+	+ channel_name : 'CH1','CH2','CH3', 'MIC','IN1','RES','V+'
 	+ sleep: Read voltage in CPU sleep mode. not particularly useful. Also, Buggy.
 	+ \*\*kwargs: Samples to average can be specified. Eg, samples=100 will average a hundred readings
 
@@ -384,7 +384,7 @@ The following events take place when the above snippet runs
 + Instruct the ADC to start streaming 8-bit data.  use stop_streaming to stop.
 + Arguments
 	+ tg: timegap. 250KHz clock
-	+ channel: channel 'CH1'... 'CH9','IN1','SEN'
+	+ channel: channel 'CH1'... 'CH9','IN1','RES'
 
 </details>
 
@@ -402,43 +402,43 @@ This section has commands related to digital measurement and control. These incl
 <details>
 <summary><code>get_high_freq(self, pin)</code></summary>
 
-+ Retrieves the frequency of the signal connected to ID1. For frequencies > 1MHz
++ Retrieves the frequency of the signal connected to LA1. For frequencies > 1MHz
 + Also good for lower frequencies, but avoid using it since the oscilloscope cannot be used simultaneously due to hardware limitations.
 + The input frequency is fed to a 32 bit counter for a period of 100mS.
 + The value of the counter at the end of 100mS is used to calculate the frequency.
 + Arguments
-	+ pin: The input pin to measure frequency from : ['ID1','ID2','ID3','ID4','SEN','EXT','CNTR']
+	+ pin: The input pin to measure frequency from : ['LA1','LA2','LA3','LA4','RES','EXT','FRQ']
 + Return: frequency
 
 </details>
 
 <details>
-<summary><code>get_freq(self, channel = 'CNTR', timeout = 2)</code></summary>
+<summary><code>get_freq(self, channel = 'FRQ', timeout = 2)</code></summary>
 
 + Frequency measurement on IDx.
 + Measures time taken for 16 rising edges of input signal.
 + Returns the frequency in Hertz
 + Arguments
-	+ channel: The input to measure frequency from. ['ID1','ID2','ID3','ID4','SEN','EXT','CNTR']
+	+ channel: The input to measure frequency from. ['LA1','LA2','LA3','LA4','RES','EXT','FRQ']
 	+ timeout: This is a blocking call which will wait for one full wavelength before returning the calculated frequency. Use the timeout option if you're unsure of the input signal. Returns 0 if timed out
 + Return: float: frequency
 
-Connect SQR1 to ID1
+Connect SQR1 to LA1
 
 ```
 >>> I.sqr1(4000,25)
->>> self.__print__(I.get_freq('ID1'))
+>>> self.__print__(I.get_freq('LA1'))
 4000.0
->>> self.__print__(I.r2r_time('ID1'))
+>>> self.__print__(I.r2r_time('LA1'))
 #time between successive rising edges
 0.00025
->>> self.__print__(I.f2f_time('ID1'))
+>>> self.__print__(I.f2f_time('LA1'))
 #time between successive falling edges
 0.00025
->>> self.__print__(I.pulse_time('ID1'))
+>>> self.__print__(I.pulse_time('LA1'))
 #may detect a low pulse, or a high pulse. Whichever comes first
 6.25e-05
->>> I.duty_cycle('ID1')
+>>> I.duty_cycle('LA1')
 #returns wavelength, high time
 (0.00025,6.25e-05)
 ```
@@ -450,7 +450,7 @@ Connect SQR1 to ID1
 
 + Return a list of rising edges that occured within the timeout period.
 + Arguments
-	+ channel: The input to measure time between two rising edges.['ID1','ID2','ID3','ID4','SEN','EXT','CNTR']
+	+ channel: The input to measure time between two rising edges.['LA1','LA2','LA3','LA4','RES','EXT','FRQ']
 	+ skip_cycle: Number of points to skip. eg. Pendulums pass through light barriers twice every cycle. SO 1 must be skipped
     + timeout: Number of seconds to wait for datapoints. (Maximum 60 seconds)
 + Return: list: Array of points
@@ -462,7 +462,7 @@ Connect SQR1 to ID1
 
 + Return a list of falling edges that occured within the timeout period.
 + Arguments
-	+ channel: The input to measure time between two falling edges.['ID1','ID2','ID3','ID4','SEN','EXT','CNTR']
+	+ channel: The input to measure time between two falling edges.['LA1','LA2','LA3','LA4','RES','EXT','FRQ']
 	+ skip_cycle: Number of points to skip. eg. Pendulums pass through light barriers twice every cycle. SO 1 must be skipped
     + timeout: Number of seconds to wait for datapoints. (Maximum 60 seconds)
 + Return: list: Array of points
@@ -473,11 +473,11 @@ Connect SQR1 to ID1
 <summary><code>MeasureInterval(self, channel1, channel2, edge1, edge2, timeout = 0.1)</code></summary>
 
 + Measures time intervals between two logic level changes on any two digital inputs(both can be the same) and returns the calculated time.
-+ For example, one can measure the time interval between the occurence of a rising edge on ID1, and a falling edge on ID3.
++ For example, one can measure the time interval between the occurence of a rising edge on LA1, and a falling edge on LA3.
 + If the returned time is negative, it simply means that the event corresponding to channel2 occurred first.
 + Arguments
 	+ channel1: The input pin to measure first logic level change
-	+ channel2: The input pin to measure second logic level change -['ID1','ID2','ID3','ID4','SEN','EXT','CNTR']
+	+ channel2: The input pin to measure second logic level change -['LA1','LA2','LA3','LA4','RES','EXT','FRQ']
 	+ edge1: The type of level change to detect in order to start the timer
 		+ 'rising'
 		+ 'falling'
@@ -493,24 +493,24 @@ Connect SQR1 to ID1
 </details>
 
 <details>
-<summary><code>DutyCycle(self, channel = 'ID1', timeout = 1.)</code></summary>
+<summary><code>DutyCycle(self, channel = 'LA1', timeout = 1.)</code></summary>
 
 + Duty cycle measurement on channel. Returns wavelength(seconds), and length of first half of pulse(high time)
 + Low time = (wavelength - high time)
 + Arguments
-	+ channel: The input pin to measure wavelength and high time.['ID1','ID2','ID3','ID4','SEN','EXT','CNTR']
+	+ channel: The input pin to measure wavelength and high time.['LA1','LA2','LA3','LA4','RES','EXT','FRQ']
     + timeout: Use the timeout option if you're unsure of the input signal time period. Returns 0 if timed out
 + Return: wavelength, duty cycle
 
 </details>
 
 <details>
-<summary><code>PulseTime(self, channel = 'ID1', PulseType = 'LOW', timeout = 0.1)</code></summary>
+<summary><code>PulseTime(self, channel = 'LA1', PulseType = 'LOW', timeout = 0.1)</code></summary>
 
 + Duty cycle measurement on channel. Returns wavelength(seconds), and length of first half of pulse(high time)
 + Low time = (wavelength - high time)
 + Arguments
-	+ channel: The input pin to measure wavelength and high time.['ID1','ID2','ID3','ID4','SEN','EXT','CNTR']
+	+ channel: The input pin to measure wavelength and high time.['LA1','LA2','LA3','LA4','RES','EXT','FRQ']
     + PulseType: Type of pulse to detect. May be 'HIGH' or 'LOW'
     + timeout: Use the timeout option if you're unsure of the input signal time period.
 						Returns 0 if timed out
@@ -525,7 +525,7 @@ Connect SQR1 to ID1
 + Arguments
 	+ channel1: The input pin to measure first logic level change
 	+ channel2: The input pin to measure second logic level change
-						 -['ID1','ID2','ID3','ID4','SEN','EXT','CNTR']
+						 -['LA1','LA2','LA3','LA4','RES','EXT','FRQ']
 	+ edgeType1: The type of level change that should be recorded
 		+ 'rising'
 		+ 'falling'
@@ -542,7 +542,7 @@ Connect SQR1 to ID1
    		+ SQ1: Set the state of SQR1 output(LOW or HIGH) and then start the timer.  eg. SQR1 = 'LOW'
    		+ zero: subtract the timestamp of the first point from all the others before returning. Default: True
 + Return: time
-+ Example, Aim : Calculate value of gravity using time of flight. The setup involves a small metal nut attached to an electromagnet powered via SQ1. When SQ1 is turned off, the set up is designed to make the nut fall through two different light barriers(LED,detector pairs that show a logic change when an object gets in the middle) placed at known distances from the initial position. One can measure the timestamps for rising edges on ID1 ,and ID2 to determine the speed, and then obtain value of g.
++ Example, Aim : Calculate value of gravity using time of flight. The setup involves a small metal nut attached to an electromagnet powered via SQ1. When SQ1 is turned off, the set up is designed to make the nut fall through two different light barriers(LED,detector pairs that show a logic change when an object gets in the middle) placed at known distances from the initial position. One can measure the timestamps for rising edges on LA1 ,and LA2 to determine the speed, and then obtain value of g.
 
 </details>
 
@@ -553,8 +553,8 @@ Connect SQR1 to ID1
 + Arguments
 	+ waiting_time:  Total time to allow the logic analyzer to collect data. This is implemented using a simple sleep routine, so if large delays will be involved, refer to :func:`start_one_channel_LA` to start the acquisition, and :func:`fetch_LA_channels` to retrieve data from the hardware after adequate time. The retrieved data is stored in the array self.dchans[0].timestamps.
 	+ keyword arguments
-	+ channel: 'ID1',...,'ID4'
-	+ trigger_channel: 'ID1',...,'ID4'
+	+ channel: 'LA1',...,'LA4'
+	+ trigger_channel: 'LA1',...,'LA4'
 	+ channel_mode: acquisition mode, default value: 3
 		+ EVERY_SIXTEENTH_RISING_EDGE = 5
 	 	+ EVERY_FOURTH_RISING_EDGE    = 4
@@ -568,22 +568,22 @@ Connect SQR1 to ID1
 ```
 >>> from pylab import *
 >>> I = sciencelab.ScienceLab()
->>> I.capture_edges(0.2,channel = 'ID1',trigger_channel = 'ID1',channel_mode = 3,trigger_mode = 3)
-#captures rising edges only. with rising edge trigger on ID1
+>>> I.capture_edges(0.2,channel = 'LA1',trigger_channel = 'LA1',channel_mode = 3,trigger_mode = 3)
+#captures rising edges only. with rising edge trigger on LA1
 ```
 
 </details>
 
 <details>
-<summary><code>start_one_channel_LA_backup__(self, trigger = 1, channel = 'ID1', maximum_time = 67, **args)</code></summary>
+<summary><code>start_one_channel_LA_backup__(self, trigger = 1, channel = 'LA1', maximum_time = 67, **args)</code></summary>
 
-+ Start logging timestamps of rising/falling edges on ID1
++ Start logging timestamps of rising/falling edges on LA1
 + Arguments
-	+ trigger: Bool . Enable edge trigger on ID1. use keyword argument edge = 'rising' or 'falling'
-	+ channel: ['ID1','ID2','ID3','ID4','SEN','EXT','CNTR']
+	+ trigger: Bool . Enable edge trigger on LA1. use keyword argument edge = 'rising' or 'falling'
+	+ channel: ['LA1','LA2','LA3','LA4','RES','EXT','FRQ']
 	+ maximum_time: Total time to sample. If total time exceeds 67 seconds, a prescaler will be used in the reference clock.
 	+ kwargs
-		+ triggger_channels: array of digital input names that can trigger the acquisition. Eg, trigger = ['ID1','ID2','ID3'] will triggger when a logic change specified by the keyword argument 'edge' occurs on either or the three specified trigger inputs.
+		+ triggger_channels: array of digital input names that can trigger the acquisition. Eg, trigger = ['LA1','LA2','LA3'] will triggger when a logic change specified by the keyword argument 'edge' occurs on either or the three specified trigger inputs.
 		+ edge: 'rising' or 'falling' . trigger edge type for trigger_channels.
 + Return: Nothing
 
@@ -592,9 +592,9 @@ Connect SQR1 to ID1
 <details>
 <summary><code>start_one_channel_LA(self, **args)</code></summary>
 
-+ Start logging timestamps of rising/falling edges on ID1
++ Start logging timestamps of rising/falling edges on LA1
 + Arguments
-	+ channel: ['ID1','ID2','ID3','ID4','SEN','EXT','CNTR']
+	+ channel: ['LA1','LA2','LA3','LA4','RES','EXT','FRQ']
 	+ channel_mode: Acquisition mode, default value: 1
 		+ EVERY_SIXTEENTH_RISING_EDGE = 5
 		+ EVERY_FOURTH_RISING_EDGE    = 4
@@ -609,11 +609,11 @@ Connect SQR1 to ID1
 <details>
 <summary><code>start_two_channel_LA(self, **args)</code></summary>
 
-+ Start logging timestamps of rising/falling edges on ID1, AD2
++ Start logging timestamps of rising/falling edges on LA1, AD2
 + Arguments
-	+ trigger: Bool. Enable rising edge trigger on ID1
+	+ trigger: Bool. Enable rising edge trigger on LA1
 	+ \*\*args
-		+ chans: Channels to acquire data from . default ['ID1','ID2']
+		+ chans: Channels to acquire data from . default ['LA1','LA2']
 		+ mode: modes for each channel. Array, default value: [1,1]
 			+ EVERY_SIXTEENTH_RISING_EDGE = 5
 			+ EVERY_FOURTH_RISING_EDGE    = 4
@@ -629,10 +629,10 @@ Connect SQR1 to ID1
 <details>
 <summary><code>start_three_channel_LA(self, **args)</code></summary>
 
-+ Start logging timestamps of rising/falling edges on ID1, ID2, ID3
++ Start logging timestamps of rising/falling edges on LA1, LA2, LA3
 + Arguments
 	+ \*\*args
-		+ trigger_channel: ['ID1','ID2','ID3','ID4','SEN','EXT','CNTR']
+		+ trigger_channel: ['LA1','LA2','LA3','LA4','RES','EXT','FRQ']
 		+ mode: modes for each channel. Array, default value: [1,1,1]
 			+ EVERY_SIXTEENTH_RISING_EDGE = 5
 			+ EVERY_FOURTH_RISING_EDGE    = 4
@@ -649,9 +649,9 @@ Connect SQR1 to ID1
 <details>
 <summary><code>start_four_channel_LA(self, trigger = 1, maximum_time = 0.001, mode = [1, 1, 1, 1], **args)</code></summary>
 
-+ Four channel Logic Analyzer. Start logging timestamps from a 64MHz counter to record level changes on ID1,ID2,ID3,ID4.
++ Four channel Logic Analyzer. Start logging timestamps from a 64MHz counter to record level changes on LA1,LA2,LA3,LA4.
 + Arguments
-	+ trigger: Bool . Enable rising edge trigger on ID1
+	+ trigger: Bool . Enable rising edge trigger on LA1
 	+ maximum_time: Maximum delay expected between two logic level changes. <br />
 	If total time exceeds 1 mS, a prescaler will be used in the reference clock. However, this only refers to the maximum time between two successive level changes. If a delay larger than .26 S occurs, it will be truncated by modulo .26 S.<br />
 If you need to record large intervals, try single channel/two channel modes which use 32 bit counters capable of time interval up to 67 seconds.
@@ -673,7 +673,7 @@ If you need to record large intervals, try single channel/two channel modes whic
 <summary><code>get_LA_initial_states(self)</code></summary>
 
 + Fetches the initial states of digital inputs that were recorded right before the Logic analyzer was started, and the total points each channel recorded
-+ Returns: chan1 progress,chan2 progress,chan3 progress,chan4 progress,[ID1,ID2,ID3,ID4]. eg. [1,0,1,1]
++ Returns: chan1 progress,chan2 progress,chan3 progress,chan4 progress,[LA1,LA2,LA3,LA4]. eg. [1,0,1,1]
 
 </details>
 
@@ -725,24 +725,24 @@ If you need to record large intervals, try single channel/two channel modes whic
 <summary><code>get_states(self)</code></summary>
 
 + Gets the state of the digital inputs.
-+ Returns: dictionary with keys 'ID1','ID2','ID3','ID4'
++ Returns: dictionary with keys 'LA1','LA2','LA3','LA4'
 
 </details>
 
 <details>
 <summary><code>get_state(self, input_id)</code></summary>
 
-+ Returns the logic level on the specified input (ID1,ID2,ID3, or ID4)
++ Returns the logic level on the specified input (LA1,LA2,LA3, or LA4)
 + Arguments
 	+ input_id: the input channel
-		+ 'ID1' -> state of ID1
-		+ 'ID4' -> state of ID4
+		+ 'LA1' -> state of LA1
+		+ 'LA4' -> state of LA4
 + Return: boolean
 
 ```
 >>> from pylab import *
 >>> I = sciencelab.ScienceLab()
->>> self.__print__(I.get_state(I.ID1))
+>>> self.__print__(I.get_state(I.LA1))
 	False
 ```
 
@@ -763,11 +763,11 @@ If you need to record large intervals, try single channel/two channel modes whic
 </details>
 
 <details>
-<summary><code>countPulses(self, channel = 'SEN')</code></summary>
+<summary><code>countPulses(self, channel = 'RES')</code></summary>
 
 + Count pulses on a digital input. Retrieve total pulses using readPulseCount
 + Arguments
-	+ channel: The input pin to measure rising edges on : ['ID1','ID2','ID3','ID4','SEN','EXT','CNTR']
+	+ channel: The input pin to measure rising edges on : ['LA1','LA2','LA3','LA4','RES','EXT','FRQ']
 
 </details>
 
@@ -884,14 +884,14 @@ If you need to record large intervals, try single channel/two channel modes whic
 
 ## WAVEGEN SECTION
 
-This section has commands related to waveform generators W1, W2, PWM outputs, servo motor control etc.
+This section has commands related to waveform generators SI1, SI2, PWM outputs, servo motor control etc.
 
 <details>
 <summary><code>set_wave(self, chan, freq)</code></summary>
 
 + Set the frequency of wavegen
 + Arguments
-	+ chan: Channel to set frequency for. W1 or W2
+	+ chan: Channel to set frequency for. SI1 or SI2
 	+ frequency: Frequency to set on wave generator
 + Returns: frequency
 
@@ -943,7 +943,7 @@ This section has commands related to waveform generators W1, W2, PWM outputs, se
 
 + Set the frequency of wavegen 1
 + Arguments
-	+ chan: Any of W1,W2,SQR1,SQR2,SQR3,SQR4
+	+ chan: Any of SI1,SI2,SQR1,SQR2,SQR3,SQR4
 + Returns: frequency
 
 </details>
@@ -965,16 +965,16 @@ This section has commands related to waveform generators W1, W2, PWM outputs, se
 
 + Load an arbitrary waveform to the waveform generators
 + Arguments
-	+ chan: The waveform generator to alter. W1 or W2
+	+ chan: The waveform generator to alter. SI1 or SI2
 	+ function: A function that will be used to generate the datapoints
 	+ span: The range of values in which to evaluate the given function
 
 ```
 fn = lambda x:abs(x-50)  #Triangular waveform
-self.I.load_waveform('W1',fn,[0,100])
+self.I.load_waveform('SI1',fn,[0,100])
 #Load triangular wave to wavegen 1
 #Load sinusoidal wave to wavegen 2
-self.I.load_waveform('W2',np.sin,[0,2*np.pi])
+self.I.load_waveform('SI2',np.sin,[0,2*np.pi])
 ```
 
 </details>
@@ -984,7 +984,7 @@ self.I.load_waveform('W2',np.sin,[0,2*np.pi])
 
 + Load an arbitrary waveform table to the waveform generators
 + Arguments
-	+ chan: The waveform generator to alter. 'W1' or 'W2'
+	+ chan: The waveform generator to alter. 'SI1' or 'SI2'
 	+ points: A list of 512 datapoints exactly
 	+ mode: Optional argument. Type of waveform. default value 'arbit'. accepts 'sine', 'tria'
 
@@ -1258,7 +1258,7 @@ Set servo motor angles via SQ1-4. Control one stepper motor using SQ1-4
 
 + Read data from ultrasonic distance sensor HC-SR04/HC-SR05.  Sensors must have separate trigger and output pins.
 + First a 10uS pulse is output on SQR1.  SQR1 must be connected to the TRIG pin on the sensor prior to use.
-+ Upon receiving this pulse, the sensor emits a sequence of sound pulses, and the logic level of its output pin(which we will monitor via ID1) is also set high.  The logic level goes LOW when the sound packet returns to the sensor, or when a timeout occurs.
++ Upon receiving this pulse, the sensor emits a sequence of sound pulses, and the logic level of its output pin(which we will monitor via LA1) is also set high.  The logic level goes LOW when the sound packet returns to the sensor, or when a timeout occurs.
 + The ultrasound sensor outputs a series of 8 sound pulses at 40KHz which corresponds to a time period of 25uS per pulse. These pulses reflect off of the nearest object in front of the sensor, and return to it. The time between sending and receiving of the pulse packet is used to estimate the distance. If the reflecting object is either too far away or absorbs sound, less than 8 pulses may be received, and this can cause a measurement error of 25uS which corresponds to 8mm.
 + Ensure 5V supply.  You may set SQR2 to HIGH [ I.set_state(SQR2 = True) ] , and use that as the power supply.
 + Return: 0 upon timeout

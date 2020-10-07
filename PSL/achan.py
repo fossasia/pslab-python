@@ -23,8 +23,8 @@ ANALOG_CHANNELS = (
     "CH3",
     "MIC",
     "CAP",
-    "SEN",
-    "AN8",
+    "RES",
+    "VOL",
 )
 
 INPUT_RANGES = {
@@ -33,8 +33,8 @@ INPUT_RANGES = {
     "CH3": (-3.3, 3.3),  # external gain control analog input
     "MIC": (-3.3, 3.3),  # connected to MIC amplifier
     "CAP": (0, 3.3),
-    "SEN": (0, 3.3),
-    "AN8": (0, 3.3),
+    "RES": (0, 3.3),
+    "VOL": (0, 3.3),
 }
 
 PIC_ADC_MULTIPLEX = {
@@ -43,9 +43,9 @@ PIC_ADC_MULTIPLEX = {
     "CH3": 1,
     "MIC": 2,
     "AN4": 4,
-    "SEN": 7,
+    "RES": 7,
     "CAP": 5,
-    "AN8": 8,
+    "VOL": 8,
 }
 
 
@@ -54,7 +54,7 @@ class AnalogInput:
 
     Parameters
     ----------
-    name : {'CH1', 'CH2', 'CH3', 'MIC', 'CAP', 'SEN', 'AN8'}
+    name : {'CH1', 'CH2', 'CH3', 'MIC', 'CAP', 'RES', 'VOL'}
         Name of the analog channel to model.
     device : :class:`Handler`
         Serial interface for communicating with the PSLab device.

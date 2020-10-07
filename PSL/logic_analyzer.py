@@ -52,13 +52,13 @@ class LogicAnalyzer:
         self._channels = {
             d: digital_channel.DigitalInput(d) for d in digital_channel.DIGITAL_INPUTS
         }
-        self.trigger_channel = "ID1"
-        self._trigger_channel = self._channels["ID1"]
+        self.trigger_channel = "LA1"
+        self._trigger_channel = self._channels["LA1"]
         self.trigger_mode = "disabled"
         self._trigger_mode = 0
         self._prescaler = 0
-        self._channel_one_map = "ID1"
-        self._channel_two_map = "ID2"
+        self._channel_one_map = "LA1"
+        self._channel_two_map = "LA2"
         self._trimmed = 0
 
     def measure_frequency(
@@ -68,7 +68,7 @@ class LogicAnalyzer:
 
         Parameters
         ----------
-        channel : {"ID1", "ID2", "ID3", "ID4"}
+        channel : {"LA1", "LA2", "LA3", "LA4"}
             Name of the digital input channel in which to measure the frequency.
         simultaneous_oscilloscope: bool, optional
             Set this to True if you need to use the oscilloscope at the same time.
@@ -145,7 +145,7 @@ class LogicAnalyzer:
         Parameters
         ----------
         channels : List[str]
-            A pair of digital inputs, ID1, ID2, ID3, or ID4. Both can be the same.
+            A pair of digital inputs, LA1, LA2, LA3, or LA4. Both can be the same.
         modes : List[str]
             Type of logic event to listen for on each channel. See
             :class:`DigitalInput` for available modes.
@@ -209,7 +209,7 @@ class LogicAnalyzer:
 
         Parameters
         ----------
-        channel : {"ID1", "ID2", "ID3", "ID4"}
+        channel : {"LA1", "LA2", "LA3", "LA4"}
             Digital input on which to measure.
         timeout : float, optional
             Timeout in seconds before cancelling measurement. The default value is
@@ -251,8 +251,8 @@ class LogicAnalyzer:
         Parameters
         ----------
         channels : {1, 2, 3, 4}
-            Number of channels to capture events on. Events will be captured on ID1,
-            ID2, ID3, and ID4, in that order.
+            Number of channels to capture events on. Events will be captured on LA1,
+            LA2, LA3, and LA4, in that order.
         events : int, optional
             Number of logic events to capture on each channel. The default and maximum
             value is 2500.
@@ -302,7 +302,7 @@ class LogicAnalyzer:
         start_time = time.time()
 
         for e, c in enumerate(
-            [self._channel_one_map, self._channel_two_map, "ID3", "ID4"][:channels]
+            [self._channel_one_map, self._channel_two_map, "LA3", "LA4"][:channels]
         ):
             c = self._channels[c]
             c.events_in_buffer = events
@@ -396,10 +396,10 @@ class LogicAnalyzer:
         self._device.send_byte(CP.START_FOUR_CHAN_LA)
         self._device.send_int(CP.MAX_SAMPLES // 4)
         self._device.send_int(
-            self._channels["ID1"]._logic_mode
-            | (self._channels["ID2"]._logic_mode << 4)
-            | (self._channels["ID3"]._logic_mode << 8)
-            | (self._channels["ID4"]._logic_mode << 12)
+            self._channels["LA1"]._logic_mode
+            | (self._channels["LA2"]._logic_mode << 4)
+            | (self._channels["LA3"]._logic_mode << 8)
+            | (self._channels["LA4"]._logic_mode << 12)
         )
         self._device.send_byte(self._prescaler)
 
@@ -408,7 +408,7 @@ class LogicAnalyzer:
                 self._trigger_channel.number
             ] | self._trigger_mode
         except KeyError:
-            e = "Triggering is only possible on ID1, ID2, or ID3."
+            e = "Triggering is only possible on LA1, LA2, or LA3."
             raise NotImplementedError(e)
 
         self._device.send_byte(trigger)
@@ -433,7 +433,7 @@ class LogicAnalyzer:
         counter_values = []
         channels = list(
             OrderedDict.fromkeys(
-                [self._channel_one_map, self._channel_two_map, "ID3", "ID4"]
+                [self._channel_one_map, self._channel_two_map, "LA3", "LA4"]
             )
         )
         for c in channels:
@@ -530,7 +530,7 @@ class LogicAnalyzer:
         -------
         dict of four str: bool pairs
             Dictionary containing pairs of channel names and the corresponding initial
-            state, e.g. {'ID1': True, 'ID2': True, 'ID3': True, 'ID4': False}.
+            state, e.g. {'LA1': True, 'LA2': True, 'LA3': True, 'LA4': False}.
             True means HIGH, False means LOW.
         """
         return self._get_initial_states_and_progress()[0]
@@ -552,7 +552,7 @@ class LogicAnalyzer:
         xy = []
 
         for e, c in enumerate(
-            [self._channel_one_map, self._channel_two_map, "ID3", "ID4"][
+            [self._channel_one_map, self._channel_two_map, "LA3", "LA4"][
                 : len(timestamps)
             ]
         ):
@@ -575,10 +575,10 @@ class LogicAnalyzer:
         progress[3] = (self._device.get_int() - initial) // 2 - 3 * CP.MAX_SAMPLES // 4
         s = self._device.get_byte()
         initial_states = {
-            "ID1": (s & 1 != 0),
-            "ID2": (s & 2 != 0),
-            "ID3": (s & 4 != 0),
-            "ID4": (s & 8 != 0),
+            "LA1": (s & 1 != 0),
+            "LA2": (s & 2 != 0),
+            "LA3": (s & 4 != 0),
+            "LA4": (s & 8 != 0),
         }
         self._device.get_byte()  # INITIAL_DIGITAL_STATES_ERR
         self._device.get_ack()
@@ -596,7 +596,7 @@ class LogicAnalyzer:
 
         Parameters
         ----------
-        trigger_channel : {"ID1", "ID2", "ID3", "ID4"}
+        trigger_channel : {"LA1", "LA2", "LA3", "LA4"}
             The digital input on which to trigger.
         trigger_condition : {"disabled", "falling", "rising"}
             The type of logic level change on which to trigger.
@@ -640,7 +640,7 @@ class LogicAnalyzer:
         -------
         dict of four str: bool pairs
             Dictionary containing pairs of channel names and the corresponding current
-            state, e.g. {'ID1': True, 'ID2': True, 'ID3': True, 'ID4': False}.
+            state, e.g. {'LA1': True, 'LA2': True, 'LA3': True, 'LA4': False}.
             True means HIGH, False means LOW.
         """
         self._device.send_byte(CP.DIN)
@@ -648,10 +648,10 @@ class LogicAnalyzer:
         s = self._device.get_byte()
         self._device.get_ack()
         return {
-            "ID1": (s & 1 != 0),
-            "ID2": (s & 2 != 0),
-            "ID3": (s & 4 != 0),
-            "ID4": (s & 8 != 0),
+            "LA1": (s & 1 != 0),
+            "LA2": (s & 2 != 0),
+            "LA3": (s & 4 != 0),
+            "LA4": (s & 8 != 0),
         }
 
     def count_pulses(
@@ -664,7 +664,7 @@ class LogicAnalyzer:
 
         Parameters
         ----------
-        channel : {"ID1", "ID2", "ID3", "ID4"}
+        channel : {"LA1", "LA2", "LA3", "LA4"}
             Digital input on which to count pulses.
         interval : float, optional
             Time in seconds during which to count pulses. The default value is

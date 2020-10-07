@@ -3,7 +3,7 @@
 
 import numpy as np
 
-DIGITAL_INPUTS = ("ID1", "ID2", "ID3", "ID4", "SEN", "EXT", "CNTR")
+DIGITAL_INPUTS = ("LA1", "LA2", "LA3", "LA4", "RES", "EXT", "FRQ")
 
 MODES = {
     "sixteen rising": 5,
@@ -20,13 +20,13 @@ class DigitalInput:
 
     Parameters
     ----------
-    name : {"ID1", "ID2", "ID3", "ID4", "SEN", "EXT", "CNTR"}
+    name : {"LA1", "LA2", "LA3", "LA4", "RES", "EXT", "FRQ"}
         Name of the digital channel to model.
 
     Attributes
     ----------
     name : str
-        One of {"ID1", "ID2", "ID3", "ID4", "SEN", "EXT", "CNTR"}.
+        One of {"LA1", "LA2", "LA3", "LA4", "RES", "EXT", "FRQ"}.
     number : int
         Number used to refer to this channel in the firmware.
     datatype : str
