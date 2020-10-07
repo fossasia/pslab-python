@@ -55,7 +55,7 @@ class Oscilloscope:
         channels : {1, 2, 4}
             Number of channels to sample from simultaneously. By default, samples are
             captured from CH1, CH2, CH3 and MIC. CH1 can be remapped to any other
-            channel (CH2, CH3, MIC, CAP, SEN, AN8) by setting the channel_one_map
+            channel (CH2, CH3, MIC, CAP, RES, VOL) by setting the channel_one_map
             attribute of the Oscilloscope instance to the desired channel.
         samples : int
             Number of samples to fetch. Maximum 10000 divided by number of channels.
@@ -93,7 +93,7 @@ class Oscilloscope:
         ValueError
             If :channels: is not 1, 2 or 4, or
             :samples: > 10000 / :channels:, or
-            :channel_one_map: is not one of CH1, CH2, CH3, MIC, CAP, SEN, AN8, or
+            :channel_one_map: is not one of CH1, CH2, CH3, MIC, CAP, RES, VOL, or
             :timegap: is too low.
         """
         xy = np.zeros([channels + 1, samples])
@@ -227,7 +227,7 @@ class Oscilloscope:
 
         Parameters
         ----------
-        channel : {'CH1', 'CH2', 'CH3', 'MIC', 'CAP', 'SEN', 'AN8'}
+        channel : {'CH1', 'CH2', 'CH3', 'MIC', 'CAP', 'RES', 'VOL'}
             Name of the channel from which to fetch captured data.
 
         Example
@@ -290,7 +290,7 @@ class Oscilloscope:
 
         Parameters
         ----------
-        channel : {'CH1', 'CH2', 'CH3', 'MIC', 'CAP', 'SEN', 'AN8'}
+        channel : {'CH1', 'CH2', 'CH3', 'MIC', 'CAP', 'RES', 'VOL'}
             The name of the trigger channel.
         voltage : float
             The trigger voltage in volts.

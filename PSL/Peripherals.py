@@ -463,7 +463,7 @@ class I2C():
 
         >>> from pylab import *
         >>> I=sciencelab.ScienceLab()
-        >>> x,y1,y2,y3,y4 = I.capture_multiple(800,1.75,'CH1','CH2','MIC','SEN')
+        >>> x,y1,y2,y3,y4 = I.capture_multiple(800,1.75,'CH1','CH2','MIC','RES')
         >>> plot(x,y1)
         >>> plot(x,y2)
         >>> plot(x,y3)

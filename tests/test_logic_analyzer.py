@@ -2,7 +2,7 @@
 
 When integration testing, the PSLab's PWM output is used to generate a signal
 which is analyzed by the logic analyzer. Before running the integration tests,
-connect SQ1->ID1->ID2->ID3->ID4.
+connect SQ1->LA1->LA2->LA3->LA4.
 """
 
 import time
@@ -166,71 +166,71 @@ def test_capture_too_many_channels(la):
 
 
 def test_measure_frequency(la):
-    frequency = la.measure_frequency("ID1", timeout=0.1)
+    frequency = la.measure_frequency("LA1", timeout=0.1)
     assert FREQUENCY == pytest.approx(frequency)
 
 
 def test_measure_frequency_firmware(la):
-    frequency = la.measure_frequency("ID2", timeout=0.1, simultaneous_oscilloscope=True)
+    frequency = la.measure_frequency("LA2", timeout=0.1, simultaneous_oscilloscope=True)
     assert FREQUENCY == pytest.approx(frequency)
 
 
 def test_measure_interval(la):
-    la.configure_trigger("ID1", "falling")
+    la.configure_trigger("LA1", "falling")
     interval = la.measure_interval(
-        channels=["ID1", "ID2"], modes=["rising", "falling"], timeout=0.1
+        channels=["LA1", "LA2"], modes=["rising", "falling"], timeout=0.1
     )
     expected_interval = FREQUENCY ** -1 * MICROSECONDS * 0.5
     assert expected_interval == pytest.approx(interval, abs=ONE_CLOCK_CYCLE)
 
 
 def test_measure_interval_same_channel(la):
-    la.configure_trigger("ID1", "falling")
+    la.configure_trigger("LA1", "falling")
     interval = la.measure_interval(
-        channels=["ID1", "ID1"], modes=["rising", "falling"], timeout=0.1
+        channels=["LA1", "LA1"], modes=["rising", "falling"], timeout=0.1
     )
     expected_interval = FREQUENCY ** -1 * DUTY_CYCLE * MICROSECONDS
     assert expected_interval == pytest.approx(interval, abs=ONE_CLOCK_CYCLE)
 
 
 def test_measure_interval_same_channel_any(la):
-    la.configure_trigger("ID1", "falling")
+    la.configure_trigger("LA1", "falling")
     interval = la.measure_interval(
-        channels=["ID1", "ID1"], modes=["any", "any"], timeout=0.1
+        channels=["LA1", "LA1"], modes=["any", "any"], timeout=0.1
     )
     expected_interval = FREQUENCY ** -1 * DUTY_CYCLE * MICROSECONDS
     assert expected_interval == pytest.approx(interval, abs=ONE_CLOCK_CYCLE)
 
 
 def test_measure_interval_same_channel_four_rising(la):
-    la.configure_trigger("ID1", "falling")
+    la.configure_trigger("LA1", "falling")
     interval = la.measure_interval(
-        channels=["ID1", "ID1"], modes=["rising", "four rising"], timeout=0.1
+        channels=["LA1", "LA1"], modes=["rising", "four rising"], timeout=0.1
     )
     expected_interval = FREQUENCY ** -1 * 3 * MICROSECONDS
     assert expected_interval == pytest.approx(interval, abs=ONE_CLOCK_CYCLE)
 
 
 def test_measure_interval_same_channel_sixteen_rising(la):
-    la.configure_trigger("ID1", "falling")
+    la.configure_trigger("LA1", "falling")
     interval = la.measure_interval(
-        channels=["ID1", "ID1"], modes=["rising", "sixteen rising"], timeout=0.1
+        channels=["LA1", "LA1"], modes=["rising", "sixteen rising"], timeout=0.1
     )
     expected_interval = FREQUENCY ** -1 * 15 * MICROSECONDS
     assert expected_interval == pytest.approx(interval, abs=ONE_CLOCK_CYCLE)
 
 
 def test_measure_interval_same_channel_same_event(la):
-    la.configure_trigger("ID1", "falling")
+    la.configure_trigger("LA1", "falling")
     interval = la.measure_interval(
-        channels=["ID3", "ID3"], modes=["rising", "rising"], timeout=0.1
+        channels=["LA3", "LA3"], modes=["rising", "rising"], timeout=0.1
     )
     expected_interval = FREQUENCY ** -1 * MICROSECONDS
     assert expected_interval == pytest.approx(interval, abs=ONE_CLOCK_CYCLE)
 
 
 def test_measure_duty_cycle(la):
-    period, duty_cycle = la.measure_duty_cycle("ID4", timeout=0.1)
+    period, duty_cycle = la.measure_duty_cycle("LA4", timeout=0.1)
     expected_period = FREQUENCY ** -1 * MICROSECONDS
     assert (expected_period, DUTY_CYCLE) == pytest.approx(
         (period, duty_cycle), abs=ONE_CLOCK_CYCLE
@@ -238,14 +238,14 @@ def test_measure_duty_cycle(la):
 
 
 def test_get_xy_rising_trigger(la):
-    la.configure_trigger("ID1", "rising")
+    la.configure_trigger("LA1", "rising")
     t = la.capture(1, 100)
     _, y = la.get_xy(t)
     assert y[0]
 
 
 def test_get_xy_falling_trigger(la):
-    la.configure_trigger("ID1", "falling")
+    la.configure_trigger("LA1", "falling")
     t = la.capture(1, 100)
     _, y = la.get_xy(t)
     assert not y[0]
@@ -279,12 +279,12 @@ def test_stop(la):
 def test_get_states(la):
     time.sleep(LOW_FREQUENCY ** -1)
     states = la.get_states()
-    expected_states = {"ID1": True, "ID2": True, "ID3": True, "ID4": True}
+    expected_states = {"LA1": True, "LA2": True, "LA3": True, "LA4": True}
     assert states == expected_states
 
 
 def test_count_pulses(la):
     interval = 0.2
-    pulses = la.count_pulses("ID2", interval)
+    pulses = la.count_pulses("LA2", interval)
     expected_pulses = FREQUENCY * interval
     assert expected_pulses == pytest.approx(pulses, rel=0.1)  # Pretty bad accuracy.

@@ -59,7 +59,7 @@ class ScienceLab():
 	"""
 
     BAUD = 1000000
-    WType = {'W1': 'sine', 'W2': 'sine'}
+    WType = {'SI1': 'sine', 'SI2': 'sine'}
 
     def __init__(self, timeout=1.0, **kwargs):
         self.verbose = kwargs.get('verbose', False)
@@ -109,7 +109,7 @@ class ScienceLab():
         if self.H.connected:
             for a in ['CH1', 'CH2']:
                 self.oscilloscope._channels[a].gain = 1
-            for a in ['W1', 'W2']: self.load_equation(a, 'sine')
+            for a in ['SI1', 'SI2']: self.load_equation(a, 'sine')
             self.SPI.set_parameters(1, 7, 1, 0)
             self.hexid = hex(self.device_id())
 
@@ -120,7 +120,7 @@ class ScienceLab():
         self.DAC = MCP4728(self.H, 3.3, 0)
 
     def get_resistance(self):
-        V = self.get_average_voltage('SEN')
+        V = self.get_average_voltage('RES')
         if V > 3.295: return np.Inf
         I = (3.3 - V) / 5.1e3
         res = V / I
@@ -213,7 +213,7 @@ class ScienceLab():
 		+------------+-----------------------------------------------------------------------------------------+
 		|Arguments   |Description                                                                              |
 		+============+=========================================================================================+
-		|channel_name| 'CH1','CH2','CH3', 'MIC','IN1','SEN','V+'                                               |
+		|channel_name| 'CH1','CH2','CH3', 'MIC','IN1','RES','V+'                                               |
 		+------------+-----------------------------------------------------------------------------------------+
 		|sleep       | read voltage in CPU sleep mode. not particularly useful. Also, Buggy.                   |
 		+------------+-----------------------------------------------------------------------------------------+
@@ -245,7 +245,7 @@ class ScienceLab():
 		==============  ============================================================================================================
 		**Arguments**
 		==============  ============================================================================================================
-		channel_name    'CH1', 'CH2', 'CH3', 'MIC', '5V', 'IN1','SEN'
+		channel_name    'CH1', 'CH2', 'CH3', 'MIC', '5V', 'IN1','RES'
 		sleep           read voltage in CPU sleep mode
 		==============  ============================================================================================================
 
@@ -301,7 +301,7 @@ class ScienceLab():
 		**Arguments**
 		==============  ============================================================================================
 		tg              timegap. 250KHz clock
-		channel         channel 'CH1'... 'CH9','IN1','SEN'
+		channel         channel 'CH1'... 'CH9','IN1','RES'
 		==============  ============================================================================================
 
 		"""
@@ -682,7 +682,7 @@ class ScienceLab():
     # -------------------------------------------------------------------------------------------------------------------#
 
     # |===============================================WAVEGEN SECTION====================================================|
-    # |This section has commands related to waveform generators W1, W2, PWM outputs, servo motor control etc.            |
+    # |This section has commands related to waveform generators SI1, SI2, PWM outputs, servo motor control etc.            |
     # -------------------------------------------------------------------------------------------------------------------#
 
     def set_wave(self, chan, freq):
@@ -694,16 +694,16 @@ class ScienceLab():
 		==============  ============================================================================================
 		**Arguments**
 		==============  ============================================================================================
-		chan       	Channel to set frequency for. W1 or W2
+		chan       	Channel to set frequency for. SI1 or SI2
 		frequency       Frequency to set on wave generator
 		==============  ============================================================================================
 
 
 		:return: frequency
 		"""
-        if chan == 'W1':
+        if chan == 'SI1':
             self.set_w1(freq)
-        elif chan == 'W2':
+        elif chan == 'SI2':
             self.set_w2(freq)
 
     def set_sine1(self, freq):
@@ -768,8 +768,8 @@ class ScienceLab():
 
         if waveType:  # User wants to set a particular waveform type. sine or tria
             if waveType in ['sine', 'tria']:
-                if (self.WType['W1'] != waveType):
-                    self.load_equation('W1', waveType)
+                if (self.WType['SI1'] != waveType):
+                    self.load_equation('SI1', waveType)
             else:
                 print('Not a valid waveform. try sine or tria')
 
@@ -818,8 +818,8 @@ class ScienceLab():
 
         if waveType:  # User wants to set a particular waveform type. sine or tria
             if waveType in ['sine', 'tria']:
-                if (self.WType['W2'] != waveType):
-                    self.load_equation('W2', waveType)
+                if (self.WType['SI2'] != waveType):
+                    self.load_equation('SI2', waveType)
             else:
                 print('Not a valid waveform. try sine or tria')
 
@@ -852,15 +852,15 @@ class ScienceLab():
 		==============  ============================================================================================
 		**Arguments**
 		==============  ============================================================================================
-		chan            Any of W1,W2,SQR1,SQR2,SQR3,SQR4
+		chan            Any of SI1,SI2,SQR1,SQR2,SQR3,SQR4
 		==============  ============================================================================================
 
 
 		:return: frequency
 		"""
-        if chan == 'W1':
+        if chan == 'SI1':
             return self.sine1freq
-        elif chan == 'W2':
+        elif chan == 'SI2':
             return self.sine2freq
         elif chan[:3] == 'SQR':
             return self.sqrfreq.get(chan, None)
@@ -958,7 +958,7 @@ class ScienceLab():
 		==============  ============================================================================================
 		**Arguments**
 		==============  ============================================================================================
-		chan             The waveform generator to alter. W1 or W2
+		chan             The waveform generator to alter. SI1 or SI2
 		function            A function that will be used to generate the datapoints
 		span                the range of values in which to evaluate the given function
 		==============  ============================================================================================
@@ -966,11 +966,11 @@ class ScienceLab():
 		.. code-block:: python
 
 		  fn = lambda x:abs(x-50)  #Triangular waveform
-		  self.I.load_waveform('W1',fn,[0,100])
+		  self.I.load_waveform('SI1',fn,[0,100])
 		  #Load triangular wave to wavegen 1
 
 		  #Load sinusoidal wave to wavegen 2
-		  self.I.load_waveform('W2',np.sin,[0,2*np.pi])
+		  self.I.load_waveform('SI2',np.sin,[0,2*np.pi])
 
 		'''
         if function == 'sine' or function == np.sin:
@@ -998,7 +998,7 @@ class ScienceLab():
 		==============  ============================================================================================
 		**Arguments**
 		==============  ============================================================================================
-		chan             The waveform generator to alter. 'W1' or 'W2'
+		chan             The waveform generator to alter. 'SI1' or 'SI2'
 		points          A list of 512 datapoints exactly
 		mode			Optional argument. Type of waveform. default value 'arbit'. accepts 'sine', 'tria'
 		==============  ============================================================================================
@@ -1010,11 +1010,11 @@ class ScienceLab():
 		'''
         self.__print__('reloaded wave table for %s : %s' % (chan, mode))
         self.WType[chan] = mode
-        chans = ['W1', 'W2']
+        chans = ['SI1', 'SI2']
         if chan in chans:
             num = chans.index(chan) + 1
         else:
-            print('Channel does not exist. Try W2 or W2')
+            print('Channel does not exist. Try SI2 or SI2')
             return
 
         # Normalize and scale .
@@ -1623,7 +1623,7 @@ class ScienceLab():
 		First a 10uS pulse is output on SQR1.  SQR1 must be connected to the TRIG pin on the sensor prior to use.
 
 		Upon receiving this pulse, the sensor emits a sequence of sound pulses, and the logic level of its output
-		pin(which we will monitor via ID1) is also set high.  The logic level goes LOW when the sound packet
+		pin(which we will monitor via LA1) is also set high.  The logic level goes LOW when the sound packet
 		returns to the sensor, or when a timeout occurs.
 
 		The ultrasound sensor outputs a series of 8 sound pulses at 40KHz which corresponds to a time period
