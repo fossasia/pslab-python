@@ -113,10 +113,10 @@ DIN = Byte.pack(9)
 GET_STATE = Byte.pack(1)
 GET_STATES = Byte.pack(2)
 
-ID1 = Byte.pack(0)
-ID2 = Byte.pack(1)
-ID3 = Byte.pack(2)
-ID4 = Byte.pack(3)
+LA1 = Byte.pack(0)
+LA2 = Byte.pack(1)
+LA3 = Byte.pack(2)
+LA4 = Byte.pack(3)
 LMETER = Byte.pack(4)
 
 # /*------TIMING FUNCTIONS-----*/
