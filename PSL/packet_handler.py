@@ -8,6 +8,8 @@ Example
 >>> device.disconnect()
 """
 import logging
+import os.path
+import platform
 import struct
 import time
 from functools import partial
@@ -42,6 +44,7 @@ class Handler:
         timeout: float = 1.0,
         **kwargs,  # Backward compatibility
     ):
+        self._check_udev()
         self.burst_buffer = b""
         self.load_burst = False
         self.input_queue_size = 0
@@ -70,6 +73,25 @@ class Handler:
         self.sendBurst = self.send_burst
         self.portname = self.interface.name
         self.listPorts = self._list_ports
+
+    @staticmethod
+    def _check_udev():
+        if platform.system() == "Linux":
+            udev_paths = [
+                "/run/udev/rules.d/",
+                "/etc/udev/rules.d/",
+                "/lib/udev/rules.d/",
+            ]
+            for p in udev_paths:
+                udev_rules = os.path.join(p, "99-pslab.rules")
+                if os.path.isfile(udev_rules):
+                    break
+            else:
+                e = (
+                    "A udev rule must be installed to access the PSLab. "
+                    + "Please copy 99-pslab.rules to /etc/udev/rules.d/."
+                )
+                raise OSError(e)
 
     @staticmethod
     def _list_ports() -> List[str]:  # Promote to public?
