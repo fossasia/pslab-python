@@ -77,7 +77,10 @@ class Handler:
         return [p.device for p in list_ports.comports()]
 
     def connect(
-        self, port: str = None, baudrate: int = 1000000, timeout: float = 1.0,
+        self,
+        port: str = None,
+        baudrate: int = 1000000,
+        timeout: float = 1.0,
     ):
         """Connect to PSLab.
 
@@ -100,7 +103,10 @@ class Handler:
         """
         # serial.Serial opens automatically if port is not None.
         self.interface = serial.Serial(
-            port=port, baudrate=baudrate, timeout=timeout, write_timeout=timeout,
+            port=port,
+            baudrate=baudrate,
+            timeout=timeout,
+            write_timeout=timeout,
         )
 
         if self.interface.is_open:
@@ -132,7 +138,10 @@ class Handler:
         self.interface.close()
 
     def reconnect(
-        self, port: str = None, baudrate: int = None, timeout: float = None,
+        self,
+        port: str = None,
+        baudrate: int = None,
+        timeout: float = None,
     ):
         """Reconnect to PSLab.
 
@@ -151,7 +160,10 @@ class Handler:
         timeout = self.interface.timeout if timeout is None else timeout
 
         self.interface = serial.Serial(
-            port=port, baudrate=baudrate, timeout=timeout, write_timeout=timeout,
+            port=port,
+            baudrate=baudrate,
+            timeout=timeout,
+            write_timeout=timeout,
         )
         self.connect()
 
@@ -265,11 +277,34 @@ class Handler:
         return retval
 
     def read(self, number_of_bytes: int) -> bytes:
+        """Log incoming bytes.
+
+        Wrapper for Serial.read().
+
+        Parameters
+        ----------
+        number_of_bytes : int
+            Number of bytes to read from the serial port.
+
+        Returns
+        -------
+        bytes
+            Bytes read from the serial port.
+        """
         data = self.interface.read(number_of_bytes)
         self._write_log(data, "RX")
         return data
 
     def write(self, data: bytes):
+        """Log outgoing bytes.
+
+        Wrapper for Serial.write().
+
+        Parameters
+        ----------
+        data : int
+            Bytes to write to the serial port.
+        """
         self.interface.write(data)
         self._write_log(data, "TX")
 
@@ -351,25 +386,38 @@ class MockHandler(Handler):
     VERSION = "PSLab vMOCK"
 
     def __init__(
-        self, port: str = None, baudrate: int = 1000000, timeout: float = 1.0,
+        self,
+        port: str = None,
+        baudrate: int = 1000000,
+        timeout: float = 1.0,
     ):
         self._in_buffer = b""
         super().__init__(port, baudrate, timeout)
 
     def connect(
-        self, port: str = None, baudrate: int = 1000000, timeout: float = 1.0,
+        self,
+        port: str = None,
+        baudrate: int = 1000000,
+        timeout: float = 1.0,
     ):
+        """See :meth:`Handler.connect`."""
         self.version = self.get_version()
 
     def disconnect(self):
+        """See :meth:`Handler.disconnect`."""
         pass
 
     def reconnect(
-        self, port: str = None, baudrate: int = None, timeout: float = None,
+        self,
+        port: str = None,
+        baudrate: int = None,
+        timeout: float = None,
     ):
+        """See :meth:`Handler.reconnect`."""
         pass
 
     def get_version(self, *args) -> str:
+        """Return mock version."""
         return self.VERSION
 
     def read(self, number_of_bytes: int) -> bytes:
@@ -377,6 +425,8 @@ class MockHandler(Handler):
 
         The returned data depends on how :meth:`write` was called prior to calling
         :meth:`read`.
+
+        See also :meth:`Handler.read`.
         """
         read_bytes = self._in_buffer[:number_of_bytes]
         self._in_buffer = self._in_buffer[number_of_bytes:]
@@ -384,14 +434,15 @@ class MockHandler(Handler):
 
     def write(self, data: bytes):
         """Add recorded RX data to buffer if written data equals recorded TX data.
+
+        See also :meth:`Handler.write`.
         """
         tx, rx = next(RECORDED_TRAFFIC)
         if tx == data:
             self._in_buffer += rx
 
     def wait_for_data(self, timeout: float = 0.2) -> bool:
-        """Return True if there is data in buffer, or return False after timeout.
-        """
+        """Return True if there is data in buffer, or return False after timeout."""
         if self._in_buffer:
             return True
         else:

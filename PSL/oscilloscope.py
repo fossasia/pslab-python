@@ -45,7 +45,12 @@ class Oscilloscope:
         self._trigger_enabled = False
         self._trigger_channel = "CH1"
 
-    def capture(self, channels: int, samples: int, timegap: float,) -> np.ndarray:
+    def capture(
+        self,
+        channels: int,
+        samples: int,
+        timegap: float,
+    ) -> np.ndarray:
         """Capture an oscilloscope trace from the specified input channels.
 
         This is a blocking call.

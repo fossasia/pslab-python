@@ -404,9 +404,11 @@ class LogicAnalyzer:
         self._device.send_byte(self._prescaler)
 
         try:
-            trigger = {0: 4, 1: 8, 2: 16,}[
-                self._trigger_channel.number
-            ] | self._trigger_mode
+            trigger = {
+                0: 4,
+                1: 8,
+                2: 16,
+            }[self._trigger_channel.number] | self._trigger_mode
         except KeyError:
             e = "Triggering is only possible on LA1, LA2, or LA3."
             raise NotImplementedError(e)
@@ -592,7 +594,7 @@ class LogicAnalyzer:
         return initial_states, progress
 
     def configure_trigger(self, trigger_channel: str, trigger_mode: str):
-        """Setup trigger channel and trigger condition.
+        """Set up trigger channel and trigger condition.
 
         Parameters
         ----------
@@ -618,17 +620,20 @@ class LogicAnalyzer:
                 "sixteen rising": 5,
             }[self.trigger_mode]
         elif channels == 2:
-            self._trigger_mode = {"disabled": 0, "falling": 3, "rising": 1,}[
-                self.trigger_mode
-            ]
+            self._trigger_mode = {
+                "disabled": 0,
+                "falling": 3,
+                "rising": 1,
+            }[self.trigger_mode]
         elif channels == 4:
-            self._trigger_mode = {"disabled": 0, "falling": 1, "rising": 3,}[
-                self.trigger_mode
-            ]
+            self._trigger_mode = {
+                "disabled": 0,
+                "falling": 1,
+                "rising": 3,
+            }[self.trigger_mode]
 
     def stop(self):
-        """Stop a running :meth:`capture` function.
-        """
+        """Stop a running :meth:`capture` function."""
         self._device.send_byte(CP.TIMING)
         self._device.send_byte(CP.STOP_LA)
         self._device.get_ack()
@@ -657,7 +662,7 @@ class LogicAnalyzer:
     def count_pulses(
         self, channel: str, interval: float = 1, block: bool = True
     ) -> Union[int, None]:
-        """	Count pulses on a digital input.
+        """Count pulses on a digital input.
 
         The counter is 16 bits, so it will roll over after 65535 pulses. This method
         can be used at the same time as the oscilloscope.
