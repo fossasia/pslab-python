@@ -9,6 +9,7 @@ class I2CMaster():
     Methods to handle slave independent functionality with the I2C port.
     An instance of Labtools.Packet_Handler must be passed to the init function
     """
+    MAX_BRGVAL = 511
 
     def __init__(self, H):
         self.H = H
@@ -60,8 +61,8 @@ class I2CMaster():
         self.H.__sendByte__(CP.I2C_CONFIG)
         # freq=1/((BRGVAL+1.0)/64e6+1.0/1e7)
         BRGVAL = int((1. / freq - 1. / 1e7) * 64e6 - 1)
-        if BRGVAL > 511:
-            BRGVAL = 511
+        if BRGVAL > self.MAX_BRGVAL:
+            BRGVAL = self.MAX_BRGVAL
             if verbose: print('Frequency too low. Setting to :', 1 / ((BRGVAL + 1.0) / 64e6 + 1.0 / 1e7))
         self.H.__sendInt__(BRGVAL)
         self.H.__get_ack__()
@@ -301,7 +302,7 @@ class I2CSlave():
         self.H.__sendByte__(self.address)
         self.H.__sendByte__(register_address)
         self.H.__sendByte__(bytes_to_read)
-        data = self.H.fd.read(bytes_to_read)
+        data = self.H.interface.read(bytes_to_read)
         self.H.__get_ack__()
         try:
             return list(data)
@@ -405,7 +406,7 @@ class I2CSlave():
             self.H.__sendInt__(i * DATA_SPLITTING)
             rem = DATA_SPLITTING * 2 + 1
             for _ in range(200):
-                partial = self.H.fd.read(
+                partial = self.H.interface.read(
                     rem)  # reading int by int sometimes causes a communication error. this works better.
                 rem -= len(partial)
                 data += partial
@@ -423,7 +424,7 @@ class I2CSlave():
             self.H.__sendInt__(total_int_samples - total_int_samples % DATA_SPLITTING)
             rem = 2 * (total_int_samples % DATA_SPLITTING) + 1
             for _ in range(20):
-                partial = self.H.fd.read(
+                partial = self.H.interface.read(
                     rem)  # reading int by int sometimes causes a communication error. this works better.
                 rem -= len(partial)
                 data += partial
