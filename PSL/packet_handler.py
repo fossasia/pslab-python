@@ -189,10 +189,6 @@ class Handler:
         )
         self.connect()
 
-    def __del__(self):  # Is this necessary?
-        """Disconnect before garbage collection."""
-        self.interface.close()
-
     def get_version(self, *args) -> str:  # *args for backwards compatibility
         """Query PSLab for its version and return it as a decoded string.
 
