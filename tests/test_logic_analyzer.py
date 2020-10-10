@@ -40,8 +40,7 @@ def la(handler, request):
 
 
 def enable_pwm(psl: sciencelab.ScienceLab, test_name: str):
-    """Enable PWM output for integration testing.
-    """
+    """Enable PWM output for integration testing."""
     low_frequency_tests = (
         "test_capture_four_low_frequency",
         "test_capture_four_lower_frequency",

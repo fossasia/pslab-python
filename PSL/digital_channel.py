@@ -1,5 +1,4 @@
-"""Objects related to the PSLab's digital input channels.
-"""
+"""Objects related to the PSLab's digital input channels."""
 
 import numpy as np
 
