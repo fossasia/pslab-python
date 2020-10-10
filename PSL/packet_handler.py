@@ -412,6 +412,10 @@ class MockHandler(Handler):
         self._in_buffer = b""
         super().__init__(port, baudrate, timeout)
 
+    @staticmethod
+    def _check_udev():
+        pass
+
     def connect(
         self,
         port: str = None,
