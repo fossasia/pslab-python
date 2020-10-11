@@ -284,16 +284,16 @@ class I2CSlave():
         return vals
 
     def simple_read_byte(self):
-        vals = self.simpleRead(1)
+        vals = self.simple_read(1)
         return vals[0]
 
     def simple_read_int(self):
-        vals = self.simpleRead(2)
+        vals = self.simple_read(2)
         bytes_ = bytearray(vals)
         return CP.ShortInt.unpack(bytes_)[0]
 
     def simple_read_long(self):
-        vals = self.simpleRead(4)
+        vals = self.simple_read(4)
         bytes_ = bytearray(vals)
         return CP.Integer.unpack(bytes_)[0]
 
@@ -312,18 +312,18 @@ class I2CSlave():
             return False
 
     def read_bulk_byte(self, register_address):
-        data = self.readBulk(register_address, 1)
+        data = self.read_bulk(register_address, 1)
         if data:
             return data[0]
 
     def read_bulk_int(self, register_address):
-        data = self.readBulk(register_address, 2)
+        data = self.read_bulk(register_address, 2)
         if data:
             bytes_ = bytearray(data)
             return CP.ShortInt.unpack(bytes_)[0]
 
     def read_bulk_long(self, register_address):
-        data = self.readBulk(register_address, 4)
+        data = self.read_bulk(register_address, 4)
         if data:
             bytes_ = bytearray(data)
             return CP.Integer.unpack(bytes_)[0]
@@ -528,55 +528,55 @@ class I2C(I2CMaster, I2CSlave): # for backwards compatibility
         I2CSlave.__init__(self, H, None)
         warn('I2C is deprecated; use I2CMaster and I2CSlave', DeprecationWarning)
 
-    def start(self, address, rw): # pylint: disable=arguments-differ 
+    def start(self, address, rw): # pylint: disable=arguments-differ
         self.address = address
         return super().start(rw)
 
-    def restart(self, address, rw): # pylint: disable=arguments-differ 
+    def restart(self, address, rw): # pylint: disable=arguments-differ
         self.address = address
         return super().restart(rw)
 
-    def simpleRead(self, address, numbytes): # pylint: disable=arguments-differ 
+    def simpleRead(self, address, numbytes): # pylint: disable=arguments-differ
         self.address = address
         return super().simple_read(numbytes)
 
-    def simple_read_byte(self, address): # pylint: disable=arguments-differ 
+    def simple_read_byte(self, address): # pylint: disable=arguments-differ
         self.address = address
         return super().simple_read_byte()
 
-    def simple_read_int(self, address): # pylint: disable=arguments-differ 
+    def simple_read_int(self, address): # pylint: disable=arguments-differ
         self.address = address
         return super().simple_read_int()
 
-    def simple_read_long(self, address): # pylint: disable=arguments-differ 
+    def simple_read_long(self, address): # pylint: disable=arguments-differ
         self.address = address
         return super().simple_read_long()
 
-    def readBulk(self, device_address, register_address, bytes_to_read): # pylint: disable=arguments-differ 
+    def readBulk(self, device_address, register_address, bytes_to_read): # pylint: disable=arguments-differ
         self.address = device_address
         return super().read_bulk(register_address, bytes_to_read)
 
-    def read_bulk_byte(self, device_address, register_address): # pylint: disable=arguments-differ 
+    def read_bulk_byte(self, device_address, register_address): # pylint: disable=arguments-differ
         self.address = device_address
         return super().read_bulk_byte(register_address)
 
-    def read_bulk_int(self, device_address, register_address): # pylint: disable=arguments-differ 
+    def read_bulk_int(self, device_address, register_address): # pylint: disable=arguments-differ
         self.address = device_address
         return super().read_bulk_int(register_address)
 
-    def read_bulk_long(self, device_address, register_address): # pylint: disable=arguments-differ 
+    def read_bulk_long(self, device_address, register_address): # pylint: disable=arguments-differ
         self.address = device_address
         return super().read_bulk_long(register_address)
 
-    def writeBulk(self, device_address, bytestream): # pylint: disable=arguments-differ 
+    def writeBulk(self, device_address, bytestream): # pylint: disable=arguments-differ
         self.address = device_address
         return super().write_bulk(bytestream)
 
-    def __captureStart__(self, address, location, sample_length, total_samples, tg): # pylint: disable=arguments-differ 
+    def __captureStart__(self, address, location, sample_length, total_samples, tg): # pylint: disable=arguments-differ
         self.address = address
         return super().__captureStart__(location, sample_length, total_samples, tg)
 
-    def capture(self, address, location, sample_length, total_samples, tg, *args): # pylint: disable=arguments-differ 
+    def capture(self, address, location, sample_length, total_samples, tg, *args): # pylint: disable=arguments-differ
         self.address = address
         return super().capture(location, sample_length, total_samples, tg, *args)
 
