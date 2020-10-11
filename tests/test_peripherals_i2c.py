@@ -2,14 +2,16 @@ from unittest.mock import Mock, call as H_interface
 import pytest
 
 from PSL import commands_proto as CP
-from PSL.Peripherals import I2CMaster, I2CSlave, I2C
+from PSL.Peripherals import I2CMaster, I2CSlave
 from PSL.packet_handler import Handler
 
 ADDRESS = 0X52
 REGISTER_ADDRESS = 0x06
 
 class MockHandler(Handler):
-    def connect(self, *args, **kwargs):
+    def connect(
+        self, port: str = None, baudrate: int = 1000000, timeout: float = 1.0,
+    ):
         pass
 
 @pytest.fixture

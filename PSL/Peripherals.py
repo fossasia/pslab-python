@@ -1,4 +1,5 @@
 from __future__ import print_function
+from warnings import warn
 import PSL.commands_proto as CP
 import numpy as np
 import time
@@ -394,7 +395,7 @@ class I2CSlave():
         '''
         Fetch data acquired by the I2C scope. refer to :func:`__captureStart__`
         '''
-        total_int_samples = self.total_bytes / 2
+        total_int_samples = self.total_bytes // 2
         DATA_SPLITTING = 500
         print('fetchin samples : ', total_int_samples, '   split', DATA_SPLITTING)
         data = b''
@@ -525,56 +526,57 @@ class I2C(I2CMaster, I2CSlave): # for backwards compatibility
     def __init__(self, H):
         I2CMaster.__init__(self, H)
         I2CSlave.__init__(self, H, None)
+        warn('I2C is deprecated; use I2CMaster and I2CSlave', DeprecationWarning)
 
-    def start(self, address, rw):
+    def start(self, address, rw): # nosec
         self.address = address
         return super().start(rw)
-    
-    def restart(self, address, rw):
+
+    def restart(self, address, rw): # nosec
         self.address = address
         return super().restart(rw)
 
-    def simpleRead(self, address, numbytes):
+    def simpleRead(self, address, numbytes): # nosec
         self.address = address
         return super().simpleRead(numbytes)
 
-    def simple_read_byte(self, address):
+    def simple_read_byte(self, address): # nosec
         self.address = address
         return super().simple_read_byte()
     
-    def simple_read_int(self, address):
+    def simple_read_int(self, address): # nosec
         self.address = address
         return super().simple_read_int()
 
-    def simple_read_long(self, address):
+    def simple_read_long(self, address): # nosec
         self.address = address
         return super().simple_read_long()
 
-    def readBulk(self, device_address, register_address, bytes_to_read):
+    def readBulk(self, device_address, register_address, bytes_to_read): # nosec
         self.address = device_address
         return super().readBulk(register_address, bytes_to_read)
 
-    def read_bulk_byte(self, device_address, register_address):
+    def read_bulk_byte(self, device_address, register_address): # nosec
         self.address = device_address
         return super().read_bulk_byte(register_address)
 
-    def read_bulk_int(self, device_address, register_address):
+    def read_bulk_int(self, device_address, register_address): # nosec
         self.address = device_address
         return super().read_bulk_int(register_address)
 
-    def read_bulk_long(self, device_address, register_address):
+    def read_bulk_long(self, device_address, register_address): # nosec
         self.address = device_address
         return super().read_bulk_long(register_address)
 
-    def writeBulk(self, device_address, bytestream):
+    def writeBulk(self, device_address, bytestream): # nosec
         self.address = device_address
         return super().writeBulk(bytestream)
 
-    def __captureStart__(self, address, location, sample_length, total_samples, tg):
+    def __captureStart__(self, address, location, sample_length, total_samples, tg): # nosec
         self.address = address
         return super().__captureStart__(location, sample_length, total_samples, tg)
 
-    def capture(self, address, location, sample_length, total_samples, tg, *args):
+    def capture(self, address, location, sample_length, total_samples, tg, *args): # nosec
         self.address = address
         return super().capture(location, sample_length, total_samples, tg, *args)
 
