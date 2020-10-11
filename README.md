@@ -55,4 +55,4 @@ See [doc/development.rst](https://github.com/fossasia/pslab-python/blob/developm
 
 ## License
 
-This library is free and open source software licensed under the [GPL v3](https://www.gnu.org/licenses/gpl-3.0.en.html). The copyright is owned by FOSSASIA.
+This library is free and open source software licensed under the [GPL v3](https://github.com/fossasia/pslab-python/blob/development/README.md). The copyright is owned by FOSSASIA.
