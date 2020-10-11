@@ -6,7 +6,7 @@ Before opening a pull request, make sure that:
 1. The code builds.
 2. The docs build.
 3. The linters pass.
-4. All tests pass.
+4. The tests pass.
 5. Test coverage has not decreased.
 
 Building & Installing
@@ -65,8 +65,9 @@ General
 - Maximum line length is 88 characters, but aim for less than 80.
 - Maximum `cyclomatic complexity`_ is ten, but aim for five or lower.
 - Blank lines before and after statements (for, if, return, ...), unless
-    - the statement comes at the beginning or end of another statement.
-    - the indentation level is five lines or fewer long.
+  
+  - the statement comes at the beginning or end of another statement.
+  - the indentation level is five lines or fewer long.
 
 .. _`cyclomatic complexity`: https://en.wikipedia.org/wiki/Cyclomatic_complexity
 
@@ -78,8 +79,10 @@ Imports
 - Within import groups, :code:`import`-style imports come before :code:`from`-style imports.
 - One :code:`import`-style import per line.
 - All :code:`from`-style imports from a specific package or module on the same line, unless that would violate the line length limit.
-    - In that case, strongly consider using :code:`import`-style instead.
-    - If that is not possible, use one import per line.
+    
+  - In that case, strongly consider using :code:`import`-style instead.
+  - If that is not possible, use one import per line.
+
 - Imports are sorted alphabetically within groups.
 
 Comments and docstrings
@@ -88,6 +91,8 @@ Comments and docstrings
 - Blank line after module- and class-level docstrings, but not after method-level docstrings.
 - Comments start with a capital letter and end with a period if they are contain at least two words.
 - Comments go on the same line as the code they explain, unless that would violate the line length limit.
-    - In that case, the comment goes immediately before the code it explains.
+
+  - In that case, the comment goes immediately before the code it explains.
+
 - Avoid multiline comments.
     
