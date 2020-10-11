@@ -267,7 +267,7 @@ class I2CSlave():
         self.H.__get_ack__()
         return val
 
-    def simpleRead(self, numbytes):
+    def simple_read(self, numbytes):
         """
         Read bytes from I2C slave without first transmitting the read location.
 
@@ -297,7 +297,7 @@ class I2CSlave():
         bytes_ = bytearray(vals)
         return CP.Integer.unpack(bytes_)[0]
 
-    def readBulk(self, register_address, bytes_to_read):
+    def read_bulk(self, register_address, bytes_to_read):
         self.H.__sendByte__(CP.I2C_HEADER)
         self.H.__sendByte__(CP.I2C_READ_BULK)
         self.H.__sendByte__(self.address)
@@ -328,7 +328,7 @@ class I2CSlave():
             bytes_ = bytearray(data)
             return CP.Integer.unpack(bytes_)[0]
 
-    def writeBulk(self, bytestream):
+    def write_bulk(self, bytestream):
         """
         write bytes to I2C slave
 
@@ -528,55 +528,55 @@ class I2C(I2CMaster, I2CSlave): # for backwards compatibility
         I2CSlave.__init__(self, H, None)
         warn('I2C is deprecated; use I2CMaster and I2CSlave', DeprecationWarning)
 
-    def start(self, address, rw): # nosec
+    def start(self, address, rw): # pylint: disable=arguments-differ 
         self.address = address
         return super().start(rw)
 
-    def restart(self, address, rw): # nosec
+    def restart(self, address, rw): # pylint: disable=arguments-differ 
         self.address = address
         return super().restart(rw)
 
-    def simpleRead(self, address, numbytes): # nosec
+    def simpleRead(self, address, numbytes): # pylint: disable=arguments-differ 
         self.address = address
-        return super().simpleRead(numbytes)
+        return super().simple_read(numbytes)
 
-    def simple_read_byte(self, address): # nosec
+    def simple_read_byte(self, address): # pylint: disable=arguments-differ 
         self.address = address
         return super().simple_read_byte()
-    
-    def simple_read_int(self, address): # nosec
+
+    def simple_read_int(self, address): # pylint: disable=arguments-differ 
         self.address = address
         return super().simple_read_int()
 
-    def simple_read_long(self, address): # nosec
+    def simple_read_long(self, address): # pylint: disable=arguments-differ 
         self.address = address
         return super().simple_read_long()
 
-    def readBulk(self, device_address, register_address, bytes_to_read): # nosec
+    def readBulk(self, device_address, register_address, bytes_to_read): # pylint: disable=arguments-differ 
         self.address = device_address
-        return super().readBulk(register_address, bytes_to_read)
+        return super().read_bulk(register_address, bytes_to_read)
 
-    def read_bulk_byte(self, device_address, register_address): # nosec
+    def read_bulk_byte(self, device_address, register_address): # pylint: disable=arguments-differ 
         self.address = device_address
         return super().read_bulk_byte(register_address)
 
-    def read_bulk_int(self, device_address, register_address): # nosec
+    def read_bulk_int(self, device_address, register_address): # pylint: disable=arguments-differ 
         self.address = device_address
         return super().read_bulk_int(register_address)
 
-    def read_bulk_long(self, device_address, register_address): # nosec
+    def read_bulk_long(self, device_address, register_address): # pylint: disable=arguments-differ 
         self.address = device_address
         return super().read_bulk_long(register_address)
 
-    def writeBulk(self, device_address, bytestream): # nosec
+    def writeBulk(self, device_address, bytestream): # pylint: disable=arguments-differ 
         self.address = device_address
-        return super().writeBulk(bytestream)
+        return super().write_bulk(bytestream)
 
-    def __captureStart__(self, address, location, sample_length, total_samples, tg): # nosec
+    def __captureStart__(self, address, location, sample_length, total_samples, tg): # pylint: disable=arguments-differ 
         self.address = address
         return super().__captureStart__(location, sample_length, total_samples, tg)
 
-    def capture(self, address, location, sample_length, total_samples, tg, *args): # nosec
+    def capture(self, address, location, sample_length, total_samples, tg, *args): # pylint: disable=arguments-differ 
         self.address = address
         return super().capture(location, sample_length, total_samples, tg, *args)
 
