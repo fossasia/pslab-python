@@ -195,7 +195,7 @@ def test_simple_read(slave):
     bytes_read = [CP.ACKNOWLEDGE] * 4*2
     bytes_read[::2] = [b'd', b'a', b't', b'a']
     slave.H.interface.read.side_effect = [CP.ACKNOWLEDGE] + bytes_read
-    assert slave.simpleRead(4) == list(b'data')
+    assert slave.simple_read(4) == list(b'data')
 
     calls = START_READ + ACK
     calls += (READ_MORE + [H_interface.read(1)] + ACK)*3
@@ -233,7 +233,7 @@ def test_simple_read_long(slave):
 
 def test_read_bulk(slave):
     slave.H.interface.read.side_effect = [b'data', CP.ACKNOWLEDGE]
-    assert slave.readBulk(REGISTER_ADDRESS, 4) == list(b'data')
+    assert slave.read_bulk(REGISTER_ADDRESS, 4) == list(b'data')
 
     calls = READ_BULK + [H_interface.write(CP.Byte.pack(4))]
     calls += [H_interface.read(4)] + ACK
@@ -264,7 +264,7 @@ def test_read_bulk_long(slave):
     assert slave.H.interface.method_calls == calls
 
 def test_write_bulk(slave):
-    slave.writeBulk(b'data')
+    slave.write_bulk(b'data')
 
     calls = WRITE_BULK + [H_interface.write(CP.Byte.pack(4))]
     calls += list(map(H_interface.write, [b'd',b'a',b't',b'a']))
