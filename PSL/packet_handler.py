@@ -12,7 +12,7 @@ import os.path
 import platform
 import struct
 import time
-from functools import partial
+from functools import partial, update_wrapper
 from typing import List, Union
 
 import serial
@@ -53,22 +53,27 @@ class Handler:
         self._logging = False
         self.interface = serial.Serial()
         self.send_byte = partial(self._send, size=1)
+        update_wrapper(self.send_byte, self._send)
         self.send_int = partial(self._send, size=2)
+        update_wrapper(self.send_int, self._send)
         self.get_byte = partial(self._receive, size=1)
+        update_wrapper(self.get_byte, self._receive)
         self.get_int = partial(self._receive, size=2)
+        update_wrapper(self.get_int, self._receive)
         self.get_long = partial(self._receive, size=4)
+        update_wrapper(self.get_long, self._receive)
         self.connect(port=port, baudrate=baudrate, timeout=timeout)
 
         # Backwards compatibility
         self.fd = self.interface
         self.occupiedPorts = set()
         self.connected = self.interface.is_open
-        self.__sendByte__ = partial(self._send, size=1)
-        self.__sendInt__ = partial(self._send, size=2)
+        self.__sendByte__ = self.send_byte
+        self.__sendInt__ = self.send_int
         self.__get_ack__ = self.get_ack
-        self.__getByte__ = partial(self._receive, size=1)
-        self.__getInt__ = partial(self._receive, size=2)
-        self.__getLong__ = partial(self._receive, size=4)
+        self.__getByte__ = self.get_byte
+        self.__getInt__ = self.get_int
+        self.__getLong__ = self.get_long
         self.waitForData = self.wait_for_data
         self.sendBurst = self.send_burst
         self.portname = self.interface.name
@@ -239,24 +244,17 @@ class Handler:
         else:
             raise ValueError("size must be 1, 2, or 4.")
 
-    def _send(self, value: Union[bytes, int], size: int = None):
+    def _send(self, value: Union[bytes, int], size: int):
         """Send a value to the PSLab.
-
-        Optionally handles conversion from int to bytes.
 
         Parameters
         ----------
-        value : bytes, int
+        value : int
             Value to send to PSLab. Must fit in four bytes.
-        size : int, optional
-            Number of bytes to send. If not specified, the number of bytes sent
-            depends on the size of :value:.
         """
         if isinstance(value, bytes):
             packet = value
         else:
-            # True + True == 2, see PEP 285.
-            size = 2 ** ((value > 0xFF) + (value > 0xFFFF)) if size is None else size
             packer = self._get_integer_type(size)
             packet = packer.pack(value)
 
@@ -266,28 +264,18 @@ class Handler:
             self.write(packet)
 
     def _receive(self, size: int) -> int:
-        """Read and unpack the specified number of bytes from the serial port.
-
-        Parameters
-        ----------
-        size : int
-            Number of bytes to read from the serial port.
+        """Read and unpack data from the serial port.
 
         Returns
         -------
         int
-            Unpacked bytes, or -1 if too few bytes were read.
+            Unpacked data, or -1 if too few bytes were read.
         """
         received = self.read(size)
 
         if len(received) == size:
-            if size in (1, 2, 4):
-                unpacker = self._get_integer_type(size)
-                retval = unpacker.unpack(received)[0]
-            else:
-                retval = int.from_bytes(
-                    bytes=received, byteorder="little", signed=False
-                )
+            unpacker = self._get_integer_type(size)
+            retval = unpacker.unpack(received)[0]
         else:
             logger.error(f"Requested {size} bytes, got {len(received)}.")
             retval = -1  # raise an exception instead?

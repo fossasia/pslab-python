@@ -1,193 +1,162 @@
-import unittest
-from unittest.mock import patch
-
-import serial
+import pytest
+from serial import SerialException
 from serial.tools.list_ports_common import ListPortInfo
 
 import PSL.commands_proto as CP
 from PSL.packet_handler import Handler
 
 VERSION = "PSLab vMOCK\n"
-PORT = "mockport"
+PORT = "mock_port"
 
 
-class TestHandler(unittest.TestCase):
-    @staticmethod
-    def mock_ListPortInfo(found=True):
-        if found:
-            yield ListPortInfo(device=PORT)
-        else:
-            return
+def mock_ListPortInfo(found=True):
+    if found:
+        yield ListPortInfo(device=PORT)
+    else:
+        return
 
-    def setUp(self):
-        self.Serial_patcher = patch("PSL.packet_handler.serial.Serial")
-        self.list_ports_patcher = patch("PSL.packet_handler.list_ports")
-        self.mock_Serial = self.Serial_patcher.start()
-        self.mock_list_ports = self.list_ports_patcher.start()
-        self.mock_Serial().readline.return_value = VERSION.encode("utf-8")
 
-    def tearDown(self):
-        self.Serial_patcher.stop()
-        self.list_ports_patcher.stop()
+@pytest.fixture
+def mock_serial(mocker):
+    serial_patch = mocker.patch("PSL.packet_handler.serial.Serial")
+    serial_patch().readline.return_value = VERSION.encode()
+    return serial_patch
 
-    def test_connect_port_provided(self):
-        Handler(port=PORT)
-        self.assertTrue(self.mock_Serial().is_open)
 
-    def test_connect_scan_port(self):
-        self.mock_Serial().is_open = False
-        self.mock_list_ports.grep.return_value = self.mock_ListPortInfo()
+@pytest.fixture
+def mock_list_ports(mocker):
+    return mocker.patch("PSL.packet_handler.list_ports")
+
+
+def test_connect_scan_port(mock_serial, mock_list_ports):
+    mock_serial().is_open = False
+    mock_list_ports.grep.return_value = mock_ListPortInfo()
+    Handler()
+    mock_serial().open.assert_called()
+
+
+def test_connect_scan_failure(mock_serial, mock_list_ports):
+    mock_serial().is_open = False
+    mock_list_ports.grep.return_value = mock_ListPortInfo(found=False)
+    with pytest.raises(SerialException):
         Handler()
-        self.mock_Serial().open.assert_called()
-
-    def test_connect_scan_failure(self):
-        self.mock_Serial().is_open = False
-        self.mock_list_ports.grep.return_value = self.mock_ListPortInfo(found=False)
-        self.assertRaises(serial.SerialException, Handler)
-
-    def test_disconnect(self):
-        H = Handler()
-        H.disconnect()
-        self.mock_Serial().close.assert_called()
-
-    def test_reconnect(self):
-        H = Handler(port=PORT)
-        H.reconnect(port=PORT[::-1])
-        self.assertIn({"port": PORT}, self.mock_Serial.call_args_list)
-        self.assertIn({"port": PORT[::-1]}, self.mock_Serial.call_args_list)
-        self.mock_Serial().close.assert_called()
-
-    def test_del(self):
-        H = Handler()
-        H.__del__()
-        self.mock_Serial().close.assert_called()
-
-    def test_get_version(self):
-        H = Handler()
-
-        self.mock_Serial().write.assert_called_with(CP.GET_VERSION)
-        self.assertEqual(H.version, VERSION)
-
-    def test_get_ack_success(self):
-        H = Handler()
-        success = 1
-        self.mock_Serial().read.return_value = CP.Byte.pack(success)
-        self.assertEqual(H.get_ack(), success)
-
-    def test_get_ack_burst_mode(self):
-        H = Handler()
-        success = 1
-        H.load_burst = True
-        queue_size = H.input_queue_size
-        self.mock_Serial().read.return_value = b""
-
-        self.assertEqual(H.get_ack(), success)
-        self.assertEqual(H.input_queue_size, queue_size + 1)
-
-    def test_get_ack_failure(self):
-        H = Handler()
-        error = 3
-        self.mock_Serial().read.return_value = b""
-        self.assertEqual(H.get_ack(), error)
-
-    def test_send_bytes(self):
-        H = Handler()
-        H._send(CP.Byte.pack(0xFF))
-        self.mock_Serial().write.assert_called_with(CP.Byte.pack(0xFF))
-
-    def test_send_byte(self):
-        H = Handler()
-        H._send(0xFF)
-        self.mock_Serial().write.assert_called_with(CP.Byte.pack(0xFF))
-
-    def test_send_byte_burst_mode(self):
-        H = Handler()
-        H.load_burst = True
-        H._send(0xFF)
-        self.assertEqual(H.burst_buffer, CP.Byte.pack(0xFF))
-
-    def test_send_int(self):
-        H = Handler()
-        H._send(0xFFFF)
-        self.mock_Serial().write.assert_called_with(CP.ShortInt.pack(0xFFFF))
-
-    def test_send_int_burst_mode(self):
-        H = Handler()
-        H.load_burst = True
-        H._send(0xFFFF)
-        self.assertEqual(H.burst_buffer, CP.ShortInt.pack(0xFFFF))
-
-    def test_send_long(self):
-        H = Handler()
-        H._send(0xFFFFFFFF)
-        self.mock_Serial().write.assert_called_with(CP.Integer.pack(0xFFFFFFFF))
-
-    def test_send_long_burst_mode(self):
-        H = Handler()
-        H.load_burst = True
-        H._send(0xFFFFFFFF)
-        self.assertEqual(H.burst_buffer, CP.Integer.pack(0xFFFFFFFF))
-
-    def test_receive(self):
-        H = Handler()
-        self.mock_Serial().read.return_value = CP.Byte.pack(0xFF)
-        r = H._receive(1)
-        self.mock_Serial().read.assert_called_with(1)
-        self.assertEqual(r, 0xFF)
-
-    def test_receive_uneven_bytes(self):
-        H = Handler()
-        self.mock_Serial().read.return_value = int.to_bytes(
-            0xFFFFFF, length=3, byteorder="little", signed=False
-        )
-        r = H._receive(3)
-        self.mock_Serial().read.assert_called_with(3)
-        self.assertEqual(r, 0xFFFFFF)
-
-    def test_receive_failure(self):
-        H = Handler()
-        self.mock_Serial().read.return_value = b""
-        r = H._receive(1)
-        self.mock_Serial().read.assert_called_with(1)
-        self.assertEqual(r, -1)
-
-    def test_wait_for_data(self):
-        H = Handler()
-        self.assertTrue(H.wait_for_data())
-
-    def test_wait_for_data_timeout(self):
-        H = Handler()
-        self.mock_Serial().in_waiting = False
-        self.assertFalse(H.wait_for_data())
-
-    def test_send_burst(self):
-        H = Handler()
-        H.load_burst = True
-
-        for b in b"abc":
-            H._send(b)
-            H.get_ack()
-
-        self.mock_Serial().read.return_value = b"\x01\x01\x01"
-        acks = H.send_burst()
-
-        self.mock_Serial().write.assert_called_with(b"abc")
-        self.mock_Serial().read.assert_called_with(3)
-        self.assertFalse(H.load_burst)
-        self.assertEqual(H.burst_buffer, b"")
-        self.assertEqual(H.input_queue_size, 0)
-        self.assertEqual(acks, [1, 1, 1])
-
-    def test_get_integer_unsupported_size(self):
-        H = Handler()
-        self.assertRaises(ValueError, H._get_integer_type, size=3)
-
-    def test_list_ports(self):
-        self.list_ports_patcher.stop()
-        H = Handler()
-        self.assertTrue(isinstance(H._list_ports(), list))
-        self.list_ports_patcher.start()
 
 
-if __name__ == "__main__":
-    unittest.main()
+def test_disconnect(mock_serial):
+    H = Handler()
+    H.disconnect()
+    mock_serial().close.assert_called()
+
+
+def test_reconnect(mock_serial):
+    H = Handler()
+    H.reconnect()
+    mock_serial().close.assert_called()
+
+
+def test_get_version(mock_serial):
+    H = Handler()
+    mock_serial().write.assert_called_with(CP.GET_VERSION)
+    assert H.version == VERSION
+
+
+def test_get_ack_success(mock_serial):
+    H = Handler()
+    success = 1
+    mock_serial().read.return_value = CP.Byte.pack(success)
+    assert H.get_ack() == success
+
+
+def test_get_ack_burst_mode(mock_serial):
+    H = Handler()
+    success = 1
+    H.load_burst = True
+    queue_size = H.input_queue_size
+    mock_serial().read.return_value = b""
+
+    assert H.get_ack() == success
+    assert H.input_queue_size == queue_size + 1
+
+
+def test_get_ack_failure(mock_serial):
+    H = Handler()
+    error = 3
+    mock_serial().read.return_value = b""
+    assert H.get_ack() == error
+
+
+def test_send_bytes(mock_serial):
+    H = Handler()
+    H.send_byte(CP.Byte.pack(0xFF))
+    mock_serial().write.assert_called_with(CP.Byte.pack(0xFF))
+
+
+def test_send_byte(mock_serial):
+    H = Handler()
+    H.send_byte(0xFF)
+    mock_serial().write.assert_called_with(CP.Byte.pack(0xFF))
+
+
+def test_send_byte_burst_mode(mock_serial):
+    H = Handler()
+    H.load_burst = True
+    H.send_byte(0xFF)
+    assert H.burst_buffer == CP.Byte.pack(0xFF)
+
+
+def test_receive(mock_serial):
+    H = Handler()
+    mock_serial().read.return_value = CP.Byte.pack(0xFF)
+    r = H.get_byte()
+    mock_serial().read.assert_called_with(1)
+    assert r == 0xFF
+
+
+def test_receive_failure(mock_serial):
+    H = Handler()
+    mock_serial().read.return_value = b""
+    r = H.get_byte()
+    mock_serial().read.assert_called_with(1)
+    assert r == -1
+
+
+def test_wait_for_data(mock_serial):
+    H = Handler()
+    mock_serial().in_waiting = True
+    assert H.wait_for_data()
+
+
+def test_wait_for_data_timeout(mock_serial):
+    H = Handler()
+    mock_serial().in_waiting = False
+    assert not H.wait_for_data()
+
+
+def test_send_burst(mock_serial):
+    H = Handler()
+    H.load_burst = True
+
+    for b in b"abc":
+        H.send_byte(b)
+        H.get_ack()
+
+    mock_serial().read.return_value = b"\x01\x01\x01"
+    acks = H.send_burst()
+
+    mock_serial().write.assert_called_with(b"abc")
+    mock_serial().read.assert_called_with(3)
+    assert not H.load_burst
+    assert H.burst_buffer == b""
+    assert H.input_queue_size == 0
+    assert acks == [1, 1, 1]
+
+
+def test_get_integer_unsupported_size(mock_serial):
+    H = Handler()
+    with pytest.raises(ValueError):
+        H._get_integer_type(size=3)
+
+
+def test_list_ports(mock_serial):
+    H = Handler()
+    assert isinstance(H._list_ports(), list)
