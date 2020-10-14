@@ -89,7 +89,7 @@ Comments and docstrings
 ^^^^^^^^^^^^^^^^^^^^^^^
 - All public interfaces (modules, classes, methods) have Numpydoc-style docstrings.
 - Blank line after module- and class-level docstrings, but not after method-level docstrings.
-- Comments start with a capital letter and end with a period if they are contain at least two words.
+- Comments start with a capital letter and end with a period if they contain at least two words.
 - Comments go on the same line as the code they explain, unless that would violate the line length limit.
 
   - In that case, the comment goes immediately before the code it explains.
