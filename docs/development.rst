@@ -62,6 +62,7 @@ General
 ^^^^^^^
 - Black.
 - When in doubt, refer to PEP8.
+- Use type hints (PEP484).
 - Maximum line length is 88 characters, but aim for less than 80.
 - Maximum `cyclomatic complexity`_ is ten, but aim for five or lower.
 - Blank lines before and after statements (for, if, return, ...), unless
