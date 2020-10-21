@@ -6,9 +6,9 @@ Example
 >>> parser, subparser = cli.get_parser()
 >>> cli.add_collect_args(subparser)
 >>> cli.add_wave_gen_args(subparser)
->>> parser.parse_args(["collect","-i","la"])
+>>> parser.parse_args(["collect","-i","logic_analyzer"])
 Namespace(channels=1, duration=1, file_path=None, function='collect',
-instrument='la', json=False, port=None)
+instrument='logic_analyzer', json=False, port=None)
 """
 
 import argparse
