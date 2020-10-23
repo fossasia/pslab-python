@@ -4,6 +4,8 @@ import numpy as np
 
 DIGITAL_INPUTS = ("LA1", "LA2", "LA3", "LA4", "RES", "EXT", "FRQ")
 
+DIGITAL_OUTPUTS = ("SQ1", "SQ2", "SQ3", "SQ4")
+
 MODES = {
     "sixteen rising": 5,
     "four rising": 4,
@@ -88,3 +90,96 @@ class DigitalInput:
                 y[i + 2] = False  # Value leaving this timetamp.
 
         return x, y
+
+
+class DigitalOutput:
+    """Model of the PSLab's digital outputs.
+
+    Parameters
+    ----------
+    name : {'SQ1', 'SQ2', 'SQ3', 'SQ4'}
+        Name of the digital output pin represented by the instance.
+    """
+
+    def __init__(self, name: str):
+        self._name = name
+        self._state = "LOW"
+        self._duty_cycle = 0
+        self.phase = 0
+        self.remapped = False
+
+    @property
+    def name(self) -> str:
+        """Get or set the name of the pin represented by this object."""
+        return self._name
+
+    @name.setter
+    def name(self, value):
+        if value in DIGITAL_OUTPUTS:
+            self._name = value
+        else:
+            e = f"Invalid digital output {value}. Choose one of {DIGITAL_OUTPUTS}."
+            raise ValueError(e)
+
+    @property
+    def state(self) -> str:
+        """Get the state of the digital output. Can be 'HIGH', 'LOW', or 'PWM'."""
+        return self._state
+
+    @property
+    def duty_cycle(self) -> float:
+        """Get or set the duty cycle of the PWM signal on this pin."""
+        return self._duty_cycle
+
+    @duty_cycle.setter
+    def duty_cycle(self, value: float):
+        if value == 0:
+            self._state = "LOW"
+        elif value < 1:
+            self._state = "PWM"
+        elif value == 1:
+            self._state = "HIGH"
+        else:
+            raise ValueError("Duty cycle must be in range [0, 1].")
+
+        self._duty_cycle = value
+
+    @property
+    def state_mask(self) -> int:
+        """Get the state mask for this pin.
+
+        The state mask is used in the DOUT->SET_STATE command to set the
+        digital output pins HIGH or LOW. For example:
+
+            0x10 | 1 << 0 | 0x40 | 0 << 2 | 0x80 | 1 << 3
+
+        would set SQ1 and SQ4 HIGH, SQ3 LOW, and leave SQ2 unchanged.
+        """
+        if self.name == "SQ1":
+            return 0x10
+        elif self.name == "SQ2":
+            return 0x20
+        elif self.name == "SQ3":
+            return 0x40
+        elif self.name == "SQ4":
+            return 0x80
+
+    @property
+    def reference_clock_map(self) -> int:
+        """Get the reference clock map value for this pin.
+
+        The reference clock map is used in the WAVEGEN->MAP_REFERENCE command
+        to map a digital output pin directly to the interal oscillator. This
+        can be used to achieve very high frequencies, with the caveat that
+        the only frequencies available are quotients of 128 MHz and powers of
+        2 up to 15. For example, sending (2 | 4) followed by 3 outputs
+        128 / (1 << 3) = 16 MHz on SQ2 and SQ3.
+        """
+        if self.name == "SQ1":
+            return 1
+        elif self.name == "SQ2":
+            return 2
+        elif self.name == "SQ3":
+            return 4
+        elif self.name == "SQ4":
+            return 8
