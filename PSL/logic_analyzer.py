@@ -231,7 +231,7 @@ class LogicAnalyzer:
 
         period = t[2] - t[0]
         # First change is HIGH -> LOW since we trigger on rising.
-        duty_cycle = (t[1] - t[0]) / period
+        duty_cycle = 1 - (t[1] - t[0]) / period
 
         return period, duty_cycle
 
