@@ -8,12 +8,15 @@ This module also contains the AnalogInput class, an instance of which functions 
 model of a particular analog input.
 """
 
+import logging
 from typing import List, Union
 
 import numpy as np
 
 import PSL.commands_proto as CP
 from PSL import packet_handler
+
+logger = logging.getLogger(__name__)
 
 GAIN_VALUES = (1, 2, 4, 5, 8, 10, 16, 32)
 
@@ -196,3 +199,65 @@ class AnalogInput:
         level = np.clip(level, 0, self._resolution)
         level = np.round(level)
         return int(level)
+
+
+class AnalogOutput:
+    """Model of the PSLab's analog outputs.
+
+    Parameters
+    ----------
+    name : str
+        Name of the analog output pin represented by this instance.
+
+    Attributes
+    ----------
+    frequency : float
+        Frequency of the waveform on this pin in Hz.
+    wavetype : {'sine', 'tria', 'custom'}
+        Type of waveform on this pin. 'sine' is a sine wave with amplitude
+        3.3 V, 'tria' is a triangle wave with amplitude 3.3 V, 'custom' is any
+        other waveform set with :meth:`load_equation` or :meth:`load_table`.
+    waveform_table
+    lowres_waveform_table
+    """
+
+    RANGE = (-3.3, 3.3)
+
+    def __init__(self, name):
+        self.name = name
+        self.frequency = 0
+        self.wavetype = "sine"
+        self._waveform_table = self.RANGE[1] * np.sin(
+            np.arange(
+                self.RANGE[0], self.RANGE[1], (self.RANGE[1] - self.RANGE[0]) / 512
+            )
+        )
+
+    @property
+    def waveform_table(self) -> np.ndarray:
+        """Get or set the waveform table loaded on this output.
+
+        The table contains 512 values.
+        """
+        # A form of amplitude control. Max PWM duty cycle out of 512 clock  cycles.
+        return self._range_normalize(self._waveform_table, 511)
+
+    @waveform_table.setter
+    def waveform_table(self, points: np.ndarray):
+        if max(points) - min(points) > self.RANGE[1] - self.RANGE[0]:
+            logger.warning(f"Analog output {self.name} saturated.")
+        self._waveform_table = np.clip(points, self.RANGE[0], self.RANGE[1])
+
+    @property
+    def lowres_waveform_table(self) -> np.ndarray:
+        """Get a lower resolution version of the loaded waveform table.
+
+        This table contains 32 values.
+        """
+        # Max PWM duty cycle out of 64 clock  cycles.
+        return self._range_normalize(self._waveform_table[::16], 63)
+
+    def _range_normalize(self, x: np.ndarray, norm: int = 1) -> np.ndarray:
+        """Normalize waveform table to the digital output range."""
+        x = (x - self.RANGE[0]) / (self.RANGE[1] - self.RANGE[0]) * norm
+        return np.int16(np.round(x)).tolist()
