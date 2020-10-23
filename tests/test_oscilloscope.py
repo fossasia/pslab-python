@@ -10,7 +10,7 @@ import pytest
 
 from PSL import oscilloscope
 from PSL import packet_handler
-from PSL import sciencelab
+from PSL.waveform_generator import WaveformGenerator
 
 FREQUENCY = 1000
 MICROSECONDS = 1e-6
@@ -24,10 +24,8 @@ def scope(handler):
     In integration test mode, this function also enables the analog output.
     """
     if not isinstance(handler, packet_handler.MockHandler):
-        psl = sciencelab.connect()
-        psl.H.disconnect()
-        psl.H = handler
-        psl.set_sine1(FREQUENCY)
+        wave = WaveformGenerator(handler)
+        wave.generate(["SI1", "SI2"], FREQUENCY)
         handler._logging = True
     return oscilloscope.Oscilloscope(handler)
 

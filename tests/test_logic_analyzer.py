@@ -13,7 +13,7 @@ import pytest
 import PSL.commands_proto as CP
 from PSL import logic_analyzer
 from PSL import packet_handler
-from PSL import sciencelab
+from PSL.waveform_generator import PWMGenerator
 
 EVENTS = 2495
 FREQUENCY = 1e5
@@ -31,15 +31,13 @@ def la(handler, request):
     In integration test mode, this function also enables the PWM output.
     """
     if not isinstance(handler, packet_handler.MockHandler):
-        psl = sciencelab.connect()
-        psl.H.disconnect()
-        psl.H = handler
-        enable_pwm(psl, request.node.name)
+        pwm = PWMGenerator(handler)
+        enable_pwm(pwm, request.node.name)
         handler._logging = True
     return logic_analyzer.LogicAnalyzer(handler)
 
 
-def enable_pwm(psl: sciencelab.ScienceLab, test_name: str):
+def enable_pwm(pwm: PWMGenerator, test_name: str):
     """Enable PWM output for integration testing."""
     low_frequency_tests = (
         "test_capture_four_low_frequency",
@@ -55,15 +53,11 @@ def enable_pwm(psl: sciencelab.ScienceLab, test_name: str):
     else:
         frequency = FREQUENCY
 
-    psl.sqrPWM(
-        freq=frequency,
-        h0=DUTY_CYCLE,
-        p1=0,
-        h1=DUTY_CYCLE,
-        p2=0,
-        h2=DUTY_CYCLE,
-        p3=0,
-        h3=DUTY_CYCLE,
+    pwm.generate(
+        ["SQ1", "SQ2", "SQ3", "SQ4"],
+        frequency,
+        DUTY_CYCLE,
+        0,
     )
 
 
