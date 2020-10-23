@@ -453,12 +453,13 @@ class PWMGenerator:
 
         for i, (duty_cycle, phase) in enumerate(zip(duty_cycles, phases)):
             duty_cycles[i] = int((duty_cycle + phase) % 1 * wavelength)
-            duty_cycles[i] = max(1, duty_cycles[i])
+            duty_cycles[i] = max(1, duty_cycles[i] - 1)  # Zero index.
             phases[i] = int(phase % 1 * wavelength)
+            phases[i] = max(0, phases[i] - 1)  # Zero index.
 
         self._device.send_byte(CP.WAVEGEN)
         self._device.send_byte(CP.SQR4)
-        self._device.send_int(wavelength)
+        self._device.send_int(wavelength - 1)  # Zero index.
         self._device.send_int(duty_cycles[0])
         self._device.send_int(phases[1])
         self._device.send_int(duty_cycles[1])
