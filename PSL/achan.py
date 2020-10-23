@@ -79,16 +79,18 @@ class AnalogInput:
     def __init__(self, name: str, device: packet_handler.Handler):
         self._name = name
         self._device = device
+        self._resolution = 2 ** 10 - 1
 
         if self._name == "CH1":
             self._programmable_gain_amplifier = 1
+            self.gain = 1
         elif self._name == "CH2":
             self._programmable_gain_amplifier = 2
+            self.gain = 1
         else:
             self._programmable_gain_amplifier = None
+            self._gain = 1
 
-        self._gain = 1
-        self._resolution = 2 ** 10 - 1
         self.samples_in_buffer = 0
         self.buffer_idx = None
         self._scale = np.poly1d(0)
