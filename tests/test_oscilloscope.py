@@ -2,7 +2,10 @@
 
 When integration testing, the PSLab's analog output is used to generate a
 signal which is sampled by the oscilloscope. Before running the integration
-tests, connect SI1->CH1->CH2->CH3.
+tests, connect:
+    SI1 -> CH1
+    SI2 -> CH2
+    SI1 -> CH3
 """
 
 import numpy as np
