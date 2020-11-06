@@ -13,9 +13,6 @@ from typing import List, Union
 
 import numpy as np
 
-import PSL.commands_proto as CP
-from PSL import packet_handler
-
 logger = logging.getLogger(__name__)
 
 GAIN_VALUES = (1, 2, 4, 5, 8, 10, 16, 32)
@@ -76,19 +73,18 @@ class AnalogInput:
         Number used to refer to this channel in the firmware.
     """
 
-    def __init__(self, name: str, device: packet_handler.Handler):
+    def __init__(self, name: str):
         self._name = name
-        self._device = device
         self._resolution = 2 ** 10 - 1
 
         if self._name == "CH1":
-            self._programmable_gain_amplifier = 1
-            self.gain = 1
+            self.programmable_gain_amplifier = 1
+            self._gain = 1
         elif self._name == "CH2":
-            self._programmable_gain_amplifier = 2
-            self.gain = 1
+            self.programmable_gain_amplifier = 2
+            self._gain = 1
         else:
-            self._programmable_gain_amplifier = None
+            self.programmable_gain_amplifier = None
             self._gain = 1
 
         self.samples_in_buffer = 0
@@ -125,12 +121,6 @@ class AnalogInput:
         if value not in GAIN_VALUES:
             raise ValueError(f"Invalid gain. Valid values are {GAIN_VALUES}.")
 
-        gain_idx = GAIN_VALUES.index(value)
-        self._device.send_byte(CP.ADC)
-        self._device.send_byte(CP.SET_PGA_GAIN)
-        self._device.send_byte(self._programmable_gain_amplifier)
-        self._device.send_byte(gain_idx)
-        self._device.get_ack()
         self._gain = value
         self._calibrate()
 
