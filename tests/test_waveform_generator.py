@@ -61,9 +61,8 @@ def test_sine_wave(wave: WaveformGenerator, scope: Oscilloscope):
     frequency = 500
     wave.load_equation("SI1", "sine")
     wave.generate("SI1", frequency)
-    scope.configure_trigger("CH1", 0)
     time.sleep(0.1)
-    x, y = scope.capture(1, 10000, 1)
+    x, y = scope.capture(1, 10000, 1, trigger=0)
 
     def expected_f(x, amplitude, frequency, phase):
         return amplitude * np.sin(2 * np.pi * frequency * x + phase)
@@ -88,9 +87,8 @@ def test_triangle_wave(wave: WaveformGenerator, scope: Oscilloscope):
     frequency = 2000
     wave.load_equation("SI1", "tria")
     wave.generate("SI1", frequency)
-    scope.configure_trigger("CH1", 0)
     time.sleep(0.1)
-    x, y = scope.capture(1, 10000, 1)
+    x, y = scope.capture(1, 10000, 1, trigger=0)
 
     def expected_f(x, amplitude, frequency, phase):
         return (
@@ -123,9 +121,8 @@ def test_superposition(wave: WaveformGenerator, scope: Oscilloscope):
 
     wave.load_equation("SI1", super_sine, [0, 2 * np.pi])
     wave.generate("SI1", frequency)
-    scope.configure_trigger("CH1", 0)
     time.sleep(0.1)
-    x, y = scope.capture(1, 10000, 1)
+    x, y = scope.capture(1, 10000, 1, trigger=0)
 
     def expected_f(x, amplitude1, amplitude2, frequency, phase):
         return amplitude1 * np.sin(
@@ -159,9 +156,8 @@ def test_sine_phase(wave: WaveformGenerator, scope: Oscilloscope):
     wave.load_equation("SI1", "sine")
     wave.load_equation("SI2", "sine")
     wave.generate(["SI1", "SI2"], frequency, phase)
-    scope.configure_trigger("CH1", 0)
     time.sleep(0.1)
-    x, y1, y2 = scope.capture(2, 5000, 2)
+    x, y1, y2 = scope.capture(2, 5000, 2, trigger=0)
 
     def expected_f(x, amplitude, frequency, phase):
         return amplitude * np.sin(2 * np.pi * frequency * x + phase)
