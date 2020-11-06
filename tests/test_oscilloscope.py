@@ -67,8 +67,7 @@ def test_capture_one_high_speed(scope):
 
 
 def test_capture_one_trigger(scope):
-    scope.trigger_enabled = True
-    _, y = scope.capture(channels=1, samples=1, timegap=1)
+    _, y = scope.capture(channels=1, samples=1, timegap=1, trigger=0)
     assert y[0] == pytest.approx(0, abs=ABSTOL)
 
 
@@ -86,9 +85,8 @@ def test_capture_four(scope):
 
 
 def test_capture_invalid_channel_one(scope):
-    scope.channel_one_map = "BAD"
     with pytest.raises(ValueError):
-        scope.capture(channels=1, samples=200, timegap=2)
+        scope.capture(channels="BAD", samples=200, timegap=2)
 
 
 def test_capture_timegap_too_small(scope):
@@ -106,30 +104,7 @@ def test_capture_too_many_samples(scope):
         scope.capture(channels=4, samples=3000, timegap=2)
 
 
-def test_configure_trigger(scope):
-    scope.channel_one_map = "CH3"
-    scope.configure_trigger(channel="CH3", voltage=1.5)
-    _, y = scope.capture(channels=1, samples=1, timegap=1)
-    assert y[0] == pytest.approx(1.5, abs=ABSTOL)
-
-
-def test_configure_trigger_on_unmapped(scope):
-    with pytest.raises(TypeError):
-        scope.configure_trigger(channel="VOL", voltage=1.5)
-
-
-def test_configure_trigger_on_remapped_ch1(scope):
-    scope.channel_one_map = "CAP"
-    with pytest.raises(TypeError):
-        scope.configure_trigger(channel="CH1", voltage=1.5)
-
-
 def test_select_range(scope):
     scope.select_range("CH1", 1.5)
     _, y = scope.capture(channels=1, samples=1000, timegap=1)
     assert 1.5 <= max(y) <= 1.65
-
-
-def test_select_range_invalid(scope):
-    with pytest.raises(ValueError):
-        scope.select_range("CH1", 15)
