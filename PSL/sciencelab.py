@@ -11,6 +11,7 @@ import numpy as np
 
 import PSL.commands_proto as CP
 import PSL.packet_handler as packet_handler
+from PSL.multimeter import Multimeter
 from PSL.logic_analyzer import LogicAnalyzer
 from PSL.oscilloscope import Oscilloscope
 from PSL.waveform_generator import PWMGenerator, WaveformGenerator
@@ -89,6 +90,7 @@ class ScienceLab():
         self.oscilloscope = Oscilloscope(device=self.H)
         self.waveform_generator = WaveformGenerator(device=self.H)
         self.pwm_generator = PWMGenerator(device=self.H)
+        self.multimeter = Multimeter(device=self.H)
         self.__runInitSequence__(**kwargs)
 
     def __runInitSequence__(self, **kwargs):
@@ -100,18 +102,12 @@ class ScienceLab():
 
         self.streaming = False
         self.buff = np.zeros(10000)
-        self.SOCKET_CAPACITANCE = 42e-12  # 42e-12 is typical for the FOSSASIA PSLab. Actual values require calibration (currently not supported).
-        self.resistanceScaling = 1.
-
-        self.gains = {'CH1': 0, 'CH2': 0}
 
         self.I2C = I2C(self.H)
         # self.I2C.pullSCLLow(5000)
         self.SPI = SPI(self.H)
         self.hexid = ''
         if self.H.connected:
-            for a in ['CH1', 'CH2']:
-                self.oscilloscope._channels[a].gain = 1
             for a in ['SI1', 'SI2']:
                 self.waveform_generator.load_equation(a, 'sine')
             self.SPI.set_parameters(1, 7, 1, 0)
@@ -180,87 +176,6 @@ class ScienceLab():
 		'''
         self.H.reconnect(**kwargs)
         self.__runInitSequence__(**kwargs)
-
-    def get_voltage(self, channel_name, **kwargs):
-        self.voltmeter_autorange(channel_name)
-        return self.get_average_voltage(channel_name, **kwargs)
-
-    def voltmeter_autorange(self, channel_name):
-        try:
-            self.oscilloscope._channels[channel_name].gain = 1
-        except TypeError:  # channel_name is not CH1 or CH2.
-            return 1
-        V = self.get_average_voltage(channel_name)
-        return self.__autoSelectRange__(channel_name, V)
-
-    def __autoSelectRange__(self, channel_name, V):
-        keys = [8, 4, 3, 2, 1.5, 1, .5, 0]
-        cutoffs = {8: 1, 4: 2, 3: 4, 2: 5, 1.5: 8, 1.: 10, .5: 16, 0: 32}
-        for a in keys:
-            if abs(V) > a:
-                g = cutoffs[a]
-                break
-        self.oscilloscope._channels[channel_name].gain = g
-        return g
-
-    def __autoRangeScope__(self, tg):
-        x, y1, y2 = self.oscilloscope.capture(2, 1000, tg)
-        self.__autoSelectRange__('CH1', max(abs(y1)))
-        self.__autoSelectRange__('CH2', max(abs(y2)))
-
-    def get_average_voltage(self, channel_name, **kwargs):
-        """
-		Return the voltage on the selected channel
-
-		.. tabularcolumns:: |p{3cm}|p{11cm}|
-
-		+------------+-----------------------------------------------------------------------------------------+
-		|Arguments   |Description                                                                              |
-		+============+=========================================================================================+
-		|channel_name| 'CH1','CH2','CH3', 'MIC','IN1','RES','V+'                                               |
-		+------------+-----------------------------------------------------------------------------------------+
-		|sleep       | read voltage in CPU sleep mode. not particularly useful. Also, Buggy.                   |
-		+------------+-----------------------------------------------------------------------------------------+
-		|\*\*kwargs  | Samples to average can be specified. eg. samples=100 will average a hundred readings    |
-		+------------+-----------------------------------------------------------------------------------------+
-
-
-		see :ref:`stream_video`
-
-		Example:
-
-		>>> self.__print__(I.get_average_voltage('CH4'))
-		1.002
-
-		"""
-        self.oscilloscope._channels[channel_name].resolution = 12
-        scale = self.oscilloscope._channels[channel_name].scale
-        vals = [self.__get_raw_average_voltage__(channel_name, **kwargs) for a in range(int(kwargs.get('samples', 1)))]
-        # if vals[0]>2052:print (vals)
-        val = np.average([scale(a) for a in vals])
-        return val
-
-    def __get_raw_average_voltage__(self, channel_name, **kwargs):
-        """
-		Return the average of 16 raw 12-bit ADC values of the voltage on the selected channel
-
-		.. tabularcolumns:: |p{3cm}|p{11cm}|
-
-		==============  ============================================================================================================
-		**Arguments**
-		==============  ============================================================================================================
-		channel_name    'CH1', 'CH2', 'CH3', 'MIC', '5V', 'IN1','RES'
-		sleep           read voltage in CPU sleep mode
-		==============  ============================================================================================================
-
-		"""
-        chosa = self.oscilloscope._channels[channel_name].chosa
-        self.H.__sendByte__(CP.ADC)
-        self.H.__sendByte__(CP.GET_VOLTAGE_SUMMED)
-        self.H.__sendByte__(chosa)
-        V_sum = self.H.__getInt__()
-        self.H.__get_ack__()
-        return V_sum / 16.  # sum(V)/16.0  #
 
     def fetch_buffer(self, starting_position=0, total_points=100):
         """
@@ -335,145 +250,6 @@ class ScienceLab():
     # |This section has commands related to digital measurement and control. These include the Logic Analyzer, frequency |
     # |measurement calls, timing routines, digital outputs etc                               |
     # -------------------------------------------------------------------------------------------------------------------#
-
-    def __charge_cap__(self, state, t):
-        self.H.__sendByte__(CP.ADC)
-        self.H.__sendByte__(CP.SET_CAP)
-        self.H.__sendByte__(state)
-        self.H.__sendInt__(t)
-        self.H.__get_ack__()
-
-    def __capture_capacitance__(self, samples, tg):
-        raise NotImplementedError
-#        from PSL.analyticsClass import analyticsClass
-#        self.AC = analyticsClass()
-#        self.__charge_cap__(1, 50000)
-#        x, y = self.capture_fullspeed_hr('CAP', samples, tg, 'READ_CAP')
-#        fitres = self.AC.fit_exp(x * 1e-6, y)
-#        if fitres:
-#            cVal, newy = fitres
-#            # from PSL import *
-#            # plot(x,newy)
-#            # show()
-#            return x, y, newy, cVal
-#        else:
-#            return None
-
-    def capacitance_via_RC_discharge(self):
-        cap = self.get_capacitor_range()[1]
-        T = 2 * cap * 20e3 * 1e6  # uS
-        samples = 500
-        if T > 5000 and T < 10e6:
-            if T > 50e3: samples = 250
-            RC = self.__capture_capacitance__(samples, int(T / samples))[3][1]
-            return RC / 10e3
-        else:
-            self.__print__('cap out of range %f %f' % (T, cap))
-            return 0
-
-    def __get_capacitor_range__(self, ctime):
-        self.__charge_cap__(0, 30000)
-        self.H.__sendByte__(CP.COMMON)
-        self.H.__sendByte__(CP.GET_CAP_RANGE)
-        self.H.__sendInt__(ctime)
-        V_sum = self.H.__getInt__()
-        self.H.__get_ack__()
-        V = V_sum * 3.3 / 16 / 4095
-        C = -ctime * 1e-6 / 1e4 / np.log(1 - V / 3.3)
-        return V, C
-
-    def get_capacitor_range(self):
-        """
-		Charges a capacitor connected to IN1 via a 20K resistor from a 3.3V source for a fixed interval
-		Returns the capacitance calculated using the formula Vc = Vs(1-exp(-t/RC))
-		This function allows an estimation of the parameters to be used with the :func:`get_capacitance` function.
-
-		"""
-        t = 10
-        P = [1.5, 50e-12]
-        for a in range(4):
-            P = list(self.__get_capacitor_range__(50 * (10 ** a)))
-            if (P[0] > 1.5):
-                if a == 0 and P[0] > 3.28:  # pico farads range. Values will be incorrect using this method
-                    P[1] = 50e-12
-                break
-        return P
-
-    def get_capacitance(self):  # time in uS
-        """
-		measures capacitance of component connected between CAP and ground
-
-
-		:return: Capacitance (F)
-
-		Constant Current Charging
-
-		.. math::
-
-			Q_{stored} = C*V
-
-			I_{constant}*time = C*V
-
-			C = I_{constant}*time/V_{measured}
-
-		Also uses Constant Voltage Charging via 20K resistor if required.
-
-		"""
-        GOOD_VOLTS = [2.5, 2.8]
-        CT = 10
-        CR = 1
-        iterations = 0
-        start_time = time.time()
-
-        while (time.time() - start_time) < 1:
-            # self.__print__('vals',CR,',',CT)
-            if CT > 65000:
-                self.__print__('CT too high')
-                return self.capacitance_via_RC_discharge()
-            V, C = self.__get_capacitance__(CR, 0, CT)
-            # print(CR,CT,V,C)
-            if CT > 30000 and V < 0.1:
-                self.__print__('Capacitance too high for this method')
-                return 0
-
-            elif V > GOOD_VOLTS[0] and V < GOOD_VOLTS[1]:
-                return C
-            elif V < GOOD_VOLTS[0] and V > 0.01 and CT < 40000:
-                if GOOD_VOLTS[0] / V > 1.1 and iterations < 10:
-                    CT = int(CT * GOOD_VOLTS[0] / V)
-                    iterations += 1
-                    self.__print__('increased CT ', CT)
-                elif iterations == 10:
-                    return 0
-                else:
-                    return C
-            elif V <= 0.1 and CR < 3:
-                CR += 1
-            elif CR == 3:
-                self.__print__('Capture mode ')
-                return self.capacitance_via_RC_discharge()
-
-    def __get_capacitance__(self, current_range, trim, Charge_Time):  # time in uS
-        self.__charge_cap__(0, 30000)
-        self.H.__sendByte__(CP.COMMON)
-        self.H.__sendByte__(CP.GET_CAPACITANCE)
-        self.H.__sendByte__(current_range)
-        if (trim < 0):
-            self.H.__sendByte__(int(31 - abs(trim) / 2) | 32)
-        else:
-            self.H.__sendByte__(int(trim / 2))
-        self.H.__sendInt__(Charge_Time)
-        time.sleep(Charge_Time * 1e-6 + .02)
-        VCode = self.H.__getInt__()
-        V = 3.3 * VCode / 4095
-        self.H.__get_ack__()
-        Charge_Current = self.currents[current_range] * (100 + trim) / 100.0
-        if V:
-            C = (Charge_Current * Charge_Time * 1e-6 / V - self.SOCKET_CAPACITANCE) / self.currentScalers[
-                current_range]
-        else:
-            C = 0
-        return V, C
 
     def get_temperature(self):
         """

@@ -91,8 +91,12 @@ class LogicAnalyzer:
             self._channel_one_map = channel
             t = self.capture(1, 2, modes=["sixteen rising"], timeout=timeout)[0]
             self._channel_one_map = tmp
-            period = (t[1] - t[0]) * 1e-6 / 16
-            frequency = period ** -1
+
+            try:
+                period = (t[1] - t[0]) * 1e-6 / 16
+                frequency = period ** -1
+            except IndexError:
+                frequency = 0
 
             if frequency >= 1e7:
                 frequency = self._get_high_frequency(channel)
@@ -660,7 +664,7 @@ class LogicAnalyzer:
         }
 
     def count_pulses(
-        self, channel: str, interval: float = 1, block: bool = True
+        self, channel: str = "FRQ", interval: float = 1, block: bool = True
     ) -> Union[int, None]:
         """Count pulses on a digital input.
 
@@ -669,8 +673,8 @@ class LogicAnalyzer:
 
         Parameters
         ----------
-        channel : {"LA1", "LA2", "LA3", "LA4"}
-            Digital input on which to count pulses.
+        channel : {"LA1", "LA2", "LA3", "LA4", "FRQ"}, optional
+            Digital input on which to count pulses. The default value is "FRQ".
         interval : float, optional
             Time in seconds during which to count pulses. The default value is
             1 second.
