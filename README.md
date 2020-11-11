@@ -37,7 +37,7 @@ pslab-python can be installed from PyPI:
 ```
 from PSL import sciencelab
 I = sciencelab.connect()
-capacitance = I.get_capacitance()
+capacitance = I.multimeter.measure_capacitance()
 print(capacitance)
 ```
 
