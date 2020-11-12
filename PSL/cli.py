@@ -21,6 +21,7 @@ from typing import List, Tuple
 
 import numpy as np
 
+import PSL.commands_proto as CP
 from PSL.logic_analyzer import LogicAnalyzer
 from PSL.oscilloscope import Oscilloscope
 from PSL.packet_handler import Handler
@@ -90,10 +91,10 @@ def oscilloscope(
         additional to the number of channels that were used to capture samples.
     """
     scope = Oscilloscope(device)
-    max_samples = scope.MAX_SAMPLES // channels
+    max_samples = CP.MAX_SAMPLES // channels
     min_timegap = scope._lookup_mininum_timegap(channels)
     max_duration = max_samples * min_timegap * 1e-6
-    active_channels = ([scope.channel_one_map] + scope.CH234)[:channels]
+    active_channels = ([scope._channel_one_map] + scope._CH234)[:channels]
     xy = [np.array([]) for _ in range(1 + channels)]
 
     while duration > 0:
@@ -102,13 +103,7 @@ def oscilloscope(
         else:
             samples = (duration * 1e6) // min_timegap
 
-        timestamps = scope.capture_nonblocking(channels, samples, min_timegap)
-        xy[0] = np.append(xy[0], timestamps)
-        time.sleep(duration)
-
-        for e, c in enumerate(active_channels):
-            xy[e + 1] = np.append(xy[e + 1], scope.fetch_data(c))
-
+        np.append(xy, scope.capture(channels, samples, min_timegap), axis=1)
         duration -= max_duration
 
     return ["Timestamp"] + active_channels, xy
