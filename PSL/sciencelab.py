@@ -119,13 +119,6 @@ class ScienceLab():
 
         self.DAC = MCP4728(self.H, 3.3, 0)
 
-    def get_resistance(self):
-        V = self.get_average_voltage('RES')
-        if V > 3.295: return np.Inf
-        I = (3.3 - V) / 5.1e3
-        res = V / I
-        return res * self.resistanceScaling
-
     def __print__(self, *args):
         if self.verbose:
             for a in args:
@@ -647,86 +640,6 @@ class ScienceLab():
         self.H.__sendByte__(CP.WRITE_DATA_ADDRESS)
         self.H.__sendInt__(address & 0xFFFF)
         self.H.__sendInt__(value)
-        self.H.__get_ack__()
-
-    # -------------------------------------------------------------------------------------------------------------------#
-
-    # |==============================================MOTOR SIGNALLING====================================================|
-    # |Set servo motor angles via SQ1-4. Control one stepper motor using SQ1-4											|
-    # -------------------------------------------------------------------------------------------------------------------#
-
-    def __stepperMotor__(self, steps, delay, direction):
-        self.H.__sendByte__(CP.NONSTANDARD_IO)
-        self.H.__sendByte__(CP.STEPPER_MOTOR)
-        self.H.__sendInt__((steps << 1) | direction)
-        self.H.__sendInt__(delay)
-
-        time.sleep(steps * delay * 1e-3)  # convert mS to S
-
-    def stepForward(self, steps, delay):
-        """
-		Control stepper motors using SQR1-4
-
-		take a fixed number of steps in the forward direction with a certain delay( in milliseconds ) between each step.
-
-		"""
-        self.__stepperMotor__(steps, delay, 1)
-
-    def stepBackward(self, steps, delay):
-        """
-		Control stepper motors using SQR1-4
-
-		take a fixed number of steps in the backward direction with a certain delay( in milliseconds ) between each step.
-
-		"""
-        self.__stepperMotor__(steps, delay, 0)
-
-    def servo(self, angle, chan='SQ1'):
-        '''
-		Output A PWM waveform on SQR1/SQR2 corresponding to the angle specified in the arguments.
-		This is used to operate servo motors.  Tested with 9G SG-90 Servo motor.
-
-		.. tabularcolumns:: |p{3cm}|p{11cm}|
-
-		==============  ============================================================================================
-		**Arguments**
-		==============  ============================================================================================
-		angle           0-180. Angle corresponding to which the PWM waveform is generated.
-		chan            'SQ1' or 'SQ2'. Whether to use SQ1 or SQ2 to output the PWM waveform used by the servo
-		==============  ============================================================================================
-		'''
-        self.pwm_generator.generate(chan, frequency=100, duty_cycles=7.5 + 19 * angle / 180)
-
-    def servo4(self, a1, a2, a3, a4):
-        """
-		Operate Four servo motors independently using SQR1, SQR2, SQR3, SQR4.
-		tested with SG-90 9G servos.
-		For high current servos, please use a different power source, and a level convertor for the PWm output signals(if needed)
-
-		.. tabularcolumns:: |p{3cm}|p{11cm}|
-
-		==============  ============================================================================================
-		**Arguments**
-		==============  ============================================================================================
-		a1              Angle to set on Servo which uses SQR1 as PWM input. [0-180]
-		a2              Angle to set on Servo which uses SQR2 as PWM input. [0-180]
-		a3              Angle to set on Servo which uses SQR3 as PWM input. [0-180]
-		a4              Angle to set on Servo which uses SQR4 as PWM input. [0-180]
-		==============  ============================================================================================
-
-		"""
-        params = (1 << 5) | 2  # continuous waveform.  prescaler 2( 1:64)
-        self.H.__sendByte__(CP.WAVEGEN)
-        self.H.__sendByte__(CP.SQR4)
-        self.H.__sendInt__(10000)  # 10mS wavelength
-        self.H.__sendInt__(750 + int(a1 * 1900 / 180))
-        self.H.__sendInt__(0)
-        self.H.__sendInt__(750 + int(a2 * 1900 / 180))
-        self.H.__sendInt__(0)
-        self.H.__sendInt__(750 + int(a3 * 1900 / 180))
-        self.H.__sendInt__(0)
-        self.H.__sendInt__(750 + int(a4 * 1900 / 180))
-        self.H.__sendByte__(params)
         self.H.__get_ack__()
 
     def enableUartPassthrough(self, baudrate, persist=False):
