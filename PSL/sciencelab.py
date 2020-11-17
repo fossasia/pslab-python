@@ -11,6 +11,7 @@ import numpy as np
 
 import PSL.commands_proto as CP
 import PSL.packet_handler as packet_handler
+from PSL.power_supply import PowerSupply
 from PSL.multimeter import Multimeter
 from PSL.logic_analyzer import LogicAnalyzer
 from PSL.oscilloscope import Oscilloscope
@@ -87,6 +88,7 @@ class ScienceLab():
         # --------------------------Initialize communication handler, and subclasses-----------------
         self.H = packet_handler.Handler(**kwargs)
         self.logic_analyzer = LogicAnalyzer(device=self.H)
+        self.power_supply = PowerSupply(device=self.H)
         self.oscilloscope = Oscilloscope(device=self.H)
         self.waveform_generator = WaveformGenerator(device=self.H)
         self.pwm_generator = PWMGenerator(device=self.H)
@@ -420,137 +422,7 @@ class ScienceLab():
         print('Verification done', tmp == data)
         if tmp != data: raise Exception('Verification by readback failed')
 
-    # -------------------------------------------------------------------------------------------------------------------#
-
-    # |===============================================ANALOG OUTPUTS ====================================================|
-    # |This section has commands related to current and voltage sources PV1,PV2,PV3,PCS					            |
-    # -------------------------------------------------------------------------------------------------------------------#
-
-    def set_pv1(self, val):
-        """
-		Set the voltage on PV1
-		12-bit DAC...  -5V to 5V
-
-		.. tabularcolumns:: |p{3cm}|p{11cm}|
-
-		==============  ============================================================================================
-		**Arguments**
-		==============  ============================================================================================
-		val             Output voltage on PV1. -5V to 5V
-		==============  ============================================================================================
-
-		"""
-        return self.DAC.setVoltage('PV1', val)
-
-    def set_pv2(self, val):
-        """
-		Set the voltage on PV2.
-		12-bit DAC...  0-3.3V
-
-		.. tabularcolumns:: |p{3cm}|p{11cm}|
-
-		==============  ============================================================================================
-		**Arguments**
-		==============  ============================================================================================
-		val             Output voltage on PV2. 0-3.3V
-		==============  ============================================================================================
-
-		:return: Actual value set on pv2
-		"""
-        return self.DAC.setVoltage('PV2', val)
-
-    def set_pv3(self, val):
-        """
-		Set the voltage on PV3
-
-		.. tabularcolumns:: |p{3cm}|p{11cm}|
-
-		==============  ============================================================================================
-		**Arguments**
-		==============  ============================================================================================
-		val             Output voltage on PV3. 0V to 3.3V
-		==============  ============================================================================================
-
-		:return: Actual value set on pv3
-		"""
-        return self.DAC.setVoltage('PV3', val)
-
-    def set_pcs(self, val):
-        """
-		Set programmable current source
-
-		.. tabularcolumns:: |p{3cm}|p{11cm}|
-
-		==============  ============================================================================================
-		**Arguments**
-		==============  ============================================================================================
-		val             Output current on PCS. 0 to 3.3mA. Subject to load resistance. Read voltage on PCS to check.
-		==============  ============================================================================================
-
-		:return: value attempted to set on pcs
-		"""
-        return self.DAC.setCurrent(val)
-
-    def get_pv1(self):
-        """
-		get the last set voltage on PV1
-		12-bit DAC...  -5V to 5V
-		"""
-        return self.DAC.getVoltage('PV1')
-
-    def get_pv2(self):
-        return self.DAC.getVoltage('PV2')
-
-    def get_pv3(self):
-        return self.DAC.getVoltage('PV3')
-
-    def get_pcs(self):
-        return self.DAC.getVoltage('PCS')
-
-    def WS2812B(self, cols, output='CS1'):
-        """
-		set shade of WS2182 LED on SQR1
-
-		.. tabularcolumns:: |p{3cm}|p{11cm}|
-
-		==============  ============================================================================================
-		**Arguments**
-		==============  ============================================================================================
-		cols                2Darray [[R,G,B],[R2,G2,B2],[R3,G3,B3]...]
-							brightness of R,G,B ( 0-255  )
-		==============  ============================================================================================
-
-		example::
-
-			>>> I.WS2812B([[10,0,0],[0,10,10],[10,0,10]])
-			#sets red, cyan, magenta to three daisy chained LEDs
-
-		see :ref:`rgb_video`
-
-
-		"""
-        if output == 'CS1':
-            pin = CP.SET_RGB1
-        elif output == 'CS2':
-            pin = CP.SET_RGB2
-        elif output == 'SQR1':
-            pin = CP.SET_RGB3
-        else:
-            print('invalid output')
-            return
-
-        self.H.__sendByte__(CP.COMMON)
-        self.H.__sendByte__(pin)
-        self.H.__sendByte__(len(cols) * 3)
-        for col in cols:
-            R = col[0]
-            G = col[1]
-            B = col[2]
-            self.H.__sendByte__(G)
-            self.H.__sendByte__(R)
-            self.H.__sendByte__(B)
-        self.H.__get_ack__()
-
+   
     # -------------------------------------------------------------------------------------------------------------------#
 
     # |======================================READ PROGRAM AND DATA ADDRESSES=============================================|
