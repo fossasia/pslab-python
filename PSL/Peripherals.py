@@ -1,500 +1,16 @@
-from __future__ import print_function
-from warnings import warn
-import PSL.commands_proto as CP
-import numpy as np
+import logging
 import time
+from warnings import warn
 
+import numpy as np
 
-class I2CMaster():
-    """
-    Methods to handle slave independent functionality with the I2C port.
-    An instance of Labtools.Packet_Handler must be passed to the init function
-    """
-    MAX_BRGVAL = 511
+import PSL.commands_proto as CP
+from PSL.i2c import I2CMaster, I2CSlave
 
-    def __init__(self, H):
-        self.H = H
-        from PSL import sensorlist
-        self.SENSORS = sensorlist.sensors
+logger = logging.getLogger(__name__)
 
-    def init(self):
-        self.H.__sendByte__(CP.I2C_HEADER)
-        self.H.__sendByte__(CP.I2C_INIT)
-        self.H.__get_ack__()
 
-    def enable_smbus(self):
-        self.H.__sendByte__(CP.I2C_HEADER)
-        self.H.__sendByte__(CP.I2C_ENABLE_SMBUS)
-        self.H.__get_ack__()
-
-    def pullSCLLow(self, uS):
-        """
-        Hold SCL pin at 0V for a specified time period. Used by certain sensors such
-        as MLX90316 PIR for initializing.
-
-        .. tabularcolumns:: |p{3cm}|p{11cm}|
-
-        ================    ============================================================================================
-        **Arguments**
-        ================    ============================================================================================
-        uS                  Time(in uS) to hold SCL output at 0 Volts
-        ================    ============================================================================================
-
-        """
-        self.H.__sendByte__(CP.I2C_HEADER)
-        self.H.__sendByte__(CP.I2C_PULLDOWN_SCL)
-        self.H.__sendInt__(uS)
-        self.H.__get_ack__()
-
-    def config(self, freq, verbose=True):
-        """
-        Sets frequency for I2C transactions
-
-        .. tabularcolumns:: |p{3cm}|p{11cm}|
-
-        ================    ============================================================================================
-        **Arguments**
-        ================    ============================================================================================
-        freq                I2C frequency
-        ================    ============================================================================================
-        """
-        self.H.__sendByte__(CP.I2C_HEADER)
-        self.H.__sendByte__(CP.I2C_CONFIG)
-        # freq=1/((BRGVAL+1.0)/64e6+1.0/1e7)
-        BRGVAL = int((1. / freq - 1. / 1e7) * 64e6 - 1)
-        if BRGVAL > self.MAX_BRGVAL:
-            BRGVAL = self.MAX_BRGVAL
-            if verbose: print('Frequency too low. Setting to :', 1 / ((BRGVAL + 1.0) / 64e6 + 1.0 / 1e7))
-        self.H.__sendInt__(BRGVAL)
-        self.H.__get_ack__()
-
-    def scan(self, frequency=100000, verbose=False):
-        """
-        Scan I2C port for connected devices
-
-        .. tabularcolumns:: |p{3cm}|p{11cm}|
-
-        ================    ============================================================================================
-        **Arguments**
-        ================    ============================================================================================
-        Frequency           I2C clock frequency
-        ================    ============================================================================================
-
-        :return: Array of addresses of connected I2C slave devices
-
-        """
-
-        self.config(frequency, verbose)
-        addrs = []
-        n = 0
-        if verbose:
-            print('Scanning addresses 0-127...')
-            print('Address', '\t', 'Possible Devices')
-        for a in range(0, 128):
-            slave = I2CSlave(self.H, a)
-            x = slave.start(0)
-            if x & 1 == 0:  # ACK received
-                addrs.append(a)
-                if verbose: print(hex(a), '\t\t', self.SENSORS.get(a, 'None'))
-                n += 1
-            slave.stop()
-        return addrs
-
-
-class I2CSlave():
-    """
-    Methods to handle slave with the I2C port.
-    An instance of Labtools.Packet_Handler and slave address must be passed to the init function
-    """
-    samples = 0
-    total_bytes = 0
-    channels = 0
-    tg = 100
-    MAX_SAMPLES = 10000
-
-    def __init__(self, H, address):
-        self.H = H
-        self.address = address
-        self.buff = np.zeros(10000)
-
-    def start(self, rw):
-        """
-        Initiates I2C transfer to address via the I2C port
-
-        .. tabularcolumns:: |p{3cm}|p{11cm}|
-
-        ================    ============================================================================================
-        **Arguments**
-        ================    ============================================================================================
-        rw                  Read/write.
-                            - 0 for writing
-                            - 1 for reading.
-        ================    ============================================================================================
-        """
-        self.H.__sendByte__(CP.I2C_HEADER)
-        self.H.__sendByte__(CP.I2C_START)
-        self.H.__sendByte__(((self.address << 1) | rw) & 0xFF)  # address
-        return self.H.__get_ack__() >> 4
-
-    def stop(self):
-        """
-        stops I2C transfer
-
-        :return: Nothing
-        """
-        self.H.__sendByte__(CP.I2C_HEADER)
-        self.H.__sendByte__(CP.I2C_STOP)
-        self.H.__get_ack__()
-
-    def wait(self):
-        """
-        wait for I2C
-
-        :return: Nothing
-        """
-        self.H.__sendByte__(CP.I2C_HEADER)
-        self.H.__sendByte__(CP.I2C_WAIT)
-        self.H.__get_ack__()
-
-    def send(self, data):
-        """
-        SENDS data over I2C.
-        The I2C bus needs to be initialized and set to the correct slave address first.
-        Use I2C.start(address) for this.
-
-        .. tabularcolumns:: |p{3cm}|p{11cm}|
-
-        ================    ============================================================================================
-        **Arguments**
-        ================    ============================================================================================
-        data                Sends data byte over I2C bus
-        ================    ============================================================================================
-
-        :return: Nothing
-        """
-        self.H.__sendByte__(CP.I2C_HEADER)
-        self.H.__sendByte__(CP.I2C_SEND)
-        self.H.__sendByte__(data)  # data byte
-        return self.H.__get_ack__() >> 4
-
-    def send_burst(self, data):
-        """
-        SENDS data over I2C. The function does not wait for the I2C to finish before returning.
-        It is used for sending large packets quickly.
-        The I2C bus needs to be initialized and set to the correct slave address first.
-        Use start(address) for this.
-
-        .. tabularcolumns:: |p{3cm}|p{11cm}|
-
-        ================    ============================================================================================
-        **Arguments**
-        ================    ============================================================================================
-        data                Sends data byte over I2C bus
-        ================    ============================================================================================
-
-        :return: Nothing
-        """
-        self.H.__sendByte__(CP.I2C_HEADER)
-        self.H.__sendByte__(CP.I2C_SEND_BURST)
-        self.H.__sendByte__(data)  # data byte
-        # No handshake. for the sake of speed. e.g. loading a frame buffer onto an I2C display such as ssd1306
-
-    def restart(self, rw):
-        """
-        Initiates I2C transfer to address
-
-        .. tabularcolumns:: |p{3cm}|p{11cm}|
-
-        ================    ============================================================================================
-        **Arguments**
-        ================    ============================================================================================
-        rw                  Read/write.
-                            * 0 for writing
-                            * 1 for reading.
-        ================    ============================================================================================
-
-        """
-        self.H.__sendByte__(CP.I2C_HEADER)
-        self.H.__sendByte__(CP.I2C_RESTART)
-        self.H.__sendByte__(((self.address << 1) | rw) & 0xFF)  # address
-        return self.H.__get_ack__() >> 4
-
-    def read(self, length):
-        """
-        Reads a fixed number of data bytes from I2C device. Fetches length-1 bytes with acknowledge bits for each, +1 byte
-        with Nack.
-
-        .. tabularcolumns:: |p{3cm}|p{11cm}|
-
-        ================    ============================================================================================
-        **Arguments**
-        ================    ============================================================================================
-        length              number of bytes to read from I2C bus
-        ================    ============================================================================================
-        """
-        data = []
-
-        for _ in range(length - 1):
-            self.H.__sendByte__(CP.I2C_HEADER)
-            self.H.__sendByte__(CP.I2C_READ_MORE)
-            data.append(self.H.__getByte__())
-            self.H.__get_ack__()
-        self.H.__sendByte__(CP.I2C_HEADER)
-        self.H.__sendByte__(CP.I2C_READ_END)
-        data.append(self.H.__getByte__())
-        self.H.__get_ack__()
-
-        return data
-
-    def read_repeat(self):
-        self.H.__sendByte__(CP.I2C_HEADER)
-        self.H.__sendByte__(CP.I2C_READ_MORE)
-        val = self.H.__getByte__()
-        self.H.__get_ack__()
-        return val
-
-    def read_end(self):
-        self.H.__sendByte__(CP.I2C_HEADER)
-        self.H.__sendByte__(CP.I2C_READ_END)
-        val = self.H.__getByte__()
-        self.H.__get_ack__()
-        return val
-
-    def read_status(self):
-        self.H.__sendByte__(CP.I2C_HEADER)
-        self.H.__sendByte__(CP.I2C_STATUS)
-        val = self.H.__getInt__()
-        self.H.__get_ack__()
-        return val
-
-    def simple_read(self, numbytes):
-        """
-        Read bytes from I2C slave without first transmitting the read location.
-
-        .. tabularcolumns:: |p{3cm}|p{11cm}|
-
-        ================    ============================================================================================
-        **Arguments**
-        ================    ============================================================================================
-        numbytes            Total Bytes to read
-        ================    ============================================================================================
-        """
-        self.start(1)
-        vals = self.read(numbytes)
-        return vals
-
-    def simple_read_byte(self):
-        vals = self.simple_read(1)
-        return vals[0]
-
-    def simple_read_int(self):
-        vals = self.simple_read(2)
-        bytes_ = bytearray(vals)
-        return CP.ShortInt.unpack(bytes_)[0]
-
-    def simple_read_long(self):
-        vals = self.simple_read(4)
-        bytes_ = bytearray(vals)
-        return CP.Integer.unpack(bytes_)[0]
-
-    def read_bulk(self, register_address, bytes_to_read):
-        self.H.__sendByte__(CP.I2C_HEADER)
-        self.H.__sendByte__(CP.I2C_READ_BULK)
-        self.H.__sendByte__(self.address)
-        self.H.__sendByte__(register_address)
-        self.H.__sendByte__(bytes_to_read)
-        data = self.H.interface.read(bytes_to_read)
-        self.H.__get_ack__()
-        try:
-            return list(data)
-        except:
-            print('Transaction failed')
-            return False
-
-    def read_bulk_byte(self, register_address):
-        data = self.read_bulk(register_address, 1)
-        if data:
-            return data[0]
-
-    def read_bulk_int(self, register_address):
-        data = self.read_bulk(register_address, 2)
-        if data:
-            bytes_ = bytearray(data)
-            return CP.ShortInt.unpack(bytes_)[0]
-
-    def read_bulk_long(self, register_address):
-        data = self.read_bulk(register_address, 4)
-        if data:
-            bytes_ = bytearray(data)
-            return CP.Integer.unpack(bytes_)[0]
-
-    def write_bulk(self, bytestream):
-        """
-        write bytes to I2C slave
-
-        .. tabularcolumns:: |p{3cm}|p{11cm}|
-
-        ================    ============================================================================================
-        **Arguments**
-        ================    ============================================================================================
-        bytestream          List of bytes to write
-        ================    ============================================================================================
-        """
-        self.H.__sendByte__(CP.I2C_HEADER)
-        self.H.__sendByte__(CP.I2C_WRITE_BULK)
-        self.H.__sendByte__(self.address)
-        self.H.__sendByte__(len(bytestream))
-        for a in bytestream:
-            self.H.__sendByte__(a)
-        self.H.__get_ack__()
-
-    def __captureStart__(self, location, sample_length, total_samples, tg):
-        """
-        Blocking call that starts fetching data from I2C sensors like an oscilloscope fetches voltage readings
-        You will then have to call `__retrievebuffer__` to fetch this data, and `__dataProcessor` to process and return separate channels
-        refer to `capture` if you want a one-stop solution.
-
-        .. tabularcolumns:: |p{3cm}|p{11cm}|
-        ==================  ============================================================================================
-        **Arguments**
-        ==================  ============================================================================================
-        location            Address of the register to read from
-        sample_length       Each sample can be made up of multiple bytes startng from <location> . such as 3-axis data
-        total_samples       Total samples to acquire. Total bytes fetched = total_samples*sample_length
-        tg                  timegap between samples (in uS)
-        ==================  ============================================================================================
-
-        :return: Arrays X(timestamps),Y1,Y2 ...
-
-        """
-        if (tg < 20): tg = 20
-        total_bytes = total_samples * sample_length
-        print('total bytes calculated : ', total_bytes)
-        if (total_bytes > self.MAX_SAMPLES * 2):
-            print('Sample limit exceeded. 10,000 int / 20000 bytes total')
-            total_bytes = self.MAX_SAMPLES * 2
-            total_samples = total_bytes / sample_length  # 2* because sample array is in Integers, and we're using it to store bytes
-
-        print('length of each channel : ', sample_length)
-        self.total_bytes = total_bytes
-        self.channels = sample_length
-        self.samples = total_samples
-        self.tg = tg
-
-        self.H.__sendByte__(CP.I2C_HEADER)
-        self.H.__sendByte__(CP.I2C_START_SCOPE)
-        self.H.__sendByte__(self.address)
-        self.H.__sendByte__(location)
-        self.H.__sendByte__(sample_length)
-        self.H.__sendInt__(total_samples)  # total number of samples to record
-        self.H.__sendInt__(tg)  # Timegap between samples.  1MHz timer clock
-        self.H.__get_ack__()
-        return 1e-6 * self.samples * self.tg + .01
-
-    def __retrievebuffer__(self):
-        '''
-        Fetch data acquired by the I2C scope. refer to :func:`__captureStart__`
-        '''
-        total_int_samples = self.total_bytes // 2
-        DATA_SPLITTING = 500
-        print('fetchin samples : ', total_int_samples, '   split', DATA_SPLITTING)
-        data = b''
-        for i in range(int(total_int_samples / DATA_SPLITTING)):
-            self.H.__sendByte__(CP.ADC)
-            self.H.__sendByte__(CP.GET_CAPTURE_CHANNEL)
-            self.H.__sendByte__(0)  # starts with A0 on PIC
-            self.H.__sendInt__(DATA_SPLITTING)
-            self.H.__sendInt__(i * DATA_SPLITTING)
-            rem = DATA_SPLITTING * 2 + 1
-            for _ in range(200):
-                partial = self.H.interface.read(
-                    rem)  # reading int by int sometimes causes a communication error. this works better.
-                rem -= len(partial)
-                data += partial
-                # print ('partial: ',len(partial), end=",")
-                if rem <= 0:
-                    break
-            data = data[:-1]
-            # print ('Pass : len=',len(data), ' i = ',i)
-
-        if total_int_samples % DATA_SPLITTING:
-            self.H.__sendByte__(CP.ADC)
-            self.H.__sendByte__(CP.GET_CAPTURE_CHANNEL)
-            self.H.__sendByte__(0)  # starts with A0 on PIC
-            self.H.__sendInt__(total_int_samples % DATA_SPLITTING)
-            self.H.__sendInt__(total_int_samples - total_int_samples % DATA_SPLITTING)
-            rem = 2 * (total_int_samples % DATA_SPLITTING) + 1
-            for _ in range(20):
-                partial = self.H.interface.read(
-                    rem)  # reading int by int sometimes causes a communication error. this works better.
-                rem -= len(partial)
-                data += partial
-                # print ('partial: ',len(partial), end="")
-                if rem <= 0:
-                    break
-            data = data[:-1]
-        print('Final Pass : len=', len(data))
-        return data
-
-    def __dataProcessor__(self, data, *args):
-        '''
-        Interpret data acquired by the I2C scope. refer to :func:`__retrievebuffer__` to fetch data
-
-        ==================  ============================================================================================
-        **Arguments**
-        ==================  ============================================================================================
-        data                byte array returned by :func:`__retrievebuffer__`
-        *args               supply optional argument 'int' if consecutive bytes must be combined to form short integers
-        ==================  ============================================================================================
-
-        '''
-        data = [ord(a) for a in data]
-        if ('int' in args):
-            for a in range(self.channels * self.samples / 2): self.buff[a] = np.int16(
-                (data[a * 2] << 8) | data[a * 2 + 1])
-        else:
-            for a in range(self.channels * self.samples): self.buff[a] = data[a]
-
-        yield np.linspace(0, self.tg * (self.samples - 1), self.samples)
-        for a in range(int(self.channels / 2)):
-            yield self.buff[a:self.samples * self.channels / 2][::self.channels / 2]
-
-    def capture(self, location, sample_length, total_samples, tg, *args):
-        """
-        Blocking call that fetches data from I2C sensors like an oscilloscope fetches voltage readings
-
-        .. tabularcolumns:: |p{3cm}|p{11cm}|
-
-        ==================  ============================================================================================
-        **Arguments**
-        ==================  ============================================================================================
-        location            Address of the register to read from
-        sample_length       Each sample can be made up of multiple bytes startng from <location> . such as 3-axis data
-        total_samples       Total samples to acquire. Total bytes fetched = total_samples*sample_length
-        tg                  timegap between samples (in uS)
-        ==================  ============================================================================================
-
-        Example
-
-        >>> from pylab import *
-        >>> I=sciencelab.ScienceLab()
-        >>> x,y1,y2,y3,y4 = I.capture_multiple(800,1.75,'CH1','CH2','MIC','RES')
-        >>> plot(x,y1)
-        >>> plot(x,y2)
-        >>> plot(x,y3)
-        >>> plot(x,y4)
-        >>> show()
-
-        :return: Arrays X(timestamps),Y1,Y2 ...
-
-        """
-        t = self.__captureStart__(location, sample_length, total_samples, tg)
-        time.sleep(t)
-        data = self.__retrievebuffer__()
-        return self.__dataProcessor__(data, *args)
-
-
-class I2C(I2CMaster, I2CSlave): # for backwards compatibility
+class I2C(I2CMaster, I2CSlave):  # for backwards compatibility
     """
     Methods to interact with the I2C port. An instance of Labtools.Packet_Handler must be passed to the init function
 
@@ -523,62 +39,57 @@ class I2C(I2CMaster, I2CSlave): # for backwards compatibility
         >>> print (x,y,z)
 
     """
+
     def __init__(self, H):
         I2CMaster.__init__(self, H)
         I2CSlave.__init__(self, H, None)
-        warn('I2C is deprecated; use I2CMaster and I2CSlave', DeprecationWarning)
+        warn("I2C is deprecated; use I2CMaster and I2CSlave", DeprecationWarning)
 
-    def start(self, address, rw): # pylint: disable=arguments-differ
+    def start(self, address, rw):  # pylint: disable=arguments-differ
         self.address = address
-        return super().start(rw)
+        return super()._start(rw)
 
-    def restart(self, address, rw): # pylint: disable=arguments-differ
+    def restart(self, address, rw):
         self.address = address
-        return super().restart(rw)
+        return super()._start(rw)
 
-    def simpleRead(self, address, numbytes): # pylint: disable=arguments-differ
+    def simpleRead(self, address, numbytes):
         self.address = address
-        return super().simple_read(numbytes)
+        return super().read(numbytes)
 
-    def simple_read_byte(self, address): # pylint: disable=arguments-differ
+    def simple_read_byte(self, address):
         self.address = address
-        return super().simple_read_byte()
+        return super().read_byte()
 
-    def simple_read_int(self, address): # pylint: disable=arguments-differ
+    def simple_read_int(self, address):
         self.address = address
-        return super().simple_read_int()
+        return super().read_int()
 
-    def simple_read_long(self, address): # pylint: disable=arguments-differ
+    def simple_read_long(self, address):
         self.address = address
-        return super().simple_read_long()
+        return super().read_long()
 
-    def readBulk(self, device_address, register_address, bytes_to_read): # pylint: disable=arguments-differ
+    def readBulk(self, device_address, register_address, bytes_to_read):
         self.address = device_address
-        return super().read_bulk(register_address, bytes_to_read)
+        return super().read(bytes_to_read, register_address)
 
-    def read_bulk_byte(self, device_address, register_address): # pylint: disable=arguments-differ
+    def read_bulk_byte(self, device_address, register_address):
         self.address = device_address
-        return super().read_bulk_byte(register_address)
+        return super().read_byte(register_address)
 
-    def read_bulk_int(self, device_address, register_address): # pylint: disable=arguments-differ
+    def read_bulk_int(self, device_address, register_address):
         self.address = device_address
-        return super().read_bulk_int(register_address)
+        return super().read_int(register_address)
 
-    def read_bulk_long(self, device_address, register_address): # pylint: disable=arguments-differ
+    def read_bulk_long(self, device_address, register_address):
         self.address = device_address
-        return super().read_bulk_long(register_address)
+        return super().read_long(register_address)
 
-    def writeBulk(self, device_address, bytestream): # pylint: disable=arguments-differ
+    def writeBulk(self, device_address, bytestream):
         self.address = device_address
-        return super().write_bulk(bytestream)
-
-    def __captureStart__(self, address, location, sample_length, total_samples, tg): # pylint: disable=arguments-differ
-        self.address = address
-        return super().__captureStart__(location, sample_length, total_samples, tg)
-
-    def capture(self, address, location, sample_length, total_samples, tg, *args): # pylint: disable=arguments-differ
-        self.address = address
-        return super().capture(location, sample_length, total_samples, tg, *args)
+        register_address = bytestream[0]
+        bytes_to_write = bytestream[1:]
+        return super().write(bytes_to_write, register_address)
 
 
 class SPI():
@@ -974,7 +485,7 @@ class NRF24L01():
         time.sleep(0.015)  # 15 mS settling time
         stat = self.get_status()
         if stat & 0x80:
-            print("Radio transceiver not installed/not found")
+            logger.info("Radio transceiver not installed/not found")
             return False
         else:
             self.ready = True

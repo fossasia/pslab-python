@@ -11,6 +11,7 @@ import numpy as np
 
 import PSL.commands_proto as CP
 import PSL.packet_handler as packet_handler
+from PSL.Peripherals import I2C
 from PSL.multimeter import Multimeter
 from PSL.logic_analyzer import LogicAnalyzer
 from PSL.oscilloscope import Oscilloscope
@@ -95,7 +96,7 @@ class ScienceLab():
 
     def __runInitSequence__(self, **kwargs):
         self.aboutArray = []
-        from PSL.Peripherals import I2C, SPI, NRF24L01, MCP4728
+        from PSL.Peripherals import SPI, NRF24L01, MCP4728
         self.connected = self.H.connected
         if not self.H.connected:
             self.__print__('Check hardware connections. Not connected')

@@ -227,12 +227,7 @@ class Oscilloscope:
             c.buffer_idx = None
 
     def fetch_data(self) -> List[np.ndarray]:
-        """Fetch samples captured from specified channel.
-
-        Parameters
-        ----------
-        channel : {'CH1', 'CH2', 'CH3', 'MIC', 'CAP', 'RES', 'VOL'}
-            Name of the channel from which to fetch captured data.
+        """Fetch captured samples.
 
         Example
         -------
