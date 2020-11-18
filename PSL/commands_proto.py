@@ -67,7 +67,6 @@ I2C_ENABLE_SMBUS = Byte.pack(13)
 I2C_INIT = Byte.pack(14)
 I2C_PULLDOWN_SCL = Byte.pack(15)
 I2C_DISABLE_SMBUS = Byte.pack(16)
-I2C_START_SCOPE = Byte.pack(17)
 
 # /*------UART2--------*/
 UART_2 = Byte.pack(5)
