@@ -22,9 +22,6 @@ import PSL.commands_proto as CP
 
 logger = logging.getLogger(__name__)
 
-USB_VID = 0x04D8
-USB_PID = 0x00DF
-
 
 class Handler:
     """Provides methods for communicating with the PSLab hardware.
@@ -36,6 +33,10 @@ class Handler:
     ----------
     See :meth:`connect. <PSL.packet_handler.Handler.connect>`.
     """
+
+    #            V5       V6
+    _USB_VID = [0x04D8, 0x10C4]
+    _USB_PID = [0x00DF, 0xEA60]
 
     def __init__(
         self,
@@ -140,7 +141,12 @@ class Handler:
             # User specified a port.
             version = self.get_version()
         else:
-            port_info_generator = list_ports.grep(f"{USB_VID:04x}:{USB_PID:04x}")
+            regex = []
+            for vid, pid in zip(self._USB_VID, self._USB_PID):
+                regex.append(f"{vid:04x}:{pid:04x}")
+
+            regex = "(" + "|".join(regex) + ")"
+            port_info_generator = list_ports.grep(regex)
 
             for port_info in port_info_generator:
                 self.interface.port = port_info.device

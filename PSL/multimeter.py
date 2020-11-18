@@ -27,7 +27,7 @@ class Multimeter(Oscilloscope):
     CURRENTS_RANGES = [1, 2, 3, 0]  # Smallest first,
     RC_RESISTANCE = 1e4
     CAPACITOR_CHARGED_VOLTAGE = 0.9 * max(INPUT_RANGES["CAP"])
-    CAPACITOR_DISCHARGED_VOLTAGE = 0.01 * max(INPUT_RANGES["CAP"])
+    CAPACITOR_DISCHARGED_VOLTAGE = 0.05 * max(INPUT_RANGES["CAP"])
 
     def __init__(self, device: Handler = None):
         self._stray_capacitance = 5e-11
@@ -110,8 +110,9 @@ class Multimeter(Oscilloscope):
         to the CAP pin.
         """
         for charge_time in np.unique(np.int16(np.logspace(2, 3))):
+            self._discharge_capacitor()
             voltage, capacitance = self._measure_capacitance(1, 0, charge_time)
-            if voltage >= 3:
+            if voltage >= self.CAPACITOR_CHARGED_VOLTAGE:
                 break
         self._stray_capacitance += capacitance
 
@@ -126,8 +127,10 @@ class Multimeter(Oscilloscope):
         previous_capacitance = 0
 
         for current_range in self.CURRENTS_RANGES:
-            for i in (100, 200, 400, 800):
-                voltage, capacitance = self._measure_capacitance(current_range, 0, i)
+            for charge_time in (100, 200, 400, 800):
+                voltage, capacitance = self._measure_capacitance(
+                    current_range, 0, charge_time
+                )
 
                 if voltage >= self.CAPACITOR_CHARGED_VOLTAGE:
                     return previous_capacitance
@@ -216,10 +219,12 @@ class Multimeter(Oscilloscope):
         y = y[cap_low:]
 
         # Discard data after the voltage reaches zero (improves fit).
-        if 0 in y:
+        try:
             v_zero = np.where(y == 0)[0][0]
             x = x[:v_zero]
             y = y[:v_zero]
+        except IndexError:
+            pass
 
         # Remove time offset.
         x -= x[0]
