@@ -1,4 +1,9 @@
-#Rules for TestBench 
+ACTION!="add", SUBSYSTEM!="tty", GOTO="pslab_rules_end"
 
-SUBSYSTEM=="tty",ATTRS{idVendor}=="04d8", ATTRS{idProduct}=="00df", MODE="666",SYMLINK+="TestBench"
-ATTRS{idVendor}=="04d8", ATTRS{idProduct}=="00df", ENV{ID_MM_DEVICE_IGNORE}="1"
+ATTR{idVendor}=="04d8", ATTRS{idProduct}=="00df", ENV{ID_MM_DEVICE_IGNORE}="1"
+ATTR{idVendor}=="04d8", ATTRS{idProduct}=="00df", MODE="666"
+
+ATTR{idVendor}=="10c4", ATTRS{idProduct}=="ea60", ENV{ID_MM_DEVICE_IGNORE}="1"
+ATTR{idVendor}=="10c4", ATTRS{idProduct}=="ea60", MODE="666"
+
+LABEL="pslab_rules_end"
