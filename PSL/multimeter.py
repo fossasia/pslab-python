@@ -27,7 +27,7 @@ class Multimeter(Oscilloscope):
     CURRENTS_RANGES = [1, 2, 3, 0]  # Smallest first,
     RC_RESISTANCE = 1e4
     CAPACITOR_CHARGED_VOLTAGE = 0.9 * max(INPUT_RANGES["CAP"])
-    CAPACITOR_DISCHARGED_VOLTAGE = 0.05 * max(INPUT_RANGES["CAP"])
+    CAPACITOR_DISCHARGED_VOLTAGE = 0.01 * max(INPUT_RANGES["CAP"])
 
     def __init__(self, device: Handler = None):
         self._stray_capacitance = 5e-11
@@ -124,21 +124,50 @@ class Multimeter(Oscilloscope):
         capacitance : float
             Capacitance in farad.
         """
-        previous_capacitance = 0
-
         for current_range in self.CURRENTS_RANGES:
-            for charge_time in (100, 200, 400, 800):
+            for i, charge_time in enumerate([50000, 5000, 500, 50, 5]):
                 voltage, capacitance = self._measure_capacitance(
                     current_range, 0, charge_time
                 )
 
-                if voltage >= self.CAPACITOR_CHARGED_VOLTAGE:
-                    return previous_capacitance
-                else:
-                    previous_capacitance = capacitance
+                if voltage < self.CAPACITOR_CHARGED_VOLTAGE:
+                    if i:
+                        return self._binary_search_capacitance(
+                            current_range, charge_time, charge_time * 10
+                        )
+                    else:
+                        break  # Increase current.
 
         # Capacitor too big, use alternative method.
         return self._measure_rc_capacitance()
+
+    def _binary_search_capacitance(
+        self,
+        current_range: int,
+        low_charge_time: int,
+        high_charge_time: int,
+    ) -> float:
+        charge_time = (high_charge_time + low_charge_time) // 2
+        voltage, capacitance = self._measure_capacitance(
+            current_range,
+            0,
+            charge_time,
+        )
+
+        if voltage / self.CAPACITOR_CHARGED_VOLTAGE < 0.98:
+            return self._binary_search_capacitance(
+                current_range,
+                charge_time,
+                high_charge_time,
+            )
+        elif voltage / self.CAPACITOR_CHARGED_VOLTAGE > 1.02:
+            return self._binary_search_capacitance(
+                current_range,
+                low_charge_time,
+                charge_time,
+            )
+        else:
+            return capacitance
 
     def _set_cap(self, state, charge_time):
         """Set CAP HIGH or LOW."""
@@ -152,11 +181,17 @@ class Multimeter(Oscilloscope):
         self, discharge_time: int = 50000, timeout: float = 1
     ) -> float:
         start_time = time.time()
-        voltage = self.measure_voltage("CAP")
+        voltage = previous_voltage = self.measure_voltage("CAP")
 
         while voltage > self.CAPACITOR_DISCHARGED_VOLTAGE:
             self._set_cap(0, discharge_time)
             voltage = self.measure_voltage("CAP")
+
+            if abs(previous_voltage - voltage) < self.CAPACITOR_DISCHARGED_VOLTAGE:
+                break
+
+            previous_voltage = voltage
+
             if time.time() - start_time > timeout:
                 break
 
