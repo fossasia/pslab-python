@@ -422,7 +422,52 @@ class ScienceLab():
         print('Verification done', tmp == data)
         if tmp != data: raise Exception('Verification by readback failed')
 
+    # -------------------------------------------------------------------------------------------------------------------#
+
+    # |===============================================ANALOG OUTPUTS ====================================================|
+    # |This section has commands related to current and voltage sources PV1,PV2,PV3,PCS					            |
+    # -------------------------------------------------------------------------------------------------------------------#
+
+
    
+    def WS2812B(self, cols, output='CS1'):
+        """
+		set shade of WS2182 LED on SQR1
+		.. tabularcolumns:: |p{3cm}|p{11cm}|
+		==============  ============================================================================================
+		**Arguments**
+		==============  ============================================================================================
+		cols                2Darray [[R,G,B],[R2,G2,B2],[R3,G3,B3]...]
+							brightness of R,G,B ( 0-255  )
+		==============  ============================================================================================
+		example::
+			>>> I.WS2812B([[10,0,0],[0,10,10],[10,0,10]])
+			#sets red, cyan, magenta to three daisy chained LEDs
+		see :ref:`rgb_video`
+		"""
+        if output == 'CS1':
+            pin = CP.SET_RGB1
+        elif output == 'CS2':
+            pin = CP.SET_RGB2
+        elif output == 'SQR1':
+            pin = CP.SET_RGB3
+        else:
+            print('invalid output')
+            return
+
+        self.H.__sendByte__(CP.COMMON)
+        self.H.__sendByte__(pin)
+        self.H.__sendByte__(len(cols) * 3)
+        for col in cols:
+            R = col[0]
+            G = col[1]
+            B = col[2]
+            self.H.__sendByte__(G)
+            self.H.__sendByte__(R)
+            self.H.__sendByte__(B)
+        self.H.__get_ack__()
+
+
     # -------------------------------------------------------------------------------------------------------------------#
 
     # |======================================READ PROGRAM AND DATA ADDRESSES=============================================|
