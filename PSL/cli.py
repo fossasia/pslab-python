@@ -25,7 +25,7 @@ import PSL.commands_proto as CP
 from PSL.logic_analyzer import LogicAnalyzer
 from PSL.oscilloscope import Oscilloscope
 from PSL.packet_handler import Handler
-from PSL.waveform_generator import WaveformGenerator, PWMGenerator
+from PSL.waveform_generator import WaveformGenerator
 
 
 def logic_analyzer(
@@ -158,8 +158,8 @@ def collect(handler: Handler, args: argparse.Namespace):
         file.close()
 
 
-def wave_gen(handler: Handler, args: argparse.Namespace):
-    """Generate wave.
+def wave(handler: Handler, args: argparse.Namespace):
+    """Generate or load wave.
 
     Parameters
     ----------
@@ -172,8 +172,8 @@ def wave_gen(handler: Handler, args: argparse.Namespace):
 
     if args.wave_function == "gen":
         waveform_generator.generate(
-            channel= args.channel,
-            frequency= args.frequency,
+            channel=args.channel,
+            frequency=args.frequency,
             phase=args.phase,
         )
     elif args.wave_function == "load":
@@ -183,22 +183,9 @@ def wave_gen(handler: Handler, args: argparse.Namespace):
             with open(args.table_file) as table_file:
                 table = json.load(table_file)
 
-        x = np.arange(0, len(table), len(table)/512)
+        x = np.arange(0, len(table), len(table) / 512)
         y = [table[int(i)] for i in x]
         waveform_generator.load_table(channel=args.channel, points=y)
-
-
-def pwn_gen(handler: Handler, args: argparse.Namespace):
-    """PWN wave.
-
-    Parameters
-    ----------
-    handler : :class:`Handler`
-        Serial interface for communicating with the PSLab device.
-    args : :class:`argparse.Namespace`
-        Parsed arguments.
-    """
-    pass  # TODO
 
 
 def main(args: argparse.Namespace):
@@ -214,7 +201,7 @@ def main(args: argparse.Namespace):
     if args.function == "collect":
         collect(handler, args)
     elif args.function == "wave":
-        wave_gen(handler, args)
+        wave(handler, args)
 
 
 def get_parser() -> Tuple[argparse.ArgumentParser, argparse._SubParsersAction]:
@@ -264,7 +251,7 @@ def add_collect_args(subparser: argparse._SubParsersAction):
         type=int,
         default=1,
         required=False,
-        help="Number of channels to capture"
+        help="Number of channels to capture",
     )
     collect.add_argument(
         "-d",
@@ -292,8 +279,8 @@ def add_collect_args(subparser: argparse._SubParsersAction):
     )
 
 
-def add_wave_gen_args(subparser: argparse._SubParsersAction):
-    """Add arguments for wave_gen function to ArgumentParser.
+def add_wave_args(subparser: argparse._SubParsersAction):
+    """Add arguments for wave {gen,load} function to ArgumentParser.
 
     Parameters
     ----------
@@ -302,13 +289,14 @@ def add_wave_gen_args(subparser: argparse._SubParsersAction):
     """
     wave = subparser.add_parser("wave")
     wave_functions = wave.add_subparsers(
-        title="Wave Functions", dest="wave_function",
+        title="Wave Functions",
+        dest="wave_function",
     )
     wave_gen = wave_functions.add_parser("gen")
     wave_gen.add_argument(
         "channel",
         nargs="+",
-        choices=['SI1', 'SI2'],
+        choices=["SI1", "SI2"],
         help="Pin(s) on which to generate a waveform",
     )
     wave_gen.add_argument(
@@ -330,7 +318,7 @@ def add_wave_gen_args(subparser: argparse._SubParsersAction):
     load = wave_functions.add_parser("load")
     load.add_argument(
         "channel",
-        choices=['SI1', 'SI2'],
+        choices=["SI1", "SI2"],
         help="Pin(s) on which to load a table",
     )
     load_table = load.add_mutually_exclusive_group(required=True)
@@ -348,16 +336,3 @@ def add_wave_gen_args(subparser: argparse._SubParsersAction):
         default=None,
         help="Table to load in pin SI1 as json file. Default is stdin",
     )
-
-
-def add_pwn_gen_args(subparser: argparse._SubParsersAction):
-    """Add arguments for pwn_gen function to ArgumentParser.
-
-    Parameters
-    ----------
-    subparser : :class:`argparse._SubParsersAction`
-        SubParser to add other arguments related to pwn_gen function.
-    """
-    # pwn_gen = subparser.add_parser("pwngen")
-    pass  # TODO
-
