@@ -31,6 +31,9 @@ setuptools.setup(
             "99-pslab.rules",
         ]
     },
+    entry_points = {
+        'console_scripts': ['pslab=PSL.cli:cmdline'],
+    },
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
