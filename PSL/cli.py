@@ -239,6 +239,8 @@ def main(args: argparse.Namespace):
         collect(handler, args)
     elif args.function == "wave":
         wave(handler, args)
+    elif args.function == "pwm":
+        pwm(handler, args)
 
 
 def get_parser() -> Tuple[argparse.ArgumentParser, argparse._SubParsersAction]:
