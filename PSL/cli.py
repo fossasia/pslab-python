@@ -25,7 +25,7 @@ import PSL.commands_proto as CP
 from PSL.logic_analyzer import LogicAnalyzer
 from PSL.oscilloscope import Oscilloscope
 from PSL.packet_handler import Handler
-from PSL.waveform_generator import WaveformGenerator
+from PSL.waveform_generator import WaveformGenerator, PWMGenerator
 
 
 def logic_analyzer(
@@ -188,6 +188,43 @@ def wave(handler: Handler, args: argparse.Namespace):
         waveform_generator.load_table(channel=args.channel, points=y)
 
 
+def pwm(handler: Handler, args: argparse.Namespace):
+    """Generate PWM.
+
+    Parameters
+    ----------
+    handler : :class:`Handler`
+        Serial interface for communicating with the PSLab device.
+    args : :class:`argparse.Namespace`
+        Parsed arguments.
+    """
+    pwm_generator = PWMGenerator(handler)
+
+    if args.pwm_function == "gen":
+        pwm_generator.generate(
+            channels=args.channel,
+            frequency=args.frequency,
+            duty_cycles=args.duty_cycles,
+            phases=args.phases,
+        )
+    elif args.pwm_function == "map":
+        pwm_generator.map_reference_clock(
+            channels=args.channel,
+            prescaler=args.prescaler,
+        )
+    elif args.pwm_function == "set":
+        if args.states == "PWM":
+            states = ["PWM"] * 4
+        else:
+            states = args.states
+
+        states[0] = args.sq1 or states[0]
+        states[1] = args.sq2 or states[1]
+        states[2] = args.sq3 or states[2]
+        states[3] = args.sq4 or states[3]
+        pwm_generator.set_state(*states)
+
+
 def main(args: argparse.Namespace):
     """Perform the given function on PSLab.
 
@@ -335,4 +372,97 @@ def add_wave_args(subparser: argparse._SubParsersAction):
         const=0,
         default=None,
         help="Table to load in pin SI1 as json file. Default is stdin",
+    )
+
+
+def add_pwm_args(subparser: argparse._SubParsersAction):
+    """Add arguments for pwm {gen,map,set} function to ArgumentParser.
+
+    Parameters
+    ----------
+    subparser : :class:`argparse._SubParsersAction`
+        SubParser to add other arguments related to pwm_gen function.
+    """
+    pwm = subparser.add_parser("pwm")
+    pwm_functions = pwm.add_subparsers(
+        title="PWM Functions",
+        dest="pwm_function",
+    )
+    pwm_gen = pwm_functions.add_parser("gen")
+    pwm_gen.add_argument(
+        "channel",
+        nargs="+",
+        choices=["SQ1", "SQ2", "SQ3", "SQ4"],
+        help="Pin(s) on which to generate a PWM signals",
+    )
+    pwm_gen.add_argument(
+        "-f",
+        "--frequency",
+        type=float,
+        required=True,
+        help="Frequency in Hz. Shared by all outputs",
+    )
+    pwm_gen.add_argument(
+        "-d",
+        "--duty-cycles",
+        nargs="+",
+        type=float,
+        required=True,
+        help="Duty cycle between 0 and 1",
+    )
+    pwm_gen.add_argument(
+        "-p",
+        "--phases",
+        nargs="+",
+        type=float,
+        default=0,
+        required=False,
+        help="Phase between 0 and 1",
+    )
+    map_ = pwm_functions.add_parser("map")
+    map_.add_argument(
+        "channel",
+        nargs="+",
+        choices=["SQ1", "SQ2", "SQ3", "SQ4"],
+        help="Digital output pin(s) to which to map the internal oscillator",
+    )
+    map_.add_argument(
+        "-p",
+        "--prescaler",
+        type=float,
+        required=True,
+        help="Prescaler value in interval [0, 15]."
+        + "The output frequency is 128 / (1 << prescaler) MHz",
+    )
+    set_ = pwm_functions.add_parser("set")
+    set_.add_argument(
+        "states",
+        nargs="*",
+        choices=["HIGH", "LOW", "PWM"],
+        default="PWM",
+        help="Set the state of SQ1, SQ2, SQ3, SQ4",
+    )
+    set_.add_argument(
+        "--sq1",
+        default=None,
+        required=False,
+        help="Set the state of SQ1",
+    )
+    set_.add_argument(
+        "--sq2",
+        default=None,
+        required=False,
+        help="Set the state of SQ2",
+    )
+    set_.add_argument(
+        "--sq3",
+        default=None,
+        required=False,
+        help="Set the state of SQ3",
+    )
+    set_.add_argument(
+        "--sq4",
+        default=None,
+        required=False,
+        help="Set the state of SQ4",
     )
