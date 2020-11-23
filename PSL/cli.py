@@ -5,7 +5,8 @@ Example
 >>> from PSL import cli
 >>> parser, subparser = cli.get_parser()
 >>> cli.add_collect_args(subparser)
->>> cli.add_wave_gen_args(subparser)
+>>> cli.add_wave_args(subparser)
+>>> cli.add_pwm_args(subparser)
 >>> parser.parse_args(["collect","-i","logic_analyzer"])
 Namespace(channels=1, duration=1, file_path=None, function='collect',
 instrument='logic_analyzer', json=False, port=None)
@@ -468,3 +469,21 @@ def add_pwm_args(subparser: argparse._SubParsersAction):
         required=False,
         help="Set the state of SQ4",
     )
+
+
+def cmdline(args: List[str] = None):
+    """Command line for pslab.
+
+    Parameters
+    ----------
+    args : list of strings.
+        Arguments to parse.
+    """
+    if args is None:
+        args = sys.argv[1:]
+
+    parser, subparser = get_parser()
+    add_collect_args(subparser)
+    add_wave_args(subparser)
+    add_pwm_args(subparser)
+    main(parser.parse_args(args))
