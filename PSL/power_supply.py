@@ -12,6 +12,9 @@ import numpy as np
 
 import PSL.commands_proto as CP
 from PSL.Peripherals import DACCHAN, MCP4728
+from PSL.packet_handler import Handler
+from PSL import packet_handler
+
 
 class PowerSupply:
 
@@ -28,16 +31,11 @@ class PowerSupply:
         print('Err')
         raise RuntimeError('Could Not Connect')
 
-
-
-
-
     def __init__(self, timeout=1.0, **kwargs):
 
+		self._device = packet_handler.Handler() if device is None else device
         self.DAC = MCP4728(self.H, 3.3, 0)
         self.errmsg = ''
-
-
 
     def set_pv1(self, val):
         """
