@@ -105,8 +105,9 @@ def oscilloscope(
         else:
             samples = round((duration * 1e6) / min_timegap)
 
+        st = time.time()
         xy = np.append(xy, scope.capture(channels, samples, min_timegap), axis=1)
-        duration -= max_duration
+        duration -= time.time() - st
 
     return ["Timestamp"] + active_channels, xy
 
