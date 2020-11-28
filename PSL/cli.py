@@ -103,9 +103,9 @@ def oscilloscope(
         if duration >= max_duration:
             samples = max_samples
         else:
-            samples = (duration * 1e6) // min_timegap
+            samples = round((duration * 1e6) / min_timegap)
 
-        np.append(xy, scope.capture(channels, samples, min_timegap), axis=1)
+        xy = np.append(xy, scope.capture(channels, samples, min_timegap), axis=1)
         duration -= max_duration
 
     return ["Timestamp"] + active_channels, xy
@@ -213,17 +213,6 @@ def pwm(handler: Handler, args: argparse.Namespace):
             channels=args.channel,
             prescaler=args.prescaler,
         )
-    elif args.pwm_function == "set":
-        if args.states == "PWM":
-            states = ["PWM"] * 4
-        else:
-            states = args.states
-
-        states[0] = args.sq1 or states[0]
-        states[1] = args.sq2 or states[1]
-        states[2] = args.sq3 or states[2]
-        states[3] = args.sq4 or states[3]
-        pwm_generator.set_state(*states)
 
 
 def main(args: argparse.Namespace):
@@ -296,7 +285,7 @@ def add_collect_args(subparser: argparse._SubParsersAction):
     collect.add_argument(
         "-d",
         "--duration",
-        type=int,
+        type=float,
         default=1,
         required=False,
         help="Duration for capturing (in seconds)",
@@ -355,7 +344,19 @@ def add_wave_args(subparser: argparse._SubParsersAction):
         required=False,
         help="Phase between waveforms in degrees",
     )
-    load = wave_functions.add_parser("load")
+    description = """
+        TABLE:
+            JSON array of voltage values which make up the waveform. Array length
+            must be 512. If the array length less than 512, then the array will be
+            expanded in length of 512. Values outside the range -3.3 V to 3.3 V
+            will be clipped.
+
+            examples:
+                [1,0] or [1,...,0,...],
+                [0,1,0,-1,0,1,0,-1,...],
+                [0,.025,.05,.075,.1,.125,.15,...]
+    """
+    load = wave_functions.add_parser("load", description=description)
     load.add_argument(
         "channel",
         choices=["SI1", "SI2"],
@@ -432,42 +433,10 @@ def add_pwm_args(subparser: argparse._SubParsersAction):
     map_.add_argument(
         "-p",
         "--prescaler",
-        type=float,
+        type=int,
         required=True,
         help="Prescaler value in interval [0, 15]."
         + "The output frequency is 128 / (1 << prescaler) MHz",
-    )
-    set_ = pwm_functions.add_parser("set")
-    set_.add_argument(
-        "states",
-        nargs="*",
-        choices=["HIGH", "LOW", "PWM"],
-        default="PWM",
-        help="Set the state of SQ1, SQ2, SQ3, SQ4",
-    )
-    set_.add_argument(
-        "--sq1",
-        default=None,
-        required=False,
-        help="Set the state of SQ1",
-    )
-    set_.add_argument(
-        "--sq2",
-        default=None,
-        required=False,
-        help="Set the state of SQ2",
-    )
-    set_.add_argument(
-        "--sq3",
-        default=None,
-        required=False,
-        help="Set the state of SQ3",
-    )
-    set_.add_argument(
-        "--sq4",
-        default=None,
-        required=False,
-        help="Set the state of SQ4",
     )
 
 
