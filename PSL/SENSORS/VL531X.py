@@ -202,26 +202,16 @@ _TUNING_CONFIG = (
 class VL531X():
     PLOTNAMES = ['Data']
     ADDRESS = 0x29
-    name = 'Time-of-Flight Proximity Sensor'
+    NAME = 'Time-of-Flight Proximity Sensor'
 
     def __init__(self, handler, **args):
-        self.name = 'Time-of-Flight Proximity Sensor'
         self.ADDRESS = args.get('address', self.ADDRESS)
         self.I2C = I2CSlave(handler, self.ADDRESS)
-        '''
-        try:
-            print ('switching baud to 400k')
-            self.I2C.configI2C(400e3)
-        except:
-            print ('FAILED TO CHANGE BAUD RATE')
-        '''
+
         self.io_timeout_s = 10
         # TODO: yet unused; move up?
         self.signal_rate_limit = 0.25
 
-        self.init()
-
-    def init(self):
         # Check identification registers for expected values
         # VL53L0X datasheet section 3.2 / p21
         for reg, val in _ID_REGISTERS:
@@ -233,7 +223,7 @@ class VL531X():
                 )
 
         # Initial configuration
-        # 1 .Access to sensor, based on Adafruit's and Polulu's code
+        # Access to sensor, based on Adafruit's and Polulu's code
         # See https://github.com/adafruit/Adafruit_CircuitPython_VL53L0X.git
         # and https://github.com/pololu/vl53l0x-arduino/blob/master/VL53L0X.cpp
         # I2C standard mode
