@@ -49,16 +49,13 @@ class I2CMaster:
         self._device.get_ack()
         self.configure(125e3)  # 125 kHz is as low as the PSLab can go.
 
-
-    def configure(self, frequency: float, smbus: bool = False):
-        """Configure frequency and bus type.
+    def configure(self, frequency: float):
+        """Configure bus frequency.
 
         Parameters
         ----------
         frequency : float
             Frequency of SCL in Hz.
-        smbus : bool, optional
-            Use SMBus standard instead of I2C. False by default.
         """
         brgval = int((1 / frequency - self._SCL_DELAY) * CLOCK_RATE - 2)
 
@@ -72,24 +69,6 @@ class I2CMaster:
             max_frequency = self._get_i2c_frequency(self._MIN_BRGVAL)
             e = f"Frequency must be between {min_frequency} and {max_frequency} Hz."
             raise ValueError(e)
-
-        self._configure_smbus(smbus)
-
-    def _configure_smbus(self, enable: bool):
-        """Configure bus as SMBus instead of normal I2C.
-
-        In normal I2C, V_ILMAX (logic level LOW threshold) is 150 mV, and
-        V_IHMIN (logic level HIGH threshold) is 3.5 V. The SMBus standard uses
-        V_ILMAX = 800 mV and V_IHMIN = 2.1 V instead.
-        """
-        self._device.send_byte(CP.I2C_HEADER)
-
-        if enable:
-            self._device.send_byte(CP.I2C_ENABLE_SMBUS)
-        else:
-            self._device.send_byte(CP.I2C_DISABLE_SMBUS)
-
-        self._device.get_ack()
 
     def _get_i2c_frequency(self, brgval: int) -> float:
         return 1 / ((brgval + 2) / CLOCK_RATE + self._SCL_DELAY)
