@@ -1,4 +1,13 @@
-"""Tests for PSL.cli
+"""Tests for PSL.cli.
+
+When integration testing, connect:
+    SQ1 -> LA1
+    SQ2 -> LA2
+    SQ3 -> LA3
+    SQ4 -> LA4
+    SI1 -> CH1
+    SI2 -> CH2
+    SI1 -> CH3
 """
 
 import csv
@@ -6,16 +15,42 @@ import json
 
 import numpy as np
 import pytest
-from unittest.mock import Mock
 
+import PSL.commands_proto as CP
 from PSL import cli
+from PSL import packet_handler
 from PSL.achan import AnalogOutput
-from PSL.waveform_generator import WaveformGenerator
+from PSL.logic_analyzer import LogicAnalyzer
+from PSL.oscilloscope import Oscilloscope
+from PSL.waveform_generator import WaveformGenerator, PWMGenerator
 
-EVENTS = 10
-SAMPLES = 10
 LA_CHANNELS = 4
+EVENTS = 2495
+LA_DURATION = 1.5
+
 SCOPE_CHANNELS = 4
+SAMPLES = CP.MAX_SAMPLES // SCOPE_CHANNELS
+SCOPE_DURATION = 0.5
+
+
+@pytest.fixture()
+def la(handler):
+    if not isinstance(handler, packet_handler.MockHandler):
+        pwm = PWMGenerator(handler)
+        # To avoid exeeding events limit before LA_DURATION.
+        pwm_frequency = int(((CP.MAX_SAMPLES / 4) / 2) / LA_DURATION)
+        pwm.generate(["SQ1", "SQ2", "SQ3", "SQ4"], pwm_frequency, 0.5, 0)
+        handler._logging = True
+    return handler
+
+
+@pytest.fixture()
+def scope(handler):
+    if not isinstance(handler, packet_handler.MockHandler):
+        wave = WaveformGenerator(handler)
+        wave.generate(["SI1", "SI2"], 1000)
+        handler._logging = True
+    return handler
 
 
 def logic_analyzer(device, channels, duration):
@@ -33,10 +68,10 @@ def oscilloscope(device, channels, duration):
     return headers, [timestamp] + data
 
 
-@pytest.fixture(autouse=True)
-def setup(monkeypatch):
+@pytest.fixture(name="collect")
+def setup_collect(mocker, monkeypatch):
     """Return a ArgumentParser instance with all arguments added."""
-    monkeypatch.setattr(cli, "Handler", Mock)
+    mocker.patch("PSL.cli.Handler")
     INSTRUMENTS = {
         "logic_analyzer": logic_analyzer,
         "oscilloscope": oscilloscope,
@@ -44,7 +79,26 @@ def setup(monkeypatch):
     monkeypatch.setattr(cli, "INSTRUMENTS", INSTRUMENTS)
 
 
-def test_collect_csv_stdout(capsys):
+@pytest.fixture(name="wave")
+def setup_wave(mocker):
+    mocker.patch("PSL.cli.Handler")
+
+
+def test_logic_analyzer(la):
+    channels, timestamps = cli.logic_analyzer(la, LA_CHANNELS, LA_DURATION)
+    assert len(channels) == LA_CHANNELS
+    for timestamp in timestamps:
+        assert len(timestamp) > EVENTS
+
+
+def test_oscilloscope(scope):
+    headers, values = cli.oscilloscope(scope, SCOPE_CHANNELS, SCOPE_DURATION)
+    assert len(headers) == 1 + SCOPE_CHANNELS
+    for value in values:
+        assert len(value) > SAMPLES
+
+
+def test_collect_csv_stdout(collect, capsys):
     cli.cmdline(["collect", "logic_analyzer", "--channels", str(LA_CHANNELS)])
     output = list(csv.reader(capsys.readouterr().out.splitlines()))
     assert len(output[0]) == LA_CHANNELS
@@ -56,7 +110,7 @@ def test_collect_csv_stdout(capsys):
     assert len(output) == 1 + SAMPLES
 
 
-def test_collect_csv_file(tmp_path):
+def test_collect_csv_file(collect, tmp_path):
     la_temp_csv = str(tmp_path / "logic_analyzer.csv")
     cli.cmdline(
         [
@@ -90,7 +144,7 @@ def test_collect_csv_file(tmp_path):
         assert len(output) == 1 + SAMPLES
 
 
-def test_collect_json_stdout(capsys):
+def test_collect_json_stdout(collect, capsys):
     cli.cmdline(["collect", "logic_analyzer", "--channels", str(LA_CHANNELS), "--json"])
     output = json.loads(capsys.readouterr().out)
     assert len(output) == LA_CHANNELS
@@ -104,7 +158,7 @@ def test_collect_json_stdout(capsys):
     assert len(list(output.values())[0]) == SAMPLES
 
 
-def test_collect_json_file(tmp_path):
+def test_collect_json_file(collect, tmp_path):
     la_tmp_json = str(tmp_path / "logic_analyzer.json")
     cli.cmdline(
         [
@@ -140,8 +194,8 @@ def test_collect_json_file(tmp_path):
         assert len(list(output.values())[0]) == SAMPLES
 
 
-def test_wave_load_table():
-    wavegen = WaveformGenerator(Mock())
+def test_wave_load_table(wave, mocker):
+    wavegen = WaveformGenerator(mocker.Mock())
     wavegen.load_equation("SI1", "tria")
 
     def tria(x):
@@ -154,7 +208,7 @@ def test_wave_load_table():
     assert AnalogOutput("SI1").waveform_table == AnalogOutput("SI2").waveform_table
 
 
-def test_wave_load_table_expand():
+def test_wave_load_table_expand(wave):
     table1 = json.dumps([0, 1])
     cli.cmdline(["wave", "load", "SI1", "--table", table1])
     table2 = json.dumps(([0] * (512 // 2)) + ([1] * (512 // 2)))
@@ -162,8 +216,8 @@ def test_wave_load_table_expand():
     assert AnalogOutput("SI1").waveform_table == AnalogOutput("SI2").waveform_table
 
 
-def test_wave_load_tablefile(tmp_path):
-    wavegen = WaveformGenerator(Mock())
+def test_wave_load_tablefile(wave, mocker, tmp_path):
+    wavegen = WaveformGenerator(mocker.Mock())
     wavegen.load_equation("SI1", "tria")
 
     def tria(x):
@@ -178,7 +232,7 @@ def test_wave_load_tablefile(tmp_path):
     assert AnalogOutput("SI1").waveform_table == AnalogOutput("SI2").waveform_table
 
 
-def test_wave_load_tablefile_expand(tmp_path):
+def test_wave_load_tablefile_expand(wave, tmp_path):
     table1_tmp_json = str(tmp_path / "table1.json")
     with open(table1_tmp_json, "w") as json_file:
         json.dump([0, 1], json_file)
