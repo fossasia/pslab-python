@@ -20,8 +20,6 @@ import PSL.commands_proto as CP
 from PSL import cli
 from PSL import packet_handler
 from PSL.achan import AnalogOutput
-from PSL.logic_analyzer import LogicAnalyzer
-from PSL.oscilloscope import Oscilloscope
 from PSL.waveform_generator import WaveformGenerator, PWMGenerator
 
 LA_CHANNELS = 4
