@@ -95,8 +95,9 @@ class I2CMaster:
 
         return addrs
 
-    def _get_status(self):
-        """Get the contents of the I2C2STAT register.
+    @property
+    def _status(self):
+        """int: Contents of the I2C2STAT register.
 
         bit 15  ACKSTAT: Acknowledge Status
                 1 = NACK received from slave.

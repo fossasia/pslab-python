@@ -1,3 +1,11 @@
+"""Tests for PSL.i2c.
+
+When integration testing, the PSLab's logic analyzer is used to verify the
+function of the I2C bus. Before running the integration tests, connect:
+    SCL->LA1
+    SDA->LA2
+"""
+
 import pytest
 
 from PSL.i2c import I2CMaster, I2CSlave
@@ -63,6 +71,12 @@ def test_configure(la: LogicAnalyzer, master: I2CMaster, slave: I2CSlave):
 def test_scan(master: I2CMaster):
     mcp4728_address = 0x60
     assert mcp4728_address in master.scan()
+
+
+def test_status(master: I2CMaster):
+    master.configure(1.25e5)
+    # No status bits should be set on a newly configured bus.
+    assert not master._status
 
 
 def test_start_slave(la: LogicAnalyzer, slave: I2CSlave):
