@@ -49,20 +49,6 @@ class I2CMaster:
         self._device.get_ack()
         self.configure(125e3)  # 125 kHz is as low as the PSLab can go.
 
-    def pull_scl_low(self, time):
-        """Hold SCL pin at 0 V for a specified time period.
-
-        Used by certain sensors such as MLX90316 PIR for initializing.
-
-        Parameters
-        ----------
-        time : int
-            Time to hold SCL LOW in microseconds.
-        """
-        self._device.send_byte(CP.I2C_HEADER)
-        self._device.send_byte(CP.I2C_PULLDOWN_SCL)
-        self._device.send_int(time)
-        self._device.get_ack()
 
     def configure(self, frequency: float, smbus: bool = False):
         """Configure frequency and bus type.
