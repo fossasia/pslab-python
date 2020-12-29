@@ -18,12 +18,11 @@ import pytest
 
 import PSL.commands_proto as CP
 from PSL import cli
-from PSL import packet_handler
 from PSL.achan import AnalogOutput
-from PSL.waveform_generator import WaveformGenerator, PWMGenerator
+from PSL.waveform_generator import WaveformGenerator
 
 LA_CHANNELS = 4
-EVENTS = 2495
+EVENTS = 2450
 LA_DURATION = 1.5
 
 SCOPE_CHANNELS = 4
@@ -31,30 +30,26 @@ SAMPLES = CP.MAX_SAMPLES // SCOPE_CHANNELS
 SCOPE_DURATION = 0.5
 
 
-@pytest.fixture()
-def la(handler):
-    if not isinstance(handler, packet_handler.MockHandler):
-        pwm = PWMGenerator(handler)
-        # To avoid exeeding events limit before LA_DURATION.
-        pwm_frequency = int(((CP.MAX_SAMPLES / 4) / 2) / LA_DURATION)
-        pwm.generate(["SQ1", "SQ2", "SQ3", "SQ4"], pwm_frequency, 0.5, 0)
-        handler._logging = True
-    return handler
+@pytest.fixture
+def la(mocker):
+    mock = mocker.patch("PSL.cli.LogicAnalyzer")
+    mock().fetch_data.return_value = [np.arange(2500)] * LA_CHANNELS
+    return mock
 
 
-@pytest.fixture()
-def scope(handler):
-    if not isinstance(handler, packet_handler.MockHandler):
-        wave = WaveformGenerator(handler)
-        wave.generate(["SI1", "SI2"], 1000)
-        handler._logging = True
-    return handler
+@pytest.fixture
+def scope(mocker):
+    mock = mocker.patch("PSL.cli.Oscilloscope")
+    mock()._lookup_mininum_timegap.return_value = 0.5
+    mock().capture.return_value = [np.zeros(SAMPLES)] * (SCOPE_CHANNELS + 1)
+    mock()._channel_one_map = "CH1"
+    mock()._CH234 = ["CH2", "CH3", "MIC"]
+    return mock
 
 
 def logic_analyzer(device, channels, duration):
     headers = ["LA1", "LA2", "LA3", "LA4"][:channels]
     timestamps = [np.arange(0, duration * 1e6, (duration * 1e6) / EVENTS)] * channels
-
     return headers, timestamps
 
 
@@ -62,7 +57,6 @@ def oscilloscope(device, channels, duration):
     headers = ["Timestamp", "CH1", "CH2", "CH3", "MIC"][: 1 + channels]
     timestamp = np.arange(0, duration * 1e6, (duration * 1e6) / SAMPLES)
     data = [np.random.random_sample(SAMPLES)] * channels
-
     return headers, [timestamp] + data
 
 
