@@ -17,7 +17,7 @@ For more information see [https://pslab.io](https://pslab.io).
 ## Buy
 
 * You can get a Pocket Science Lab device from the [FOSSASIA Shop](https://fossasia.com).
-* More resellers are listed on the [PSLab website](https://pslab.io/shop/).
+* More re-sellers are listed on the [PSLab website](https://pslab.io/shop/).
 
 ## Installation
 
