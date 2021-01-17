@@ -87,6 +87,7 @@ class Multimeter(Oscilloscope):
 
     def _voltmeter_autorange(self, channel: str) -> float:
         if channel in ("CH1", "CH2"):
+            self._set_gain(channel, 1)  # Reset gain.
             voltage = self._measure_voltage(channel)
 
             for gain in GAIN_VALUES[::-1]:
