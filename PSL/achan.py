@@ -231,7 +231,7 @@ class AnalogOutput:
 
         The table contains 512 values.
         """
-        # A form of amplitude control. Max PWM duty cycle out of 512 clock  cycles.
+        # A form of amplitude control. Max PWM duty cycle out of 512 clock cycles.
         return self._range_normalize(self._waveform_table, 511)
 
     @waveform_table.setter
