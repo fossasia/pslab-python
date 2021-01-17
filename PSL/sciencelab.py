@@ -15,6 +15,7 @@ from PSL.Peripherals import I2C
 from PSL.multimeter import Multimeter
 from PSL.logic_analyzer import LogicAnalyzer
 from PSL.oscilloscope import Oscilloscope
+from PSL.power_supply import PowerSupply
 from PSL.waveform_generator import PWMGenerator, WaveformGenerator
 
 
@@ -92,11 +93,12 @@ class ScienceLab():
         self.waveform_generator = WaveformGenerator(device=self.H)
         self.pwm_generator = PWMGenerator(device=self.H)
         self.multimeter = Multimeter(device=self.H)
+        self.power_supply = PowerSupply(device=self.H)
         self.__runInitSequence__(**kwargs)
 
     def __runInitSequence__(self, **kwargs):
         self.aboutArray = []
-        from PSL.Peripherals import SPI, NRF24L01, MCP4728
+        from PSL.Peripherals import SPI, NRF24L01
         self.connected = self.H.connected
         if not self.H.connected:
             self.__print__('Check hardware connections. Not connected')
@@ -117,8 +119,6 @@ class ScienceLab():
         self.NRF = NRF24L01(self.H)
 
         self.aboutArray.append(['Radio Transceiver is :', 'Installed' if self.NRF.ready else 'Not Installed'])
-
-        self.DAC = MCP4728(self.H, 3.3, 0)
 
     def __print__(self, *args):
         if self.verbose:
@@ -420,93 +420,6 @@ class ScienceLab():
         tmp = [ord(a) for a in self.read_bulk_flash(location, len(data))]
         print('Verification done', tmp == data)
         if tmp != data: raise Exception('Verification by readback failed')
-
-    # -------------------------------------------------------------------------------------------------------------------#
-
-    # |===============================================ANALOG OUTPUTS ====================================================|
-    # |This section has commands related to current and voltage sources PV1,PV2,PV3,PCS					            |
-    # -------------------------------------------------------------------------------------------------------------------#
-
-    def set_pv1(self, val):
-        """
-		Set the voltage on PV1
-		12-bit DAC...  -5V to 5V
-
-		.. tabularcolumns:: |p{3cm}|p{11cm}|
-
-		==============  ============================================================================================
-		**Arguments**
-		==============  ============================================================================================
-		val             Output voltage on PV1. -5V to 5V
-		==============  ============================================================================================
-
-		"""
-        return self.DAC.setVoltage('PV1', val)
-
-    def set_pv2(self, val):
-        """
-		Set the voltage on PV2.
-		12-bit DAC...  0-3.3V
-
-		.. tabularcolumns:: |p{3cm}|p{11cm}|
-
-		==============  ============================================================================================
-		**Arguments**
-		==============  ============================================================================================
-		val             Output voltage on PV2. 0-3.3V
-		==============  ============================================================================================
-
-		:return: Actual value set on pv2
-		"""
-        return self.DAC.setVoltage('PV2', val)
-
-    def set_pv3(self, val):
-        """
-		Set the voltage on PV3
-
-		.. tabularcolumns:: |p{3cm}|p{11cm}|
-
-		==============  ============================================================================================
-		**Arguments**
-		==============  ============================================================================================
-		val             Output voltage on PV3. 0V to 3.3V
-		==============  ============================================================================================
-
-		:return: Actual value set on pv3
-		"""
-        return self.DAC.setVoltage('PV3', val)
-
-    def set_pcs(self, val):
-        """
-		Set programmable current source
-
-		.. tabularcolumns:: |p{3cm}|p{11cm}|
-
-		==============  ============================================================================================
-		**Arguments**
-		==============  ============================================================================================
-		val             Output current on PCS. 0 to 3.3mA. Subject to load resistance. Read voltage on PCS to check.
-		==============  ============================================================================================
-
-		:return: value attempted to set on pcs
-		"""
-        return self.DAC.setCurrent(val)
-
-    def get_pv1(self):
-        """
-		get the last set voltage on PV1
-		12-bit DAC...  -5V to 5V
-		"""
-        return self.DAC.getVoltage('PV1')
-
-    def get_pv2(self):
-        return self.DAC.getVoltage('PV2')
-
-    def get_pv3(self):
-        return self.DAC.getVoltage('PV3')
-
-    def get_pcs(self):
-        return self.DAC.getVoltage('PCS')
 
     def WS2812B(self, cols, output='CS1'):
         """
