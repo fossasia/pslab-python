@@ -1,3 +1,9 @@
+"""Convenience module that creates instances of every instrument for you.
+
+Every PSLab instrument can be imported and instantiated individually. However,
+if you need to use several at once the ScienceLab class provides a convenient
+collection.
+"""
 from typing import Iterable, List
 
 import pslab.protocol as CP

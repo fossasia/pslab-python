@@ -26,8 +26,9 @@ logger = logging.getLogger(__name__)
 class SerialHandler:
     """Provides methods for communicating with the PSLab hardware.
 
-    When instantiated, Handler tries to connect to the PSLab. A port can optionally
-    be specified; otherwise Handler will try to find the correct port automatically.
+    When instantiated, SerialHandler tries to connect to the PSLab. A port can
+    optionally be specified; otherwise Handler will try to find the correct
+    port automatically.
 
     Parameters
     ----------
@@ -332,11 +333,11 @@ Intended to be monkey-patched by the calling test module.
 
 
 class MockHandler(SerialHandler):
-    """Mock implementation of :class:`Handler` for testing.
+    """Mock implementation of :class:`SerialHandler` for testing.
 
     Parameters
     ----------
-    Same as :class:`Handler`.
+    Same as :class:`SerialHandler`.
     """
 
     VERSION = "PSLab vMOCK"
@@ -360,11 +361,11 @@ class MockHandler(SerialHandler):
         baudrate: int = 1000000,
         timeout: float = 1.0,
     ):
-        """See :meth:`Handler.connect`."""
+        """See :meth:`SerialHandler.connect`."""
         self.version = self.get_version()
 
     def disconnect(self):
-        """See :meth:`Handler.disconnect`."""
+        """See :meth:`SerialHandler.disconnect`."""
         pass
 
     def reconnect(
@@ -373,7 +374,7 @@ class MockHandler(SerialHandler):
         baudrate: int = None,
         timeout: float = None,
     ):
-        """See :meth:`Handler.reconnect`."""
+        """See :meth:`SerialHandler.reconnect`."""
         pass
 
     def get_version(self) -> str:
@@ -386,7 +387,7 @@ class MockHandler(SerialHandler):
         The returned data depends on how :meth:`write` was called prior to calling
         :meth:`read`.
 
-        See also :meth:`Handler.read`.
+        See also :meth:`SerialHandler.read`.
         """
         read_bytes = self._in_buffer[:number_of_bytes]
         self._in_buffer = self._in_buffer[number_of_bytes:]
@@ -395,7 +396,7 @@ class MockHandler(SerialHandler):
     def write(self, data: bytes):
         """Add recorded RX data to buffer if written data equals recorded TX data.
 
-        See also :meth:`Handler.write`.
+        See also :meth:`SerialHandler.write`.
         """
         tx, rx = next(RECORDED_TRAFFIC)
         if tx == data:

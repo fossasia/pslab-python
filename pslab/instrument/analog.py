@@ -1,11 +1,11 @@
 """Objects related to the PSLab's analog input channels.
 
-This module contains several module level variables with details on the analog inputs'
-capabilities, including possible gain values, voltage ranges, and firmware-interal
-enumeration.
+This module contains several module level variables with details on the analog
+inputs' capabilities, including possible gain values, voltage ranges, and
+firmware-interal enumeration.
 
-This module also contains the AnalogInput class, an instance of which functions as a
-model of a particular analog input.
+This module also contains the AnalogInput class, an instance of which functions
+as a model of a particular analog input.
 """
 
 import logging
@@ -58,17 +58,16 @@ class AnalogInput:
     ----------
     name : {'CH1', 'CH2', 'CH3', 'MIC', 'CAP', 'RES', 'VOL'}
         Name of the analog channel to model.
-    device : :class:`Handler`
-        Serial interface for communicating with the PSLab device.
 
     Attributes
     ----------
     samples_in_buffer : int
         Number of samples collected on this channel currently being held in the
         device's ADC buffer.
-    buffer_idx : Union[int, None]
-        Location in the device's ADC buffer where the samples are stored. None if no
-        samples captured by this channel are currently held in the buffer.
+    buffer_idx : int or None
+        Location in the device's ADC buffer where the samples are stored. None
+        if no samples captured by this channel are currently held in the
+        buffer.
     chosa : int
         Number used to refer to this channel in the firmware.
     """
@@ -225,10 +224,7 @@ class AnalogOutput:
 
     @property
     def waveform_table(self) -> np.ndarray:
-        """Get or set the waveform table loaded on this output.
-
-        The table contains 512 values.
-        """
+        """numpy.ndarray: 512-value waveform table loaded on this output."""
         # A form of amplitude control. Max PWM duty cycle out of 512 clock cycles.
         return self._range_normalize(self._waveform_table, 511)
 
@@ -240,10 +236,7 @@ class AnalogOutput:
 
     @property
     def lowres_waveform_table(self) -> np.ndarray:
-        """Get a lower resolution version of the loaded waveform table.
-
-        This table contains 32 values.
-        """
+        """numpy.ndarray: 32-value waveform table loaded on this output."""
         # Max PWM duty cycle out of 64 clock  cycles.
         return self._range_normalize(self._waveform_table[::16], 63)
 
