@@ -2,8 +2,8 @@
 
 Example
 -------
->>> from PSL.packet_handler import Handler
->>> device = Handler()
+>>> from pslab.serial_handler import SerialHandler
+>>> device = SerialHandler()
 >>> version = device.get_version()
 >>> device.disconnect()
 """
@@ -18,12 +18,12 @@ from typing import List, Union
 import serial
 from serial.tools import list_ports
 
-import PSL.commands_proto as CP
+import pslab.protocol as CP
 
 logger = logging.getLogger(__name__)
 
 
-class Handler:
+class SerialHandler:
     """Provides methods for communicating with the PSLab hardware.
 
     When instantiated, Handler tries to connect to the PSLab. A port can optionally
@@ -31,10 +31,10 @@ class Handler:
 
     Parameters
     ----------
-    See :meth:`connect. <PSL.packet_handler.Handler.connect>`.
+    See :meth:`connect`.
     """
 
-    #            V5       V6
+    #            V5      V6
     _USB_VID = [0x04D8, 0x10C4]
     _USB_PID = [0x00DF, 0xEA60]
 
@@ -43,12 +43,8 @@ class Handler:
         port: str = None,
         baudrate: int = 1000000,
         timeout: float = 1.0,
-        **kwargs,  # Backward compatibility
     ):
         self._check_udev()
-        self.burst_buffer = b""
-        self.load_burst = False
-        self.input_queue_size = 0
         self.version = ""
         self._log = b""
         self._logging = False
@@ -64,21 +60,7 @@ class Handler:
         self.get_long = partial(self._receive, size=4)
         update_wrapper(self.get_long, self._receive)
         self.connect(port=port, baudrate=baudrate, timeout=timeout)
-
-        # Backwards compatibility
-        self.fd = self.interface
-        self.occupiedPorts = set()
         self.connected = self.interface.is_open
-        self.__sendByte__ = self.send_byte
-        self.__sendInt__ = self.send_int
-        self.__get_ack__ = self.get_ack
-        self.__getByte__ = self.get_byte
-        self.__getInt__ = self.get_int
-        self.__getLong__ = self.get_long
-        self.waitForData = self.wait_for_data
-        self.sendBurst = self.send_burst
-        self.portname = self.interface.name
-        self.listPorts = self._list_ports
 
     @staticmethod
     def _check_udev():
@@ -159,7 +141,6 @@ class Handler:
 
         if any(expected in version for expected in ["PSLab", "CSpark"]):
             self.version = version
-            self.fd = self.interface  # Backward compatibility
             logger.info(f"Connected to {self.version} on {self.interface.port}.")
         else:
             self.interface.close()
@@ -183,7 +164,7 @@ class Handler:
 
         Parameters
         ----------
-        See :meth:`connect. <PSL.packet_handler.Handler.connect>`.
+        See :meth:`connect`.
         """
         self.disconnect()
 
@@ -200,7 +181,7 @@ class Handler:
         )
         self.connect()
 
-    def get_version(self, *args) -> str:  # *args for backwards compatibility
+    def get_version(self) -> str:
         """Query PSLab for its version and return it as a decoded string.
 
         Returns
@@ -227,11 +208,7 @@ class Handler:
                 2 ARGUMENT_ERROR
                 3 FAILED
         """
-        if not self.load_burst:
-            response = self.read(1)
-        else:
-            self.input_queue_size += 1
-            return 1
+        response = self.read(1)
 
         try:
             return CP.Byte.unpack(response)[0]
@@ -264,10 +241,7 @@ class Handler:
             packer = self._get_integer_type(size)
             packet = packer.pack(value)
 
-        if self.load_burst:
-            self.burst_buffer += packet
-        else:
-            self.write(packet)
+        self.write(packet)
 
     def _receive(self, size: int) -> int:
         """Read and unpack data from the serial port.
@@ -346,36 +320,6 @@ class Handler:
 
         return False
 
-    def send_burst(self) -> List[int]:
-        """Transmit the commands stored in the burst_buffer.
-
-        The burst_buffer and input buffer are both emptied.
-
-        The following example initiates the capture routine and sets OD1 HIGH
-        immediately. It is used by the Transient response experiment where the input
-        needs to be toggled soon after the oscilloscope has been started.
-
-        Example
-        -------
-        >>> I.load_burst = True
-        >>> I.capture_traces(4, 800, 2)
-        >>> I.set_state(I.OD1, I.HIGH)
-        >>> I.send_burst()
-
-        Returns
-        -------
-        list
-            List of response codes
-            (see :meth:`get_ack <PSL.packet_handler.Handler.get_ack>`).
-        """
-        self.write(self.burst_buffer)
-        self.burst_buffer = b""
-        self.load_burst = False
-        acks = self.read(self.input_queue_size)
-        self.input_queue_size = 0
-
-        return list(acks)
-
 
 RECORDED_TRAFFIC = iter([])
 """An iterator returning (request, response) pairs.
@@ -387,7 +331,7 @@ Intended to be monkey-patched by the calling test module.
 """
 
 
-class MockHandler(Handler):
+class MockHandler(SerialHandler):
     """Mock implementation of :class:`Handler` for testing.
 
     Parameters
@@ -432,7 +376,7 @@ class MockHandler(Handler):
         """See :meth:`Handler.reconnect`."""
         pass
 
-    def get_version(self, *args) -> str:
+    def get_version(self) -> str:
         """Return mock version."""
         return self.VERSION
 
@@ -464,3 +408,73 @@ class MockHandler(Handler):
         else:
             time.sleep(timeout)
             return False
+
+
+class ADCBufferMixin:
+    """Mixin for classes that need to read or write to the ADC buffer."""
+
+    def fetch_buffer(self, samples: int, starting_position: int = 0):
+        """Fetch a section of the ADC buffer.
+
+        Parameters
+        ----------
+        samples : int
+            Number of samples to fetch.
+        starting_position : int, optional
+            Location in the ADC buffer to start from. By default samples will
+            be fetched from the beginning of the buffer.
+
+        Returns
+        -------
+        received : list of int
+            List of received samples.
+        """
+        self._device.send_byte(CP.COMMON)
+        self._device.send_byte(CP.RETRIEVE_BUFFER)
+        self._device.send_int(starting_position)
+        self._device.send_int(samples)
+        received = []
+
+        for a in range(samples):
+            received.append(self._device.get_int())
+
+        self._device.get_ack()
+        return received
+
+    def clear_buffer(self, samples: int, starting_position: int = 0):
+        """Clear a section of the ADC buffer.
+
+        Parameters
+        ----------
+        samples : int
+            Number of samples to clear from the buffer.
+        starting_position : int, optional
+            Location in the ADC buffer to start from. By default samples will
+            be cleared from the beginning of the buffer.
+        """
+        self._device.send_byte(CP.COMMON)
+        self._device.send_byte(CP.CLEAR_BUFFER)
+        self._device.send_int(starting_position)
+        self._device.send_int(samples)
+        self._device.get_ack()
+
+    def fill_buffer(self, data: List[int], starting_position: int = 0):
+        """Fill a section of the ADC buffer with data.
+
+        Parameters
+        ----------
+        data : list of int
+            Values to write to the ADC buffer.
+        starting_position : int, optional
+            Location in the ADC buffer to start from. By default writing will
+            start at the beginning of the buffer.
+        """
+        self._device.send_byte(CP.COMMON)
+        self._device.send_byte(CP.FILL_BUFFER)
+        self._device.send_int(starting_position)
+        self._device.send_int(len(data))
+
+        for value in data:
+            self._device.send_int(value)
+
+        self._device.get_ack()

@@ -1,4 +1,4 @@
-"""Tests for PSL.logic_analyzer.
+"""Tests for pslab.instrument.logic_analyzer.
 
 When integration testing, the PSLab's PWM output is used to generate a signal
 which is analyzed by the logic analyzer. Before running the integration tests,
@@ -14,10 +14,11 @@ import time
 import numpy as np
 import pytest
 
-import PSL.commands_proto as CP
-from PSL import logic_analyzer
-from PSL import packet_handler
-from PSL.waveform_generator import PWMGenerator
+import pslab.protocol as CP
+from pslab.instrument.logic_analyzer import LogicAnalyzer
+from pslab.instrument.waveform_generator import PWMGenerator
+from pslab.serial_handler import MockHandler
+
 
 EVENTS = 2495
 FREQUENCY = 1e5
@@ -25,7 +26,7 @@ DUTY_CYCLE = 0.5
 LOW_FREQUENCY = 100
 LOWER_FREQUENCY = 10
 MICROSECONDS = 1e6
-TWO_CLOCK_CYCLES = 2 * logic_analyzer.CLOCK_RATE ** -1 * MICROSECONDS
+TWO_CLOCK_CYCLES = 2 * CP.CLOCK_RATE ** -1 * MICROSECONDS
 
 
 @pytest.fixture
@@ -34,11 +35,11 @@ def la(handler, request):
 
     In integration test mode, this function also enables the PWM output.
     """
-    if not isinstance(handler, packet_handler.MockHandler):
+    if not isinstance(handler, MockHandler):
         pwm = PWMGenerator(handler)
         enable_pwm(pwm, request.node.name)
         handler._logging = True
-    return logic_analyzer.LogicAnalyzer(handler)
+    return LogicAnalyzer(handler)
 
 
 def enable_pwm(pwm: PWMGenerator, test_name: str):
@@ -85,9 +86,9 @@ def test_capture_four_low_frequency(la):
     t1 = la.capture(4, 10, e2e_time=e2e_time)[0]
     # When capturing every edge, the accuracy seems to depend on
     # the PWM prescaler as well as the logic analyzer prescaler.
-    pwm_abstol = TWO_CLOCK_CYCLES * logic_analyzer.PRESCALERS[2]
+    pwm_abstol = TWO_CLOCK_CYCLES * LogicAnalyzer._PRESCALERS[2]
     assert np.array(9 * [e2e_time * MICROSECONDS]) == pytest.approx(
-        np.diff(t1), abs=TWO_CLOCK_CYCLES * logic_analyzer.PRESCALERS[1] + pwm_abstol
+        np.diff(t1), abs=TWO_CLOCK_CYCLES * LogicAnalyzer._PRESCALERS[1] + pwm_abstol
     )
 
 
@@ -95,7 +96,7 @@ def test_capture_four_lower_frequency(la):
     e2e_time = LOW_FREQUENCY ** -1
     t1 = la.capture(4, 10, modes=4 * ["rising"], e2e_time=e2e_time)[0]
     assert np.array(9 * [e2e_time * MICROSECONDS]) == pytest.approx(
-        np.diff(t1), abs=TWO_CLOCK_CYCLES * logic_analyzer.PRESCALERS[2]
+        np.diff(t1), abs=TWO_CLOCK_CYCLES * LogicAnalyzer._PRESCALERS[2]
     )
 
 
@@ -105,7 +106,7 @@ def test_capture_four_lowest_frequency(la):
         0
     ]
     assert np.array(9 * [e2e_time * MICROSECONDS]) == pytest.approx(
-        np.diff(t1), abs=TWO_CLOCK_CYCLES * logic_analyzer.PRESCALERS[3]
+        np.diff(t1), abs=TWO_CLOCK_CYCLES * LogicAnalyzer._PRESCALERS[3]
     )
 
 

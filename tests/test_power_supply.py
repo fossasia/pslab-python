@@ -10,22 +10,22 @@ When running integration tests, connect:
 import pytest
 import numpy as np
 
-from PSL.packet_handler import Handler
-from PSL.multimeter import Multimeter
-from PSL.power_supply import PowerSupply, VoltageSource
+from pslab.serial_handler import SerialHandler
+from pslab.instrument.multimeter import Multimeter
+from pslab.instrument.power_supply import PowerSupply, VoltageSource
 
 RELTOL = 0.05
 ABSTOL = 0.05
 
 
 @pytest.fixture
-def power(handler: Handler) -> PowerSupply:
+def power(handler: SerialHandler) -> PowerSupply:
     handler._logging = True
     return PowerSupply(handler)
 
 
 @pytest.fixture
-def multi(handler: Handler) -> Multimeter:
+def multi(handler: SerialHandler) -> Multimeter:
     handler._logging = True
     return Multimeter(handler)
 

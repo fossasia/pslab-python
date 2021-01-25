@@ -11,9 +11,10 @@ tests, connect:
 import numpy as np
 import pytest
 
-from PSL import oscilloscope
-from PSL import packet_handler
-from PSL.waveform_generator import WaveformGenerator
+from pslab.instrument.oscilloscope import Oscilloscope
+from pslab.instrument.waveform_generator import WaveformGenerator
+from pslab.serial_handler import MockHandler
+
 
 FREQUENCY = 1000
 MICROSECONDS = 1e-6
@@ -26,11 +27,11 @@ def scope(handler):
 
     In integration test mode, this function also enables the analog output.
     """
-    if not isinstance(handler, packet_handler.MockHandler):
+    if not isinstance(handler, MockHandler):
         wave = WaveformGenerator(handler)
         wave.generate(["SI1", "SI2"], FREQUENCY)
         handler._logging = True
-    return oscilloscope.Oscilloscope(handler)
+    return Oscilloscope(handler)
 
 
 def count_zero_crossings(x, y):

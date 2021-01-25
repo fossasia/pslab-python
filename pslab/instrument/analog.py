@@ -25,6 +25,7 @@ ANALOG_CHANNELS = (
     "CAP",
     "RES",
     "VOL",
+    "AN4",
 )
 
 INPUT_RANGES = {
@@ -35,6 +36,7 @@ INPUT_RANGES = {
     "CAP": (0, 3.3),
     "RES": (0, 3.3),
     "VOL": (0, 3.3),
+    "AN4": (0, 3.3),
 }
 
 PIC_ADC_MULTIPLEX = {
@@ -61,8 +63,6 @@ class AnalogInput:
 
     Attributes
     ----------
-    gain
-    resolution
     samples_in_buffer : int
         Number of samples collected on this channel currently being held in the
         device's ADC buffer.
@@ -95,8 +95,8 @@ class AnalogInput:
         self._calibrate()
 
     @property
-    def gain(self) -> Union[int, float, None]:
-        """Get or set the analog gain.
+    def gain(self) -> Union[int, None]:
+        """int: Analog gain.
 
         Setting a new gain level will automatically recalibrate the channel.
         On channels other than CH1 and CH2 gain is None.
@@ -126,7 +126,7 @@ class AnalogInput:
 
     @property
     def resolution(self) -> int:
-        """Get or set the resolution in bits.
+        """int: Resolution in bits.
 
         Setting a new resolution will automatically recalibrate the channel.
 
@@ -157,7 +157,7 @@ class AnalogInput:
     def scale(self, raw: Union[int, List[int]]) -> float:
         """Translate raw integer value from device to corresponding voltage.
 
-        Inverse of :meth:`unscale. <PSL.achan.AnalogInputSource.unscale>`.
+        Inverse of :meth:`unscale`.
 
         Parameters
         ----------
@@ -174,7 +174,7 @@ class AnalogInput:
     def unscale(self, voltage: float) -> int:
         """Translate a voltage to a raw integer value interpretable by the device.
 
-        Inverse of :meth:`scale. <PSL.achan.AnalogInputSource.scale>`.
+        Inverse of :meth:`scale`.
 
         Parameters
         ----------
@@ -209,8 +209,6 @@ class AnalogOutput:
         Type of waveform on this pin. 'sine' is a sine wave with amplitude
         3.3 V, 'tria' is a triangle wave with amplitude 3.3 V, 'custom' is any
         other waveform set with :meth:`load_equation` or :meth:`load_table`.
-    waveform_table
-    lowres_waveform_table
     """
 
     RANGE = (-3.3, 3.3)

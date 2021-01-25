@@ -16,10 +16,10 @@ import json
 import numpy as np
 import pytest
 
-import PSL.commands_proto as CP
-from PSL import cli
-from PSL.achan import AnalogOutput
-from PSL.waveform_generator import WaveformGenerator
+import pslab.protocol as CP
+from pslab import cli
+from pslab.instrument.analog import AnalogOutput
+from pslab.instrument.waveform_generator import WaveformGenerator
 
 LA_CHANNELS = 4
 EVENTS = 2450
@@ -32,14 +32,14 @@ SCOPE_DURATION = 0.5
 
 @pytest.fixture
 def la(mocker):
-    mock = mocker.patch("PSL.cli.LogicAnalyzer")
+    mock = mocker.patch("pslab.cli.LogicAnalyzer")
     mock().fetch_data.return_value = [np.arange(2500)] * LA_CHANNELS
     return mock
 
 
 @pytest.fixture
 def scope(mocker):
-    mock = mocker.patch("PSL.cli.Oscilloscope")
+    mock = mocker.patch("pslab.cli.Oscilloscope")
     mock()._lookup_mininum_timegap.return_value = 0.5
     mock().capture.return_value = [np.zeros(SAMPLES)] * (SCOPE_CHANNELS + 1)
     mock()._channel_one_map = "CH1"
@@ -63,7 +63,7 @@ def oscilloscope(device, channels, duration):
 @pytest.fixture(name="collect")
 def setup_collect(mocker, monkeypatch):
     """Return a ArgumentParser instance with all arguments added."""
-    mocker.patch("PSL.cli.Handler")
+    mocker.patch("pslab.cli.SerialHandler")
     INSTRUMENTS = {
         "logic_analyzer": logic_analyzer,
         "oscilloscope": oscilloscope,
@@ -73,7 +73,7 @@ def setup_collect(mocker, monkeypatch):
 
 @pytest.fixture(name="wave")
 def setup_wave(mocker):
-    mocker.patch("PSL.cli.Handler")
+    mocker.patch("pslab.cli.SerialHandler")
 
 
 def test_logic_analyzer(la):

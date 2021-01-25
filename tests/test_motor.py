@@ -1,21 +1,25 @@
+"""Tests for pslab.external.motor.
+
+Connect SQ1 -> LA1.
+"""
 import pytest
 
-from PSL.logic_analyzer import LogicAnalyzer
-from PSL.motor import Servo
-from PSL.packet_handler import Handler
-from PSL.waveform_generator import PWMGenerator
+from pslab.external.motor import Servo
+from pslab.instrument.logic_analyzer import LogicAnalyzer
+from pslab.instrument.waveform_generator import PWMGenerator
+from pslab.serial_handler import SerialHandler
 
 RELTOL = 0.01
 
 
 @pytest.fixture
-def servo(handler: Handler) -> Servo:
+def servo(handler: SerialHandler) -> Servo:
     handler._logging = True
     return Servo("SQ1", PWMGenerator(handler))
 
 
 @pytest.fixture
-def la(handler: Handler) -> LogicAnalyzer:
+def la(handler: SerialHandler) -> LogicAnalyzer:
     handler._logging = True
     return LogicAnalyzer(handler)
 
