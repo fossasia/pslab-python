@@ -1,19 +1,13 @@
-pslab.external package
-======================
-
-Module contents
----------------
+External devices
+================
 
 .. automodule:: pslab.external
     :members:
     :undoc-members:
     :show-inheritance:
 
-Submodules
-----------
-
-pslab.external.motor module
----------------------------
+motor
+-----
 
 .. automodule:: pslab.external.motor
     :members:

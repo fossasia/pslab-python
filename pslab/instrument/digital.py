@@ -108,7 +108,7 @@ class DigitalOutput:
 
     @property
     def name(self) -> str:
-        """Get or set the name of the pin represented by this object."""
+        """str: Name of this pin."""
         return self._name
 
     @name.setter
@@ -121,12 +121,12 @@ class DigitalOutput:
 
     @property
     def state(self) -> str:
-        """Get the state of the digital output. Can be 'HIGH', 'LOW', or 'PWM'."""
+        """str: State of the digital output. Can be 'HIGH', 'LOW', or 'PWM'."""
         return self._state
 
     @property
     def duty_cycle(self) -> float:
-        """Get or set the duty cycle of the PWM signal on this pin."""
+        """float: Duty cycle of the PWM signal on this pin."""
         return self._duty_cycle
 
     @duty_cycle.setter
@@ -144,7 +144,7 @@ class DigitalOutput:
 
     @property
     def state_mask(self) -> int:
-        """Get the state mask for this pin.
+        """int: State mask for this pin.
 
         The state mask is used in the DOUT->SET_STATE command to set the
         digital output pins HIGH or LOW. For example:
@@ -164,7 +164,7 @@ class DigitalOutput:
 
     @property
     def reference_clock_map(self) -> int:
-        """Get the reference clock map value for this pin.
+        """int: Reference clock map value for this pin.
 
         The reference clock map is used in the WAVEGEN->MAP_REFERENCE command
         to map a digital output pin directly to the interal oscillator. This

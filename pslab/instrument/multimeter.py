@@ -23,11 +23,11 @@ class Multimeter(Oscilloscope):
         provided, a new one will be created.
     """
 
-    CURRENTS = [5.5e-4, 5.5e-7, 5.5e-6, 5.5e-5]
-    CURRENTS_RANGES = [1, 2, 3, 0]  # Smallest first,
-    RC_RESISTANCE = 1e4
-    CAPACITOR_CHARGED_VOLTAGE = 0.9 * max(INPUT_RANGES["CAP"])
-    CAPACITOR_DISCHARGED_VOLTAGE = 0.01 * max(INPUT_RANGES["CAP"])
+    _CURRENTS = [5.5e-4, 5.5e-7, 5.5e-6, 5.5e-5]
+    _CURRENTS_RANGES = [1, 2, 3, 0]  # Smallest first,
+    _RC_RESISTANCE = 1e4
+    _CAPACITOR_CHARGED_VOLTAGE = 0.9 * max(INPUT_RANGES["CAP"])
+    _CAPACITOR_DISCHARGED_VOLTAGE = 0.01 * max(INPUT_RANGES["CAP"])
 
     def __init__(self, device: SerialHandler = None):
         self._stray_capacitance = 5e-11
@@ -111,7 +111,7 @@ class Multimeter(Oscilloscope):
         for charge_time in np.unique(np.int16(np.logspace(2, 3))):
             self._discharge_capacitor()
             voltage, capacitance = self._measure_capacitance(1, 0, charge_time)
-            if voltage >= self.CAPACITOR_CHARGED_VOLTAGE:
+            if voltage >= self._CAPACITOR_CHARGED_VOLTAGE:
                 break
         self._stray_capacitance += capacitance
 
@@ -123,11 +123,11 @@ class Multimeter(Oscilloscope):
         capacitance : float
             Capacitance in Farad.
         """
-        for current_range in self.CURRENTS_RANGES:
+        for current_range in self._CURRENTS_RANGES:
             for i, charge_time in enumerate([50000, 5000, 500, 50, 5]):
                 voltage, _ = self._measure_capacitance(current_range, 0, charge_time)
 
-                if voltage < self.CAPACITOR_CHARGED_VOLTAGE:
+                if voltage < self._CAPACITOR_CHARGED_VOLTAGE:
                     if i:
                         return self._binary_search_capacitance(
                             current_range, charge_time, charge_time * 10
@@ -151,13 +151,13 @@ class Multimeter(Oscilloscope):
             charge_time,
         )
 
-        if voltage / self.CAPACITOR_CHARGED_VOLTAGE < 0.98:
+        if voltage / self._CAPACITOR_CHARGED_VOLTAGE < 0.98:
             return self._binary_search_capacitance(
                 current_range,
                 charge_time,
                 high_charge_time,
             )
-        elif voltage / self.CAPACITOR_CHARGED_VOLTAGE > 1.02:
+        elif voltage / self._CAPACITOR_CHARGED_VOLTAGE > 1.02:
             return self._binary_search_capacitance(
                 current_range,
                 low_charge_time,
@@ -180,11 +180,11 @@ class Multimeter(Oscilloscope):
         start_time = time.time()
         voltage = previous_voltage = self.measure_voltage("CAP")
 
-        while voltage > self.CAPACITOR_DISCHARGED_VOLTAGE:
+        while voltage > self._CAPACITOR_DISCHARGED_VOLTAGE:
             self._set_cap(0, discharge_time)
             voltage = self.measure_voltage("CAP")
 
-            if abs(previous_voltage - voltage) < self.CAPACITOR_DISCHARGED_VOLTAGE:
+            if abs(previous_voltage - voltage) < self._CAPACITOR_DISCHARGED_VOLTAGE:
                 break
 
             previous_voltage = voltage
@@ -213,7 +213,7 @@ class Multimeter(Oscilloscope):
         raw_voltage = self._device.get_int()
         voltage = self._channels["CAP"].scale(raw_voltage)
         self._device.get_ack()
-        charge_current = self.CURRENTS[current_range] * (100 + trim) / 100
+        charge_current = self._CURRENTS[current_range] * (100 + trim) / 100
 
         if voltage:
             capacitance = (
@@ -233,8 +233,8 @@ class Multimeter(Oscilloscope):
         self._set_cap(0, 50000)  # discharge
         (y,) = self.fetch_data()
 
-        if y.max() >= self.CAPACITOR_CHARGED_VOLTAGE:
-            discharge_start = np.where(y >= self.CAPACITOR_CHARGED_VOLTAGE)[0][-1]
+        if y.max() >= self._CAPACITOR_CHARGED_VOLTAGE:
+            discharge_start = np.where(y >= self._CAPACITOR_CHARGED_VOLTAGE)[0][-1]
         else:
             discharge_start = np.where(y == y.max())[0][-1]
 
@@ -271,5 +271,5 @@ class Multimeter(Oscilloscope):
         guess = [y[0], rc_time_constant_guess]
         popt, _ = curve_fit(discharging_capacitor_voltage, x, y, guess)
         rc_time_constant = popt[1]
-        rc_capacitance = rc_time_constant / self.RC_RESISTANCE
+        rc_capacitance = rc_time_constant / self._RC_RESISTANCE
         return rc_capacitance
