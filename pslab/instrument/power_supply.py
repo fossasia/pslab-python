@@ -4,12 +4,12 @@ Examples
 --------
 >>> from pslab import PowerSupply
 >>> ps = PowerSupply()
->>> ps.pv1.voltage = 4.5
->>> ps.pv1.voltage
+>>> ps.pv1 = 4.5
+>>> ps.pv1
 4.499389499389499
 
->>> ps.pcs.current = 2e-3
->>> ps.pcs.current
+>>> ps.pcs = 2e-3
+>>> ps.pcs
 0.00200014652014652
 """
 import numpy as np
@@ -41,31 +41,38 @@ class PowerSupply:
         self._pv1 = VoltageSource(self._mcp4728, "PV1")
         self._pv2 = VoltageSource(self._mcp4728, "PV2")
         self._pv3 = VoltageSource(self._mcp4728, "PV3")
-        self._voltage_sources = {
-            "PV1": self._pv1,
-            "PV2": self._pv2,
-            "PV3": self._pv3,
-        }
         self._pcs = CurrentSource(self._mcp4728)
 
     @property
     def pv1(self):
-        """VoltageSource: Control the voltage on PV1 between -5 V and 5 V."""
-        return self._pv1
+        """float: Voltage on PV1; range [-5, 5] V."""
+        return self._pv1.voltage
+
+    @pv1.setter
+    def pv1(self, value: float):
+        self._pv1.voltage = value
 
     @property
     def pv2(self):
-        """VoltageSource: Control the voltage on PV2 between -3.3 V and 3.3 V."""
-        return self._pv2
+        """float: Voltage on PV2; range [-3.3, 3.3] V."""
+        return self._pv2.voltage
+
+    @pv2.setter
+    def pv2(self, value: float):
+        self._pv2.voltage = value
 
     @property
     def pv3(self):
-        """VoltageSource: Control the voltage on PV3 between 0 V and 3.3 V."""
-        return self._pv3
+        """float: Voltage on PV3; range [0, 3.3] V."""
+        return self._pv3.voltage
+
+    @pv3.setter
+    def pv3(self, value: float):
+        self._pv3.voltage = value
 
     @property
     def pcs(self):
-        """CurrentSource: Control the current on PCS between 0 and 3.3 mA.
+        """float: Current on PCS; range [0, 3.3e-3] A.
 
         Notes
         -----
@@ -76,7 +83,7 @@ class PowerSupply:
 
         For example, the maximum current that can be driven across a 100 Ω load
         is 3.3 V / 1.1 kΩ = 3 mA. If the load is 10 kΩ, the maximum current is
-        only 3.3 V / 11 kΩ = 300µA.
+        only 3.3 V / 11 kΩ = 300 µA.
 
         Be careful to not set a current higher than available for a given load.
         If a current greater than the maximum for a certain load is requested,
@@ -85,7 +92,11 @@ class PowerSupply:
         current will be only a few hundred µA instead of the maximum available
         1.65 mA.
         """
-        return self._pcs
+        return self._pcs.current
+
+    @pcs.setter
+    def pcs(self, value: float):
+        self._pcs.current = value
 
     @property
     def _registers(self):
@@ -93,48 +104,74 @@ class PowerSupply:
         return self._mcp4728.read(24)
 
 
-class _Source:
-    RANGE = {
+class Source:
+    """Base class for voltage/current/power sources."""
+
+    _RANGE = {
         "PV1": (-5, 5),
         "PV2": (-3.3, 3.3),
         "PV3": (0, 3.3),
         "PCS": (3.3e-3, 0),
     }
-    CHANNEL_NUMBER = {
+    _CHANNEL_NUMBER = {
         "PV1": 3,
         "PV2": 2,
         "PV3": 1,
         "PCS": 0,
     }
-    RESOLUTION = 2 ** 12 - 1
-    MULTI_WRITE = 0b01000000
+    _RESOLUTION = 2 ** 12 - 1
+    _MULTI_WRITE = 0b01000000
 
     def __init__(self, mcp4728: I2CSlave, name: str):
         self._mcp4728 = mcp4728
         self.name = name
-        self.channel_number = self.CHANNEL_NUMBER[self.name]
-        slope = self.RANGE[self.name][1] - self.RANGE[self.name][0]
-        intercept = self.RANGE[self.name][0]
+        self.channel_number = self._CHANNEL_NUMBER[self.name]
+        slope = self._RANGE[self.name][1] - self._RANGE[self.name][0]
+        intercept = self._RANGE[self.name][0]
         self._unscale = np.poly1d(
-            [self.RESOLUTION / slope, -self.RESOLUTION * intercept / slope]
+            [self._RESOLUTION / slope, -self._RESOLUTION * intercept / slope]
         )
-        self._scale = np.poly1d([slope / self.RESOLUTION, intercept])
+        self._scale = np.poly1d([slope / self._RESOLUTION, intercept])
 
-    def unscale(self, current: float):
-        return int(round(self._unscale(current)))
+    def unscale(self, voltage: float) -> int:
+        """Return integer representation of a voltage.
 
-    def scale(self, raw: int):
+        Parameters
+        ----------
+        voltage : float
+            Voltage in Volt.
+
+        Returns
+        -------
+        raw : int
+            Integer represention of the voltage.
+        """
+        return int(round(self._unscale(voltage)))
+
+    def scale(self, raw: int) -> float:
+        """Convert an integer value to a voltage value.
+
+        Parameters
+        ----------
+        raw : int
+            Integer representation of a voltage value.
+
+        Returns
+        -------
+        voltage : float
+            Voltage in Volt.
+        """
         return self._scale(raw)
 
     def _multi_write(self, raw: int):
         channel_select = self.channel_number << 1
-        command_byte = self.MULTI_WRITE | channel_select
+        command_byte = self._MULTI_WRITE | channel_select
         data_byte1 = (raw >> 8) & 0x0F
         data_byte2 = raw & 0xFF
         self._mcp4728.write([data_byte1, data_byte2], register_address=command_byte)
 
 
-class VoltageSource(_Source):
+class VoltageSource(Source):
     """Helper class for interfacing with PV1, PV2, and PV3."""
 
     def __init__(self, mcp4728: I2CSlave, name: str):
@@ -152,12 +189,12 @@ class VoltageSource(_Source):
     @voltage.setter
     def voltage(self, value: float):
         raw = self.unscale(value)
-        raw = int(np.clip(raw, 0, self.RESOLUTION))
+        raw = int(np.clip(raw, 0, self._RESOLUTION))
         self._multi_write(raw)
         self._voltage = self.scale(raw)
 
 
-class CurrentSource(_Source):
+class CurrentSource(Source):
     """Helper class for interfacing with PCS."""
 
     def __init__(self, mcp4728: I2CSlave):
@@ -175,6 +212,6 @@ class CurrentSource(_Source):
     @current.setter
     def current(self, value: float):
         raw = 0 if value == 0 else self.unscale(value)
-        raw = int(np.clip(raw, 0, self.RESOLUTION))
+        raw = int(np.clip(raw, 0, self._RESOLUTION))
         self._multi_write(raw)
         self._current = self.scale(raw)
