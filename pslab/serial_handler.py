@@ -433,11 +433,7 @@ class ADCBufferMixin:
         self._device.send_byte(CP.RETRIEVE_BUFFER)
         self._device.send_int(starting_position)
         self._device.send_int(samples)
-        received = []
-
-        for a in range(samples):
-            received.append(self._device.get_int())
-
+        received = [self._device.get_int() for i in range(samples)]
         self._device.get_ack()
         return received
 
