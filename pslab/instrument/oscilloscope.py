@@ -25,6 +25,15 @@ class Oscilloscope(ADCBufferMixin):
     device : :class:`SerialHandler`, optional
         Serial interface for communicating with the PSLab device. If not
         provided, a new one will be created.
+
+    Attributes
+    ----------
+    trigger_voltage : float
+        Trigger capture when voltage crosses this value.
+    trigger_enabled : bool
+        Whether or not to wait for trigger condition before capture start.
+    trigger_channel : str
+        Name of channel to trigger on.
     """
 
     _CH234 = ["CH2", "CH3", "MIC"]
@@ -33,9 +42,9 @@ class Oscilloscope(ADCBufferMixin):
         self._device = SerialHandler() if device is None else device
         self._channels = {a: AnalogInput(a) for a in ANALOG_CHANNELS}
         self._channel_one_map = "CH1"
-        self._trigger_voltage = 0
-        self._trigger_enabled = False
-        self._trigger_channel = "CH1"
+        self.trigger_voltage = 0
+        self.trigger_enabled = False
+        self.trigger_channel = "CH1"
         self._set_gain("CH1", 1)
         self._set_gain("CH2", 1)
 
@@ -120,12 +129,12 @@ class Oscilloscope(ADCBufferMixin):
             channels = 1
 
         if trigger is False:
-            self._trigger_enabled = False
+            self.trigger_enabled = False
         elif trigger is not None:
             if trigger_channel is None:
-                self._trigger_channel = self._channel_one_map
+                self.trigger_channel = self._channel_one_map
             else:
-                self._trigger_channel = trigger_channel
+                self.trigger_channel = trigger_channel
             self.configure_trigger(voltage=trigger)
 
         self._check_args(channels, samples, timegap)
@@ -173,7 +182,7 @@ class Oscilloscope(ADCBufferMixin):
         }
         min_timegaps = [[0.5, 0.75], [0.875, 0.875], [1.75, 1.75]]
 
-        return min_timegaps[channels_idx[channels]][self._trigger_enabled]
+        return min_timegaps[channels_idx[channels]][self.trigger_enabled]
 
     def _capture(self, channels: int, samples: int, timegap: float):
         self._invalidate_buffer()
@@ -186,7 +195,7 @@ class Oscilloscope(ADCBufferMixin):
         self._channels[self._channel_one_map].samples_in_buffer = samples
         self._channels[self._channel_one_map].buffer_idx = 0
         if channels == 1:
-            if self._trigger_enabled:
+            if self.trigger_enabled:
                 self._device.send_byte(CP.CAPTURE_ONE)
                 self._device.send_byte(chosa | 0x80)  # Trigger
             elif timegap >= 1:
@@ -201,7 +210,7 @@ class Oscilloscope(ADCBufferMixin):
             self._channels["CH2"].samples_in_buffer = samples
             self._channels["CH2"].buffer_idx = 1 * samples
             self._device.send_byte(CP.CAPTURE_TWO)
-            self._device.send_byte(chosa | (0x80 * self._trigger_enabled))
+            self._device.send_byte(chosa | (0x80 * self.trigger_enabled))
         else:
             for e, c in enumerate(self._CH234):
                 self._channels[c].resolution = 10
@@ -209,7 +218,7 @@ class Oscilloscope(ADCBufferMixin):
                 self._channels[c].buffer_idx = (e + 1) * samples
             self._device.send_byte(CP.CAPTURE_FOUR)
             self._device.send_byte(
-                chosa | (CH123SA << 4) | (0x80 * self._trigger_enabled)
+                chosa | (CH123SA << 4) | (0x80 * self.trigger_enabled)
             )
 
         self._device.send_int(samples)
@@ -304,28 +313,27 @@ class Oscilloscope(ADCBufferMixin):
             If the trigger channel is set to a channel which cannot be sampled.
         """
         if enable is False:
-            self._trigger_enabled = False
+            self.trigger_enabled = False
             return
 
         if channel is not None:
-            self._trigger_channel = channel
+            self.trigger_channel = channel
 
-        if self._trigger_channel == self._channel_one_map:
+        if self.trigger_channel == self._channel_one_map:
             channel = 0
-        elif self._trigger_channel in self._CH234:
-            channel = self._CH234.index(self._trigger_channel) + 1
+        elif self.trigger_channel in self._CH234:
+            channel = self._CH234.index(self.trigger_channel) + 1
         else:
-            raise TypeError(f"Cannot trigger on {self._trigger_channel}.")
+            raise TypeError(f"Cannot trigger on {self.trigger_channel}.")
 
         self._device.send_byte(CP.ADC)
         self._device.send_byte(CP.CONFIGURE_TRIGGER)
         # Trigger channel (4lsb) , trigger timeout prescaler (4msb)
         self._device.send_byte((prescaler << 4) | (1 << channel))  # TODO prescaler?
-        level = self._channels[self._trigger_channel].unscale(voltage)
+        level = self._channels[self.trigger_channel].unscale(voltage)
         self._device.send_int(level)
         self._device.get_ack()
-        self._trigger_enabled = True
-        self._capture(1, 1, 1)  # Trigger not applied until next capture call.
+        self.trigger_enabled = True
 
     def select_range(self, channel: str, voltage_range: Union[int, float]):
         """Set appropriate gain automatically.
