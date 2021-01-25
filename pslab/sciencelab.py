@@ -27,6 +27,7 @@ class ScienceLab(SerialHandler):
     """
 
     def __init__(self):
+        super().__init__()
         self.logic_analyzer = LogicAnalyzer(device=self)
         self.oscilloscope = Oscilloscope(device=self)
         self.waveform_generator = WaveformGenerator(device=self)

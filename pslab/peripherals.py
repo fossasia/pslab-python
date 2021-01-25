@@ -31,11 +31,11 @@ class SPI():
         ================    ============================================================================================
 
         """
-        self.H.__sendByte__(CP.SPI_HEADER)
-        self.H.__sendByte__(CP.SET_SPI_PARAMETERS)
+        self.H.send_byte(CP.SPI_HEADER)
+        self.H.send_byte(CP.SET_SPI_PARAMETERS)
         # 0Bhgfedcba - > <g>: modebit CKP,<f>: modebit CKE, <ed>:primary pre,<cba>:secondary pre
-        self.H.__sendByte__(secondary_prescaler | (primary_prescaler << 3) | (CKE << 5) | (CKP << 6) | (SMP << 7))
-        self.H.__get_ack__()
+        self.H.send_byte(secondary_prescaler | (primary_prescaler << 3) | (CKE << 5) | (CKP << 6) | (SMP << 7))
+        self.H.get_ack()
 
     def start(self, channel):
         """
@@ -53,10 +53,10 @@ class SPI():
         ================    ============================================================================================
 
         """
-        self.H.__sendByte__(CP.SPI_HEADER)
-        self.H.__sendByte__(CP.START_SPI)
-        self.H.__sendByte__(channel)  # value byte
-        # self.H.__get_ack__()
+        self.H.send_byte(CP.SPI_HEADER)
+        self.H.send_byte(CP.START_SPI)
+        self.H.send_byte(channel)  # value byte
+        # self.H.get_ack()
 
     def set_cs(self, channel, state):
         """
@@ -75,12 +75,12 @@ class SPI():
         channel = channel.upper()
         if channel in ['CS1', 'CS2']:
             csnum = ['CS1', 'CS2'].index(channel) + 9  # chip select number 9=CSOUT1,10=CSOUT2
-            self.H.__sendByte__(CP.SPI_HEADER)
+            self.H.send_byte(CP.SPI_HEADER)
             if state:
-                self.H.__sendByte__(CP.STOP_SPI)
+                self.H.send_byte(CP.STOP_SPI)
             else:
-                self.H.__sendByte__(CP.START_SPI)
-            self.H.__sendByte__(csnum)
+                self.H.send_byte(CP.START_SPI)
+            self.H.send_byte(csnum)
         else:
             print('Channel does not exist')
 
@@ -99,10 +99,10 @@ class SPI():
 
 
         """
-        self.H.__sendByte__(CP.SPI_HEADER)
-        self.H.__sendByte__(CP.STOP_SPI)
-        self.H.__sendByte__(channel)  # value byte
-        # self.H.__get_ack__()
+        self.H.send_byte(CP.SPI_HEADER)
+        self.H.send_byte(CP.STOP_SPI)
+        self.H.send_byte(channel)  # value byte
+        # self.H.get_ack()
 
     def send8(self, value):
         """
@@ -118,11 +118,11 @@ class SPI():
 
         :return: value returned by slave device
         """
-        self.H.__sendByte__(CP.SPI_HEADER)
-        self.H.__sendByte__(CP.SEND_SPI8)
-        self.H.__sendByte__(value)  # value byte
-        v = self.H.__getByte__()
-        self.H.__get_ack__()
+        self.H.send_byte(CP.SPI_HEADER)
+        self.H.send_byte(CP.SEND_SPI8)
+        self.H.send_byte(value)  # value byte
+        v = self.H.get_byte()
+        self.H.get_ack()
         return v
 
     def send16(self, value):
@@ -140,11 +140,11 @@ class SPI():
         :return: value returned by slave device
         :rtype: int
         """
-        self.H.__sendByte__(CP.SPI_HEADER)
-        self.H.__sendByte__(CP.SEND_SPI16)
-        self.H.__sendInt__(value)  # value byte
-        v = self.H.__getInt__()
-        self.H.__get_ack__()
+        self.H.send_byte(CP.SPI_HEADER)
+        self.H.send_byte(CP.SEND_SPI16)
+        self.H.send_int(value)  # value byte
+        v = self.H.get_int()
+        self.H.get_ack()
         return v
 
     def send8_burst(self, value):
@@ -162,9 +162,9 @@ class SPI():
 
         :return: Nothing
         """
-        self.H.__sendByte__(CP.SPI_HEADER)
-        self.H.__sendByte__(CP.SEND_SPI8_BURST)
-        self.H.__sendByte__(value)  # value byte
+        self.H.send_byte(CP.SPI_HEADER)
+        self.H.send_byte(CP.SEND_SPI8_BURST)
+        self.H.send_byte(value)  # value byte
 
     def send16_burst(self, value):
         """
@@ -181,9 +181,9 @@ class SPI():
 
         :return: nothing
         """
-        self.H.__sendByte__(CP.SPI_HEADER)
-        self.H.__sendByte__(CP.SEND_SPI16_BURST)
-        self.H.__sendInt__(value)  # value byte
+        self.H.send_byte(CP.SPI_HEADER)
+        self.H.send_byte(CP.SEND_SPI16_BURST)
+        self.H.send_int(value)  # value byte
 
     def xfer(self, chan, data):
         self.start(chan)
@@ -259,21 +259,17 @@ class NRF24L01():
     NODELIST_MAXLENGTH = 15
     connected = False
 
-    def __init__(self, H):
-        self.H = H
+    def __init__(self, device):
+        self.H = device
         self.ready = False
         self.sigs = {self.CURRENT_ADDRESS: 1}
         if self.H.connected:
             self.connected = self.init()
 
-    """
-    routines for the NRFL01 radio
-    """
-
     def init(self):
-        self.H.__sendByte__(CP.NRFL01)
-        self.H.__sendByte__(CP.NRF_SETUP)
-        self.H.__get_ack__()
+        self.H.send_byte(CP.NRFL01)
+        self.H.send_byte(CP.NRF_SETUP)
+        self.H.get_ack()
         time.sleep(0.015)  # 15 mS settling time
         stat = self.get_status()
         if stat & 0x80:
@@ -292,17 +288,17 @@ class NRF24L01():
         '''
         Puts the radio into listening mode.
         '''
-        self.H.__sendByte__(CP.NRFL01)
-        self.H.__sendByte__(CP.NRF_RXMODE)
-        self.H.__get_ack__()
+        self.H.send_byte(CP.NRFL01)
+        self.H.send_byte(CP.NRF_RXMODE)
+        self.H.get_ack()
 
     def txmode(self):
         '''
         Puts the radio into transmit mode.
         '''
-        self.H.__sendByte__(CP.NRFL01)
-        self.H.__sendByte__(CP.NRF_TXMODE)
-        self.H.__get_ack__()
+        self.H.send_byte(CP.NRFL01)
+        self.H.send_byte(CP.NRF_TXMODE)
+        self.H.get_ack()
 
     def triggerAll(self, val):
         self.txmode()
@@ -312,46 +308,46 @@ class NRF24L01():
         self.write_register(self.EN_AA, 0x01)
 
     def power_down(self):
-        self.H.__sendByte__(CP.NRFL01)
-        self.H.__sendByte__(CP.NRF_POWER_DOWN)
-        self.H.__get_ack__()
+        self.H.send_byte(CP.NRFL01)
+        self.H.send_byte(CP.NRF_POWER_DOWN)
+        self.H.get_ack()
 
     def rxchar(self):
         '''
         Receives a 1 Byte payload
         '''
-        self.H.__sendByte__(CP.NRFL01)
-        self.H.__sendByte__(CP.NRF_RXCHAR)
-        value = self.H.__getByte__()
-        self.H.__get_ack__()
+        self.H.send_byte(CP.NRFL01)
+        self.H.send_byte(CP.NRF_RXCHAR)
+        value = self.H.get_byte()
+        self.H.get_ack()
         return value
 
     def txchar(self, char):
         '''
         Transmits a single character
         '''
-        self.H.__sendByte__(CP.NRFL01)
-        self.H.__sendByte__(CP.NRF_TXCHAR)
-        self.H.__sendByte__(char)
-        return self.H.__get_ack__() >> 4
+        self.H.send_byte(CP.NRFL01)
+        self.H.send_byte(CP.NRF_TXCHAR)
+        self.H.send_byte(char)
+        return self.H.get_ack() >> 4
 
     def hasData(self):
         '''
         Check if the RX FIFO contains data
         '''
-        self.H.__sendByte__(CP.NRFL01)
-        self.H.__sendByte__(CP.NRF_HASDATA)
-        value = self.H.__getByte__()
-        self.H.__get_ack__()
+        self.H.send_byte(CP.NRFL01)
+        self.H.send_byte(CP.NRF_HASDATA)
+        value = self.H.get_byte()
+        self.H.get_ack()
         return value
 
     def flush(self):
         '''
         Flushes the TX and RX FIFOs
         '''
-        self.H.__sendByte__(CP.NRFL01)
-        self.H.__sendByte__(CP.NRF_FLUSH)
-        self.H.__get_ack__()
+        self.H.send_byte(CP.NRFL01)
+        self.H.send_byte(CP.NRF_FLUSH)
+        self.H.get_ack()
 
     def write_register(self, address, value):
         '''
@@ -360,22 +356,22 @@ class NRF24L01():
         from some of the constants defined in this module.
         '''
         # print ('writing',address,value)
-        self.H.__sendByte__(CP.NRFL01)
-        self.H.__sendByte__(CP.NRF_WRITEREG)
-        self.H.__sendByte__(address)
-        self.H.__sendByte__(value)
-        self.H.__get_ack__()
+        self.H.send_byte(CP.NRFL01)
+        self.H.send_byte(CP.NRF_WRITEREG)
+        self.H.send_byte(address)
+        self.H.send_byte(value)
+        self.H.get_ack()
 
     def read_register(self, address):
         '''
         Read the value of any of the configuration registers on the radio module.
 
         '''
-        self.H.__sendByte__(CP.NRFL01)
-        self.H.__sendByte__(CP.NRF_READREG)
-        self.H.__sendByte__(address)
-        val = self.H.__getByte__()
-        self.H.__get_ack__()
+        self.H.send_byte(CP.NRFL01)
+        self.H.send_byte(CP.NRF_READREG)
+        self.H.send_byte(address)
+        val = self.H.get_byte()
+        self.H.get_ack()
         return val
 
     def get_status(self):
@@ -383,17 +379,17 @@ class NRF24L01():
         Returns a byte representing the STATUS register on the radio.
         Refer to NRF24L01+ documentation for further details
         '''
-        self.H.__sendByte__(CP.NRFL01)
-        self.H.__sendByte__(CP.NRF_GETSTATUS)
-        val = self.H.__getByte__()
-        self.H.__get_ack__()
+        self.H.send_byte(CP.NRFL01)
+        self.H.send_byte(CP.NRF_GETSTATUS)
+        val = self.H.get_byte()
+        self.H.get_ack()
         return val
 
     def write_command(self, cmd):
-        self.H.__sendByte__(CP.NRFL01)
-        self.H.__sendByte__(CP.NRF_WRITECOMMAND)
-        self.H.__sendByte__(cmd)
-        self.H.__get_ack__()
+        self.H.send_byte(CP.NRFL01)
+        self.H.send_byte(CP.NRF_WRITECOMMAND)
+        self.H.send_byte(cmd)
+        self.H.get_ack()
 
     def write_address(self, register, address):
         '''
@@ -403,48 +399,48 @@ class NRF24L01():
         from P2 to P5, then RX_ADDR_P1 must be updated last.
         Addresses from P1-P5 must share the first two bytes.
         '''
-        self.H.__sendByte__(CP.NRFL01)
-        self.H.__sendByte__(CP.NRF_WRITEADDRESS)
-        self.H.__sendByte__(register)
-        self.H.__sendByte__(address & 0xFF)
-        self.H.__sendByte__((address >> 8) & 0xFF)
-        self.H.__sendByte__((address >> 16) & 0xFF)
-        self.H.__get_ack__()
+        self.H.send_byte(CP.NRFL01)
+        self.H.send_byte(CP.NRF_WRITEADDRESS)
+        self.H.send_byte(register)
+        self.H.send_byte(address & 0xFF)
+        self.H.send_byte((address >> 8) & 0xFF)
+        self.H.send_byte((address >> 16) & 0xFF)
+        self.H.get_ack()
 
     def selectAddress(self, address):
         '''
         Sets RX_ADDR_P0 and TX_ADDR to the specified address.
 
         '''
-        self.H.__sendByte__(CP.NRFL01)
-        self.H.__sendByte__(CP.NRF_WRITEADDRESSES)
-        self.H.__sendByte__(address & 0xFF)
-        self.H.__sendByte__((address >> 8) & 0xFF)
-        self.H.__sendByte__((address >> 16) & 0xFF)
-        self.H.__get_ack__()
+        self.H.send_byte(CP.NRFL01)
+        self.H.send_byte(CP.NRF_WRITEADDRESSES)
+        self.H.send_byte(address & 0xFF)
+        self.H.send_byte((address >> 8) & 0xFF)
+        self.H.send_byte((address >> 16) & 0xFF)
+        self.H.get_ack()
         self.CURRENT_ADDRESS = address
         if address not in self.sigs:
             self.sigs[address] = 1
 
     def read_payload(self, numbytes):
-        self.H.__sendByte__(CP.NRFL01)
-        self.H.__sendByte__(CP.NRF_READPAYLOAD)
-        self.H.__sendByte__(numbytes)
+        self.H.send_byte(CP.NRFL01)
+        self.H.send_byte(CP.NRF_READPAYLOAD)
+        self.H.send_byte(numbytes)
         data = self.H.fd.read(numbytes)
-        self.H.__get_ack__()
+        self.H.get_ack()
         return [ord(a) for a in data]
 
     def write_payload(self, data, verbose=False, **args):
-        self.H.__sendByte__(CP.NRFL01)
-        self.H.__sendByte__(CP.NRF_WRITEPAYLOAD)
+        self.H.send_byte(CP.NRFL01)
+        self.H.send_byte(CP.NRF_WRITEPAYLOAD)
         numbytes = len(
             data) | 0x80  # 0x80 implies transmit immediately. Otherwise it will simply load the TX FIFO ( used by ACK_payload)
         if (args.get('rxmode', False)): numbytes |= 0x40
-        self.H.__sendByte__(numbytes)
-        self.H.__sendByte__(self.TX_PAYLOAD)
+        self.H.send_byte(numbytes)
+        self.H.send_byte(self.TX_PAYLOAD)
         for a in data:
-            self.H.__sendByte__(a)
-        val = self.H.__get_ack__() >> 4
+            self.H.send_byte(a)
+        val = self.H.get_ack() >> 4
         if (verbose):
             if val & 0x2:
                 print(' NRF radio not found. Connect one to the add-on port')
@@ -492,27 +488,25 @@ class NRF24L01():
         return addrs
 
     def transaction(self, data, **args):
-        st = time.time()
-
-        self.H.__sendByte__(CP.NRFL01)
-        self.H.__sendByte__(CP.NRF_TRANSACTION)
-        self.H.__sendByte__(len(data))  # total Data bytes coming through
+        self.H.send_byte(CP.NRFL01)
+        self.H.send_byte(CP.NRF_TRANSACTION)
+        self.H.send_byte(len(data))  # total Data bytes coming through
         if 'listen' not in args: args['listen'] = True
         if args.get('listen', False): data[0] |= 0x80  # You need this if hardware must wait for a reply
         timeout = args.get('timeout', 200)
         verbose = args.get('verbose', False)
-        self.H.__sendInt__(timeout)  # timeout.
+        self.H.send_int(timeout)  # timeout.
         for a in data:
-            self.H.__sendByte__(a)
+            self.H.send_byte(a)
 
         # print ('dt send',time.time()-st,timeout,data[0]&0x80,data)
-        numbytes = self.H.__getByte__()
+        numbytes = self.H.get_byte()
         # print ('byte 1 in',time.time()-st)
         if numbytes:
             data = self.H.fd.read(numbytes)
         else:
             data = []
-        val = self.H.__get_ack__() >> 4
+        val = self.H.get_ack() >> 4
         if (verbose):
             if val & 0x1: print(time.time(), '%s Err. Node not found' % (hex(self.CURRENT_ADDRESS)))
             if val & 0x2: print(time.time(),
@@ -548,56 +542,57 @@ class NRF24L01():
             else:
                 print('ack payload size:', self.ACK_PAYLOAD_SIZE)
 
-        self.H.__sendByte__(CP.NRFL01)
-        self.H.__sendByte__(CP.NRF_WRITEPAYLOAD)
-        self.H.__sendByte__(len(data))
-        self.H.__sendByte__(self.ACK_PAYLOAD | pipe)
+        self.H.send_byte(CP.NRFL01)
+        self.H.send_byte(CP.NRF_WRITEPAYLOAD)
+        self.H.send_byte(len(data))
+        self.H.send_byte(self.ACK_PAYLOAD | pipe)
         for a in data:
-            self.H.__sendByte__(a)
-        return self.H.__get_ack__() >> 4
+            self.H.send_byte(a)
+        return self.H.get_ack() >> 4
 
     def start_token_manager(self):
         '''
         '''
-        self.H.__sendByte__(CP.NRFL01)
-        self.H.__sendByte__(CP.NRF_START_TOKEN_MANAGER)
-        self.H.__get_ack__()
+        self.H.send_byte(CP.NRFL01)
+        self.H.send_byte(CP.NRF_START_TOKEN_MANAGER)
+        self.H.get_ack()
 
     def stop_token_manager(self):
         '''
         '''
-        self.H.__sendByte__(CP.NRFL01)
-        self.H.__sendByte__(CP.NRF_STOP_TOKEN_MANAGER)
-        self.H.__get_ack__()
+        self.H.send_byte(CP.NRFL01)
+        self.H.send_byte(CP.NRF_STOP_TOKEN_MANAGER)
+        self.H.get_ack()
 
     def total_tokens(self):
         '''
         '''
-        self.H.__sendByte__(CP.NRFL01)
-        self.H.__sendByte__(CP.NRF_TOTAL_TOKENS)
-        x = self.H.__getByte__()
-        self.H.__get_ack__()
+        self.H.send_byte(CP.NRFL01)
+        self.H.send_byte(CP.NRF_TOTAL_TOKENS)
+        x = self.H.get_byte()
+        self.H.get_ack()
         return x
 
     def fetch_report(self, num):
         '''
         '''
-        self.H.__sendByte__(CP.NRFL01)
-        self.H.__sendByte__(CP.NRF_REPORTS)
-        self.H.__sendByte__(num)
-        data = [self.H.__getByte__() for a in range(20)]
-        self.H.__get_ack__()
+        self.H.send_byte(CP.NRFL01)
+        self.H.send_byte(CP.NRF_REPORTS)
+        self.H.send_byte(num)
+        data = [self.H.get_byte() for a in range(20)]
+        self.H.get_ack()
         return data
 
-    def __decode_I2C_list__(self, data):
+    @staticmethod
+    def __decode_I2C_list__(data):
         lst = []
         if sum(data) == 0:
             return lst
-        for a in range(len(data)):
-            if (data[a] ^ 255):
+        for i, d in enumerate(data):
+            if (d ^ 255):
                 for b in range(8):
-                    if data[a] & (0x80 >> b) == 0:
-                        addr = 8 * a + b
+                    if d & (0x80 >> b) == 0:
+                        addr = 8 * i + b
                         lst.append(addr)
         return lst
 
@@ -632,10 +627,10 @@ class NRF24L01():
         return filtered_lst
 
     def __delete_registered_node__(self, num):
-        self.H.__sendByte__(CP.NRFL01)
-        self.H.__sendByte__(CP.NRF_DELETE_REPORT_ROW)
-        self.H.__sendByte__(num)
-        self.H.__get_ack__()
+        self.H.send_byte(CP.NRFL01)
+        self.H.send_byte(CP.NRF_DELETE_REPORT_ROW)
+        self.H.send_byte(num)
+        self.H.get_ack()
 
     def __delete_all_registered_nodes__(self):
         while self.total_tokens():
@@ -755,29 +750,30 @@ class RadioLink():
 
         return addrs
 
-    def __decode_I2C_list__(self, data):
+    @staticmethod
+    def __decode_I2C_list__(data):
         lst = []
         if sum(data) == 0:
             return lst
-        for a in range(len(data)):
-            if (data[a] ^ 255):
+        for i, d in enumerate(data):
+            if (d ^ 255):
                 for b in range(8):
-                    if data[a] & (0x80 >> b) == 0:
-                        addr = 8 * a + b
+                    if d & (0x80 >> b) == 0:
+                        addr = 8 * i + b
                         lst.append(addr)
         return lst
 
-    def writeI2C(self, I2C_addr, regaddress, bytes):
+    def writeI2C(self, I2C_addr, regaddress, data_bytes):
         self.__selectMe__()
-        return self.NRF.transaction([self.I2C_COMMANDS | self.I2C_WRITE] + [I2C_addr] + [regaddress] + bytes)
+        return self.NRF.transaction([self.I2C_COMMANDS | self.I2C_WRITE] + [I2C_addr] + [regaddress] + data_bytes)
 
     def readI2C(self, I2C_addr, regaddress, numbytes):
         self.__selectMe__()
         return self.NRF.transaction([self.I2C_COMMANDS | self.I2C_TRANSACTION] + [I2C_addr] + [regaddress] + [numbytes])
 
-    def writeBulk(self, I2C_addr, bytes):
+    def writeBulk(self, I2C_addr, data_bytes):
         self.__selectMe__()
-        return self.NRF.transaction([self.I2C_COMMANDS | self.I2C_WRITE] + [I2C_addr] + bytes)
+        return self.NRF.transaction([self.I2C_COMMANDS | self.I2C_WRITE] + [I2C_addr] + data_bytes)
 
     def readBulk(self, I2C_addr, regaddress, numbytes):
         self.__selectMe__()

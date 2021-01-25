@@ -174,7 +174,7 @@ def wave(handler: SerialHandler, args: argparse.Namespace):
 
     if args.wave_function == "gen":
         waveform_generator.generate(
-            channel=args.channel,
+            channels=args.channel,
             frequency=args.frequency,
             phase=args.phase,
         )
