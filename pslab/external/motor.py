@@ -2,13 +2,13 @@
 
 Examples
 --------
->>> from PSL.motor import Servo
+>>> from pslab.external.motor import Servo
 >>> servo = Servo("SQ1")
 >>> servo.angle = 30  # Turn motor to 30 degrees position.
 """
 from typing import Union
 
-from PSL.waveform_generator import PWMGenerator
+from pslab.instrument.waveform_generator import PWMGenerator
 
 MICROSECONDS = 1e6
 
@@ -20,7 +20,7 @@ class Servo:
     ----------
     pin : {"SQ1", "SQ2", "SQ3", "SQ4"}
         Name of the digital output on which to generate the control signal.
-    pwm_generator : PSL.waveform_generator.PWMGenerator, optional
+    pwm_generator : :class:`PWMGenerator`, optional
         PWMGenerator instance with which to generate the control signal.
         Created automatically if not specified. When contolling multiple
         servos, they should all use the same PWMGenerator instance.
@@ -34,10 +34,6 @@ class Servo:
         Range of the servo in degrees. The default value is 180.
     frequency : float, optional
         Frequency of the control signal in Hz. The default value is 50.
-
-    Attributes
-    ----------
-    angle
     """
 
     def __init__(

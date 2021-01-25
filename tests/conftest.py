@@ -18,7 +18,7 @@ import os
 
 import pytest
 
-from PSL import packet_handler
+from pslab import serial_handler
 
 
 def pytest_addoption(parser):
@@ -34,21 +34,21 @@ def logdir(request):
 
 @pytest.fixture
 def handler(monkeypatch, request, logdir):
-    """Return a Handler instance.
+    """Return a SerialHandler instance.
 
-    When running unit tests, the Handler is a MockHandler.
+    When running unit tests, the SerialHandler is a MockHandler.
     """
     record = request.config.getoption("--record")
     integration = request.config.getoption("--integration") or record
     logfile = os.path.join(logdir, request.node.name + ".json")
 
     if integration:
-        H = packet_handler.Handler()
+        H = serial_handler.SerialHandler()
     else:
         tx, rx = json.load(open(logfile, "r"))
         traffic = ((bytes(t), bytes(r)) for t, r in zip(tx, rx))
-        monkeypatch.setattr(packet_handler, "RECORDED_TRAFFIC", traffic)
-        H = packet_handler.MockHandler()
+        monkeypatch.setattr(serial_handler, "RECORDED_TRAFFIC", traffic)
+        H = serial_handler.MockHandler()
 
     yield H
 

@@ -2,7 +2,7 @@
 
 Example
 -------
->>> from PSL.oscilloscope import Oscilloscope
+>>> from pslab import Oscilloscope
 >>> scope = Oscilloscope()
 >>> x, y1, y2, y3 = scope.capture(channels=3, samples=1600, timegap=2)
 """
@@ -12,31 +12,26 @@ from typing import List, Tuple, Union
 
 import numpy as np
 
-import PSL.commands_proto as CP
-from PSL import achan, packet_handler
+import pslab.protocol as CP
+from pslab.instrument.analog import ANALOG_CHANNELS, AnalogInput, GAIN_VALUES
+from pslab.serial_handler import ADCBufferMixin, SerialHandler
 
 
-class Oscilloscope:
+class Oscilloscope(ADCBufferMixin):
     """Capture varying voltage signals on up to four channels simultaneously.
 
     Parameters
     ----------
-    device : :class:`Handler`, optional
-        Serial interface for communicating with the PSLab device. If not provided, a
-        new one will be created.
-
-    Attributes
-    ----------
-    channel_one_map : str
-        Remap the first sampled channel. The default value is "CH1".
-    trigger_enabled
+    device : :class:`SerialHandler`, optional
+        Serial interface for communicating with the PSLab device. If not
+        provided, a new one will be created.
     """
 
     _CH234 = ["CH2", "CH3", "MIC"]
 
-    def __init__(self, device: packet_handler.Handler = None):
-        self._device = packet_handler.Handler() if device is None else device
-        self._channels = {a: achan.AnalogInput(a) for a in achan.ANALOG_CHANNELS}
+    def __init__(self, device: SerialHandler = None):
+        self._device = SerialHandler() if device is None else device
+        self._channels = {a: AnalogInput(a) for a in ANALOG_CHANNELS}
         self._channel_one_map = "CH1"
         self._trigger_voltage = 0
         self._trigger_enabled = False
@@ -55,8 +50,6 @@ class Oscilloscope:
     ) -> List[np.ndarray]:
         """Capture an oscilloscope trace from the specified input channels.
 
-        This is a blocking call.
-
         Parameters
         ----------
         channels : str or {1, 2, 3, 4}
@@ -71,6 +64,7 @@ class Oscilloscope:
             Time gap between samples in microseconds. Will be rounded to the
             closest 1 / 8 µs. The minimum time gap depends on the type of
             measurement:
+
                 +--------------+------------+----------+------------+
                 | Simultaneous | No trigger | Trigger  | No trigger |
                 | channels     | (10-bit)   | (10-bit) | (12-bit)   |
@@ -81,6 +75,7 @@ class Oscilloscope:
                 +--------------+------------+----------+------------+
                 | 4            | 1.75 µs    | 1.75 µs  | N/A        |
                 +--------------+------------+----------+------------+
+
             Sample resolution is set automatically based on the above
             limitations; i.e. to get 12-bit samples only one channel may be
             sampled, there must be no active trigger, and the time gap must be
@@ -101,7 +96,7 @@ class Oscilloscope:
 
         Example
         -------
-        >>> from PSL.oscilloscope import Oscilloscope
+        >>> from pslab import Oscilloscope
         >>> scope = Oscilloscope()
         >>> x, y = scope.capture(1, 3200, 1)
 
@@ -231,7 +226,7 @@ class Oscilloscope:
 
         Example
         -------
-        >>> from PSL.oscilloscope import Oscilloscope
+        >>> from pslab import Oscilloscope
         >>> scope = Oscilloscope()
         >>> scope.capture_nonblocking(channels=2, samples=1600, timegap=1)
         >>> y1, y2 = scope.fetch_data()
@@ -246,22 +241,7 @@ class Oscilloscope:
 
         for i, channel in enumerate(channels):
             samples = channel.samples_in_buffer
-            data[i] = bytearray()
-
-            for j in range(int(np.ceil(samples / CP.DATA_SPLITTING))):
-                self._device.send_byte(CP.COMMON)
-                self._device.send_byte(CP.RETRIEVE_BUFFER)
-                offset = channel.buffer_idx + j * CP.DATA_SPLITTING
-                self._device.send_int(offset)
-                self._device.send_int(CP.DATA_SPLITTING)  # Ints to read
-                # Reading int by int sometimes causes a communication error.
-                data[i] += self._device.read(CP.DATA_SPLITTING * 2)
-                self._device.get_ack()
-
-            data[i] = [
-                CP.ShortInt.unpack(data[i][s * 2 : s * 2 + 2])[0]
-                for s in range(samples)
-            ]
+            data[i] = self.fetch_buffer(samples, channel.buffer_idx)
             data[i] = channel.scale(np.array(data[i]))
 
         return data
@@ -272,8 +252,8 @@ class Oscilloscope:
         Returns
         -------
         bool, int
-            A boolean indicating whether the capture is complete, followed by the
-            number of samples currently held in the buffer.
+            A boolean indicating whether the capture is complete, followed by
+            the number of samples currently held in the buffer.
         """
         self._device.send_byte(CP.ADC)
         self._device.send_byte(CP.GET_CAPTURE_STATUS)
@@ -292,12 +272,12 @@ class Oscilloscope:
     ):
         """Configure trigger parameters for 10-bit capture routines.
 
-        The capture routines will wait until a rising edge of the input signal crosses
-        the specified level. The trigger will timeout within 8 ms, and capture will
-        start regardless.
+        The capture routines will wait until a rising edge of the input signal
+        crosses the specified level. The trigger will timeout within 8 ms, and
+        capture will start regardless.
 
-        To disable the trigger after configuration, set the trigger_enabled attribute
-        of the Oscilloscope instance to False.
+        To disable the trigger after configuration, set the trigger_enabled
+        attribute of the Oscilloscope instance to False.
 
         Parameters
         ----------
@@ -312,7 +292,7 @@ class Oscilloscope:
 
         Examples
         --------
-        >>> from PSL.oscilloscope import Oscilloscope
+        >>> from pslab import Oscilloscope
         >>> scope = Oscilloscope()
         >>> scope.configure_trigger(channel='CH1', voltage=1.1)
         >>> xy = scope.capture(channels=1, samples=800, timegap=2)
@@ -345,6 +325,7 @@ class Oscilloscope:
         self._device.send_int(level)
         self._device.get_ack()
         self._trigger_enabled = True
+        self._capture(1, 1, 1)  # Trigger not applied until next capture call.
 
     def select_range(self, channel: str, voltage_range: Union[int, float]):
         """Set appropriate gain automatically.
@@ -360,18 +341,19 @@ class Oscilloscope:
         Examples
         --------
         Set 2x gain on CH1. Voltage range ±8 V:
-        >>> from PSL.oscilloscope import Oscilloscope
+
+        >>> from pslab import Oscilloscope
         >>> scope = Oscilloscope()
         >>> scope.select_range('CH1', 8)
         """
         ranges = [16, 8, 4, 3, 2, 1.5, 1, 0.5]
-        gain = achan.GAIN_VALUES[ranges.index(voltage_range)]
+        gain = GAIN_VALUES[ranges.index(voltage_range)]
         self._set_gain(channel, gain)
 
     def _set_gain(self, channel: str, gain: int):
         self._channels[channel].gain = gain
         pga = self._channels[channel].programmable_gain_amplifier
-        gain_idx = achan.GAIN_VALUES.index(gain)
+        gain_idx = GAIN_VALUES.index(gain)
         self._device.send_byte(CP.ADC)
         self._device.send_byte(CP.SET_PGA_GAIN)
         self._device.send_byte(pga)

@@ -5,12 +5,12 @@ from typing import Tuple
 import numpy as np
 from scipy.optimize import curve_fit
 
-import PSL.commands_proto as CP
-from PSL.achan import GAIN_VALUES, INPUT_RANGES
-from PSL.oscilloscope import Oscilloscope
-from PSL.packet_handler import Handler
+import pslab.protocol as CP
+from pslab.instrument.analog import GAIN_VALUES, INPUT_RANGES
+from pslab.instrument.oscilloscope import Oscilloscope
+from pslab.serial_handler import SerialHandler
 
-MICROSECONDS = 1e-6
+_MICROSECONDS = 1e-6
 
 
 class Multimeter(Oscilloscope):
@@ -29,7 +29,7 @@ class Multimeter(Oscilloscope):
     CAPACITOR_CHARGED_VOLTAGE = 0.9 * max(INPUT_RANGES["CAP"])
     CAPACITOR_DISCHARGED_VOLTAGE = 0.01 * max(INPUT_RANGES["CAP"])
 
-    def __init__(self, device: Handler = None):
+    def __init__(self, device: SerialHandler = None):
         self._stray_capacitance = 5e-11
         super().__init__(device)
 
@@ -51,7 +51,6 @@ class Multimeter(Oscilloscope):
 
         pull_up_resistance = 5.1e3
         current = (INPUT_RANGES["RES"][1] - voltage) / pull_up_resistance
-
         return voltage / current
 
     def measure_voltage(self, channel: str = "VOL") -> float:
@@ -82,7 +81,6 @@ class Multimeter(Oscilloscope):
         self._device.get_ack()
         raw_voltage_mean = round(raw_voltage_sum / 16)
         voltage = scale(raw_voltage_mean)
-
         return voltage
 
     def _voltmeter_autorange(self, channel: str) -> float:
@@ -123,7 +121,7 @@ class Multimeter(Oscilloscope):
         Returns
         -------
         capacitance : float
-            Capacitance in farad.
+            Capacitance in Farad.
         """
         for current_range in self.CURRENTS_RANGES:
             for i, charge_time in enumerate([50000, 5000, 500, 50, 5]):
@@ -213,7 +211,7 @@ class Multimeter(Oscilloscope):
             self._device.send_byte(int(trim / 2))
 
         self._device.send_int(charge_time)
-        time.sleep(charge_time * MICROSECONDS)
+        time.sleep(charge_time * _MICROSECONDS)
         raw_voltage = self._device.get_int()
         voltage = self._channels["CAP"].scale(raw_voltage)
         self._device.get_ack()
@@ -221,7 +219,7 @@ class Multimeter(Oscilloscope):
 
         if voltage:
             capacitance = (
-                charge_current * charge_time * MICROSECONDS / voltage
+                charge_current * charge_time * _MICROSECONDS / voltage
                 - self._stray_capacitance
             )
         else:
@@ -232,7 +230,7 @@ class Multimeter(Oscilloscope):
     def _measure_rc_capacitance(self) -> float:
         """Measure the capacitance by discharge through a 10K resistor."""
         (x,) = self.capture("CAP", CP.MAX_SAMPLES, 10, block=False)
-        x *= MICROSECONDS
+        x *= _MICROSECONDS
         self._set_cap(1, 50000)  # charge
         self._set_cap(0, 50000)  # discharge
         (y,) = self.fetch_data()
@@ -276,5 +274,4 @@ class Multimeter(Oscilloscope):
         popt, _ = curve_fit(discharging_capacitor_voltage, x, y, guess)
         rc_time_constant = popt[1]
         rc_capacitance = rc_time_constant / self.RC_RESISTANCE
-
         return rc_capacitance

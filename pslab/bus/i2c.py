@@ -3,7 +3,7 @@
 Examples
 --------
 Set I2C bus speed to 400 kbit/s:
->>> from PSL.i2c import I2CMaster, I2CSlave
+>>> from pslab.bus.i2c import I2CMaster, I2CSlave
 >>> bus = I2CMaster()
 >>> bus.configure(frequency=4e5)
 
@@ -17,13 +17,11 @@ Connect to the PSLab's built-in DS1307 RTC:
 import logging
 from typing import List
 
-import PSL.commands_proto as CP
-from PSL.packet_handler import Handler
-from PSL.sensorlist import sensors
+import pslab.protocol as CP
+from pslab.serial_handler import SerialHandler
+from pslab.external.sensorlist import sensors
 
 logger = logging.getLogger(__name__)
-
-CLOCK_RATE = 64e6
 
 
 class I2CMaster:
@@ -33,8 +31,9 @@ class I2CMaster:
 
     Parameters
     ----------
-    device : PSL.packet_handler.Handler, optional
-        Serial connection to PSLab device.
+    device : :class:`SerialHandler`, optional
+        Serial connection to PSLab device. If not provided, a new one will be
+        created.
     """
 
     _MIN_BRGVAL = 2
@@ -42,8 +41,8 @@ class I2CMaster:
     # Specs say typical delay is 110 ns to 130 ns; 150 ns from testing.
     _SCL_DELAY = 150e-9
 
-    def __init__(self, device: Handler = None):
-        self._device = device if device is not None else Handler()
+    def __init__(self, device: SerialHandler = None):
+        self._device = device if device is not None else SerialHandler()
         self._device.send_byte(CP.I2C_HEADER)
         self._device.send_byte(CP.I2C_INIT)
         self._device.get_ack()
@@ -57,7 +56,7 @@ class I2CMaster:
         frequency : float
             Frequency of SCL in Hz.
         """
-        brgval = int((1 / frequency - self._SCL_DELAY) * CLOCK_RATE - 2)
+        brgval = int((1 / frequency - self._SCL_DELAY) * CP.CLOCK_RATE - 2)
 
         if self._MIN_BRGVAL <= brgval <= self._MAX_BRGVAL:
             self._device.send_byte(CP.I2C_HEADER)
@@ -71,7 +70,7 @@ class I2CMaster:
             raise ValueError(e)
 
     def _get_i2c_frequency(self, brgval: int) -> float:
-        return 1 / ((brgval + 2) / CLOCK_RATE + self._SCL_DELAY)
+        return 1 / ((brgval + 2) / CP.CLOCK_RATE + self._SCL_DELAY)
 
     def scan(self) -> List[int]:
         """Scan I2C port for connected devices.
@@ -144,7 +143,7 @@ class I2CSlave:
     ----------
     address : int
         7-bit I2C device address.
-    device : PSL.packet_handler.Handler, optional
+    device : :class:`SerialHandler`, optional
         Serial interface for communicating with the PSLab device. If not
         provided, a new one will be created.
 
@@ -161,9 +160,9 @@ class I2CSlave:
     def __init__(
         self,
         address: int,
-        device: Handler = None,
+        device: SerialHandler = None,
     ):
-        self._device = device if device is not None else Handler()
+        self._device = device if device is not None else SerialHandler()
         self.address = address
         self._running = False
         self._mode = None

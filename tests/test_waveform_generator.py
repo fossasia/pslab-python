@@ -1,4 +1,4 @@
-"""Tests for PSL.waveform_generator.
+"""Tests for pslab.waveform_generator.
 
 When integration testing, connect:
     SQ1 -> LA1
@@ -15,10 +15,10 @@ import pytest
 from scipy.optimize import curve_fit
 from _pytest.logging import LogCaptureFixture
 
-from PSL.logic_analyzer import LogicAnalyzer
-from PSL.oscilloscope import Oscilloscope
-from PSL.packet_handler import Handler
-from PSL.waveform_generator import PWMGenerator, WaveformGenerator
+from pslab.instrument.logic_analyzer import LogicAnalyzer
+from pslab.instrument.oscilloscope import Oscilloscope
+from pslab.instrument.waveform_generator import PWMGenerator, WaveformGenerator
+from pslab.serial_handler import SerialHandler
 
 
 MICROSECONDS = 1e-6
@@ -34,25 +34,25 @@ def r_squared(y: np.ndarray, y_fit: np.ndarray) -> float:
 
 
 @pytest.fixture
-def pwm(handler: Handler) -> PWMGenerator:
+def pwm(handler: SerialHandler) -> PWMGenerator:
     handler._logging = True
     return PWMGenerator(handler)
 
 
 @pytest.fixture
-def wave(handler: Handler) -> WaveformGenerator:
+def wave(handler: SerialHandler) -> WaveformGenerator:
     handler._logging = True
     return WaveformGenerator(handler)
 
 
 @pytest.fixture
-def la(handler: Handler) -> LogicAnalyzer:
+def la(handler: SerialHandler) -> LogicAnalyzer:
     handler._logging = True
     return LogicAnalyzer(handler)
 
 
 @pytest.fixture
-def scope(handler: Handler) -> Oscilloscope:
+def scope(handler: SerialHandler) -> Oscilloscope:
     handler._logging = True
     return Oscilloscope(handler)
 

@@ -10,15 +10,14 @@ from typing import Callable, List, Tuple, Union
 
 import numpy as np
 
-import PSL.commands_proto as CP
-from PSL.achan import AnalogOutput
-from PSL.digital_channel import DigitalOutput, DIGITAL_OUTPUTS
-from PSL.packet_handler import Handler
+import pslab.protocol as CP
+from pslab.instrument.analog import AnalogOutput
+from pslab.instrument.digital import DigitalOutput, DIGITAL_OUTPUTS
+from pslab.serial_handler import SerialHandler
 
 logger = logging.getLogger(__name__)
 
-CLOCK_RATE = 64e6
-PRESCALERS = [1, 8, 64, 256]
+_PRESCALERS = [1, 8, 64, 256]
 
 
 def _listify(channel, maxlen, *args):
@@ -63,8 +62,8 @@ def _get_wavelength(frequency: float, table_size: int = 1) -> Tuple[int, int]:
         Factor by which the clock rate is reduced, e.g. a prescaler of 64 means
         that the clock rate is 1 Mhz instead of the original 64 MHz.
     """
-    for prescaler in PRESCALERS:
-        timegap = int(round(CLOCK_RATE / frequency / prescaler / table_size))
+    for prescaler in _PRESCALERS:
+        timegap = int(round(CP.CLOCK_RATE / frequency / prescaler / table_size))
         if 0 < timegap < 2 ** 16:
             return timegap, prescaler
 
@@ -83,7 +82,7 @@ class WaveformGenerator:
 
     Parameters
     ----------
-    device : PSL.packet_handler.Handler, optional
+    device : :class:`SerialHandler`, optional
         Serial connection with which to communicate with the device. A new
         instance is created automatically if not specified.
 
@@ -91,8 +90,8 @@ class WaveformGenerator:
     --------
     Output the default function (3.3*sin(t)) on SI2 with frequency 2.5 kHz:
 
-    >>> from PSL.waveform_generator import AnalogWaveformGenerator
-    >>> wavegen = AnalogWaveformGenerator()
+    >>> from pslab import WaveformGenerator
+    >>> wavegen = WaveformGenerator()
     >>> wavegen.generate("SI2", 2500)
     [2500]
 
@@ -111,20 +110,20 @@ class WaveformGenerator:
     >>> wavegen.load_equation("SI2", lambda x: 2*np.sin(x) + np.sin(5*x), [0, 2*np.pi])
     """
 
-    HIGHRES_TABLE_SIZE = 512
-    LOWRES_TABLE_SIZE = 32
-    LOW_FREQUENCY_WARNING = 20
-    LOW_FREQUENCY_LIMIT = 0.1
-    HIGH_FREQUENCY_WARNING = 5e3
-    HIGHRES_FREQUENCY_LIMIT = 1100
+    _HIGHRES_TABLE_SIZE = 512
+    _LOWRES_TABLE_SIZE = 32
+    _LOW_FREQUENCY_WARNING = 20
+    _LOW_FREQUENCY_LIMIT = 0.1
+    _HIGH_FREQUENCY_WARNING = 5e3
+    _HIGHRES_FREQUENCY_LIMIT = 1100
 
-    def __init__(self, device: Handler = None):
+    def __init__(self, device: SerialHandler = None):
         self._channels = {n: AnalogOutput(n) for n in ("SI1", "SI2")}
-        self._device = device if device is not None else Handler()
+        self._device = device if device is not None else SerialHandler()
 
     def generate(
         self,
-        channel: Union[str, List[str]],
+        channels: Union[str, List[str]],
         frequency: Union[float, List[float]],
         phase: float = 0,
     ) -> List[float]:
@@ -135,7 +134,7 @@ class WaveformGenerator:
 
         Parameters
         ----------
-        channel : {'SI1', 'SI2', ['SI1', 'SI2']}
+        channels : {1, 2} or {'SI1', 'SI2', ['SI1', 'SI2']}
             Pin(s) on which to generate a waveform.
         frequency : float or list of floats
             Frequency in Hz. Can be a list containing two different values when
@@ -154,22 +153,25 @@ class WaveformGenerator:
             therefore returned as a list. The length of the list is equal to
             the number of channels used to generate waveforms.
         """
-        channel, frequency = _listify(channel, 2, frequency)
-        table_size = len(channel) * [None]
-        timegap = len(channel) * [None]
-        prescaler = len(channel) * [None]
+        if isinstance(channels, int):
+            channels = ["SI1", "SI2"][:channels]
 
-        for i, (chan, freq) in enumerate(zip(channel, frequency)):
-            if freq < self.LOW_FREQUENCY_WARNING:
+        channels, frequency = _listify(channels, 2, frequency)
+        table_size = len(channels) * [None]
+        timegap = len(channels) * [None]
+        prescaler = len(channels) * [None]
+
+        for i, (chan, freq) in enumerate(zip(channels, frequency)):
+            if freq < self._LOW_FREQUENCY_WARNING:
                 w = (
-                    f"Frequencies under {self.LOW_FREQUENCY_WARNING} Hz have"
+                    f"Frequencies under {self._LOW_FREQUENCY_WARNING} Hz have"
                     + " "
                     + "reduced amplitude due to AC coupling restrictions."
                 )
                 logger.warning(w)
-            elif freq > self.HIGH_FREQUENCY_WARNING:
+            elif freq > self._HIGH_FREQUENCY_WARNING:
                 w = (
-                    f"Frequencies above {self.HIGH_FREQUENCY_WARNING} Hz have"
+                    f"Frequencies above {self._HIGH_FREQUENCY_WARNING} Hz have"
                     + " "
                     + "reduced amplitude."
                 )
@@ -177,11 +179,11 @@ class WaveformGenerator:
 
             table_size[i] = self._get_table_size(freq)
             timegap[i], prescaler[i] = _get_wavelength(freq, table_size[i])
-            frequency[i] = CLOCK_RATE / timegap[i] / prescaler[i] / table_size[i]
+            frequency[i] = CP.CLOCK_RATE / timegap[i] / prescaler[i] / table_size[i]
             self._channels[chan].frequency = frequency[i]
 
-        if len(channel) == 1:
-            self._output_one(channel, table_size, prescaler, timegap)
+        if len(channels) == 1:
+            self._output_one(channels, table_size, prescaler, timegap)
         else:
             self._output_two(table_size, phase, prescaler, timegap)
 
@@ -192,8 +194,8 @@ class WaveformGenerator:
         secondary_cmd = CP.SET_SINE1 if channel[0] == "SI1" else CP.SET_SINE2
         self._device.send_byte(secondary_cmd)
         # Use larger table for low frequencies.
-        highres = table_size[0] == self.HIGHRES_TABLE_SIZE
-        self._device.send_byte(highres | (PRESCALERS.index(prescaler[0]) << 1))
+        highres = table_size[0] == self._HIGHRES_TABLE_SIZE
+        self._device.send_byte(highres | (_PRESCALERS.index(prescaler[0]) << 1))
         self._device.send_int(timegap[0] - 1)
         self._device.get_ack()
 
@@ -210,23 +212,23 @@ class WaveformGenerator:
         self._device.send_int(timegap[1] - 1)
         self._device.send_int(phase_coarse)  # Table position for phase adjust.
         self._device.send_int(phase_fine)  # Timer delay / fine phase adjust.
-        highres = [t == self.HIGHRES_TABLE_SIZE for t in table_size]
+        highres = [t == self._HIGHRES_TABLE_SIZE for t in table_size]
         self._device.send_byte(
-            (PRESCALERS.index(prescaler[1]) << 4)
-            | (PRESCALERS.index(prescaler[0]) << 2)
+            (_PRESCALERS.index(prescaler[1]) << 4)
+            | (_PRESCALERS.index(prescaler[0]) << 2)
             | (highres[1] << 1)
             | (highres[0])
         )
         self._device.get_ack()
 
     def _get_table_size(self, frequency: float) -> int:
-        if frequency < self.LOW_FREQUENCY_LIMIT:
-            e = f"Frequency must be greater than {self.LOW_FREQUENCY_LIMIT} Hz."
+        if frequency < self._LOW_FREQUENCY_LIMIT:
+            e = f"Frequency must be greater than {self._LOW_FREQUENCY_LIMIT} Hz."
             raise ValueError(e)
-        elif frequency < self.HIGHRES_FREQUENCY_LIMIT:
-            table_size = self.HIGHRES_TABLE_SIZE
+        elif frequency < self._HIGHRES_FREQUENCY_LIMIT:
+            table_size = self._HIGHRES_TABLE_SIZE
         else:
-            table_size = self.LOWRES_TABLE_SIZE
+            table_size = self._LOWRES_TABLE_SIZE
 
         return table_size
 
@@ -314,20 +316,16 @@ class PWMGenerator:
 
     Parameters
     ----------
-    device : PSL.packet_handler.Handler
+    device : :class:`SerialHandler`
         Serial connection with which to communicate with the device. A new
         instance will be created automatically if not specified.
-
-    Attributes
-    ----------
-    frequency
 
     Examples
     --------
     Output 40 kHz PWM signals on SQ1 and SQ3 phase shifted by 50%. Set the duty
     cycles to 75% and 33%, respectivelly:
 
-    >>> from PSL.waveform_generator import PWMGenerator
+    >>> from pslab import PWMGenerator
     >>> pwmgen = PWMGenerator()
     >>> pwmgen.generate(["SQ1", "SQ2"], 4e4, [0.75, 0.33], 0.5)
 
@@ -340,10 +338,10 @@ class PWMGenerator:
     >>> pwmgen.set_states(sq2=True)
     """
 
-    HIGH_FREQUENCY_LIMIT = 1e7
+    _HIGH_FREQUENCY_LIMIT = 1e7
 
-    def __init__(self, device: Handler = None):
-        self._device = device if device is not None else Handler()
+    def __init__(self, device: SerialHandler = None):
+        self._device = device if device is not None else SerialHandler()
         self._channels = {n: DigitalOutput(n) for n in DIGITAL_OUTPUTS}
         self._frequency = 0
         self._reference_prescaler = 0
@@ -362,9 +360,9 @@ class PWMGenerator:
     ):
         """Generate PWM signals on SQ1, SQ2, SQ3, and SQ4.
 
-        Paramaters
+        Parameters
         ----------
-        channels : {'SQ1', 'SQ2', 'SQ3', 'SQ4'} or list of the same
+        channels : {1, 2, 3, 4} or {'SQ1', 'SQ2', 'SQ3', 'SQ4'} or list of the same
             Pin name or list of pin names on which to generate PWM signals.
             Pins which are not included in the argument will not be affected.
         frequency : float
@@ -395,7 +393,10 @@ class PWMGenerator:
             the corresponding channel in the 'channels' list. The lists must
             have the same length.
         """
-        if frequency > self.HIGH_FREQUENCY_LIMIT:
+        if isinstance(channels, int):
+            channels = ["SQ1", "SQ2", "SQ3", "SQ4"][:channels]
+
+        if frequency > self._HIGH_FREQUENCY_LIMIT:
             e = (
                 "Frequency is greater than 10 MHz."
                 + " "
@@ -448,7 +449,7 @@ class PWMGenerator:
             of 0.
         """
         wavelength, prescaler = _get_wavelength(self._frequency)
-        self._frequency = CLOCK_RATE / wavelength / prescaler
+        self._frequency = CP.CLOCK_RATE / wavelength / prescaler
         continuous = 1 << 5
 
         for i, (duty_cycle, phase) in enumerate(zip(duty_cycles, phases)):
@@ -467,7 +468,7 @@ class PWMGenerator:
         self._device.send_int(duty_cycles[2])
         self._device.send_int(phases[3])
         self._device.send_int(duty_cycles[3])
-        self._device.send_byte(PRESCALERS.index(prescaler) | continuous)
+        self._device.send_byte(_PRESCALERS.index(prescaler) | continuous)
         self._device.get_ack()
 
     def set_state(

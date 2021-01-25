@@ -2,7 +2,7 @@
 
 Examples
 --------
->>> from PSL.power_supply import PowerSupply
+>>> from pslab import PowerSupply
 >>> ps = PowerSupply()
 >>> ps.pv1.voltage = 4.5
 >>> ps.pv1.voltage
@@ -14,8 +14,8 @@ Examples
 """
 import numpy as np
 
-from PSL.i2c import I2CSlave
-from PSL.packet_handler import Handler
+from pslab.bus.i2c import I2CSlave
+from pslab.serial_handler import SerialHandler
 
 
 class PowerSupply:
@@ -28,49 +28,64 @@ class PowerSupply:
 
     Parameters
     ----------
-    device : PSL.packet_handler.Handler
+    device : :class:`SerialHandler`
         Serial connection with which to communicate with the device. A new
         instance will be created automatically if not specified.
-
-    Attributes
-    ----------
-    pv1 : VoltageSource
-        Use this to set a voltage between -5 V and 5 V on pin PV1.
-    pv2 : VoltageSource
-        Use this to set a voltage between -3.3 V and 3.3 V on pin PV2.
-    pv3 : VoltageSource
-        Use this to set a voltage between 0 V and 3.3 V on pin PV3.
-    pcs : CurrentSource
-        Use this to output a current between 0 A and 3.3 mA on pin PCS. Subject
-        to load resistance, see Notes.
-
-    Notes
-    -----
-    The maximum available current that can be output by the current source is
-    dependent on load resistance:
-
-        I_max = 3.3 V / (1 kΩ + R_load)
-
-    For example, the maximum current that can be driven across a 100 Ω load is
-    3.3 V / 1.1 kΩ = 3 mA. If the load is 10 kΩ, the maximum current is only
-    3.3 V / 11 kΩ = 300µA.
-
-    Be careful to not set a current higher than available for a given load. If
-    a current greater than the maximum for a certain load is requested, the
-    actual current will instead be much smaller. For example, if a current of
-    3 mA is requested when connected to a 1 kΩ load, the actual current will
-    be only a few hundred µA instead of the maximum available 1.65 mA.
     """
 
-    ADDRESS = 0x60
+    _ADDRESS = 0x60
 
-    def __init__(self, device: Handler = None):
-        self._device = device if device is not None else Handler()
-        self._mcp4728 = I2CSlave(self.ADDRESS, self._device)
-        self.pv1 = VoltageSource(self._mcp4728, "PV1")
-        self.pv2 = VoltageSource(self._mcp4728, "PV2")
-        self.pv3 = VoltageSource(self._mcp4728, "PV3")
-        self.pcs = CurrentSource(self._mcp4728)
+    def __init__(self, device: SerialHandler = None):
+        self._device = device if device is not None else SerialHandler()
+        self._mcp4728 = I2CSlave(self._ADDRESS, self._device)
+        self._pv1 = VoltageSource(self._mcp4728, "PV1")
+        self._pv2 = VoltageSource(self._mcp4728, "PV2")
+        self._pv3 = VoltageSource(self._mcp4728, "PV3")
+        self._voltage_sources = {
+            "PV1": self._pv1,
+            "PV2": self._pv2,
+            "PV3": self._pv3,
+        }
+        self._pcs = CurrentSource(self._mcp4728)
+
+    @property
+    def pv1(self):
+        """VoltageSource: Control the voltage on PV1 between -5 V and 5 V."""
+        return self._pv1
+
+    @property
+    def pv2(self):
+        """VoltageSource: Control the voltage on PV2 between -3.3 V and 3.3 V."""
+        return self._pv2
+
+    @property
+    def pv3(self):
+        """VoltageSource: Control the voltage on PV3 between 0 V and 3.3 V."""
+        return self._pv3
+
+    @property
+    def pcs(self):
+        """CurrentSource: Control the current on PCS between 0 and 3.3 mA.
+
+        Notes
+        -----
+        The maximum available current that can be output by the current source
+        is dependent on load resistance:
+
+            I_max = 3.3 V / (1 kΩ + R_load)
+
+        For example, the maximum current that can be driven across a 100 Ω load
+        is 3.3 V / 1.1 kΩ = 3 mA. If the load is 10 kΩ, the maximum current is
+        only 3.3 V / 11 kΩ = 300µA.
+
+        Be careful to not set a current higher than available for a given load.
+        If a current greater than the maximum for a certain load is requested,
+        the actual current will instead be much smaller. For example, if a
+        current of 3 mA is requested when connected to a 1 kΩ load, the actual
+        current will be only a few hundred µA instead of the maximum available
+        1.65 mA.
+        """
+        return self._pcs
 
     @property
     def _registers(self):
@@ -128,7 +143,10 @@ class VoltageSource(_Source):
 
     @property
     def voltage(self):
-        """float: Most recent voltage set on PVx."""
+        """float: Most recent voltage set on PVx in Volt.
+
+        The voltage on PVx can be set by writing to this attribute.
+        """
         return self._voltage
 
     @voltage.setter
@@ -148,7 +166,10 @@ class CurrentSource(_Source):
 
     @property
     def current(self):
-        """float: Most recent current value set on PCS."""
+        """float: Most recent current value set on PCS in Ampere.
+
+        The current on PCS can be set by writing to this attribute.
+        """
         return self._current
 
     @current.setter
