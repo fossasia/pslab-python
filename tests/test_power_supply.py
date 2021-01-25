@@ -12,7 +12,7 @@ import numpy as np
 
 from pslab.serial_handler import SerialHandler
 from pslab.instrument.multimeter import Multimeter
-from pslab.instrument.power_supply import PowerSupply, VoltageSource
+from pslab.instrument.power_supply import PowerSupply
 
 RELTOL = 0.05
 ABSTOL = 0.05
@@ -30,34 +30,37 @@ def multi(handler: SerialHandler) -> Multimeter:
     return Multimeter(handler)
 
 
-def voltage_tester(
-    vmin: float,
-    vmax: float,
-    step: float,
-    source: VoltageSource,
-    channel: str,
-    multimeter: Multimeter,
-):
-    voltages = np.arange(vmin, vmax, step)
+def test_set_voltage_pv1(power: PowerSupply, multi: Multimeter):
+    voltages = np.arange(-5, 5, 0.1)
     measured = np.zeros(len(voltages))
 
     for i, v in enumerate(voltages):
-        source.voltage = v
-        measured[i] = multimeter.measure_voltage(channel)
+        power.pv1 = v
+        measured[i] = multi.measure_voltage("CH1")
 
     assert measured == pytest.approx(voltages, rel=RELTOL * 2, abs=ABSTOL * 2)
 
 
-def test_set_voltage_pv1(power: PowerSupply, multi: Multimeter):
-    voltage_tester(-5, 5.1, 0.1, power.pv1, "CH1", multimeter=multi)
-
-
 def test_set_voltage_pv2(power: PowerSupply, multi: Multimeter):
-    voltage_tester(-3.3, 3.4, 0.1, power.pv2, "CH2", multimeter=multi)
+    voltages = np.arange(-3.3, 3.3, 0.1)
+    measured = np.zeros(len(voltages))
+
+    for i, v in enumerate(voltages):
+        power.pv2 = v
+        measured[i] = multi.measure_voltage("CH2")
+
+    assert measured == pytest.approx(voltages, rel=RELTOL * 2, abs=ABSTOL * 2)
 
 
 def test_set_voltage_pv3(power: PowerSupply, multi: Multimeter):
-    voltage_tester(0, 3.4, 0.1, power.pv3, "VOL", multimeter=multi)
+    voltages = np.arange(0, 3.3, 0.1)
+    measured = np.zeros(len(voltages))
+
+    for i, v in enumerate(voltages):
+        power.pv3 = v
+        measured[i] = multi.measure_voltage("VOL")
+
+    assert measured == pytest.approx(voltages, rel=RELTOL * 2, abs=ABSTOL * 2)
 
 
 def test_set_current(power: PowerSupply, multi: Multimeter):
@@ -65,7 +68,7 @@ def test_set_current(power: PowerSupply, multi: Multimeter):
     measured = np.zeros(len(currents))
 
     for i, c in enumerate(currents):
-        power.pcs.current = c
+        power.pcs = c
         measured[i] = multi.measure_voltage("CH3")
 
     resistor = 100
