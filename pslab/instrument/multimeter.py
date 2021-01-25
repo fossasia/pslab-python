@@ -125,9 +125,7 @@ class Multimeter(Oscilloscope):
         """
         for current_range in self.CURRENTS_RANGES:
             for i, charge_time in enumerate([50000, 5000, 500, 50, 5]):
-                voltage, capacitance = self._measure_capacitance(
-                    current_range, 0, charge_time
-                )
+                voltage, _ = self._measure_capacitance(current_range, 0, charge_time)
 
                 if voltage < self.CAPACITOR_CHARGED_VOLTAGE:
                     if i:
