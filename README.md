@@ -51,7 +51,7 @@ Wherever we interact, we strive to follow the [FOSSASIA Code of Conduct](https:/
 
 ## Contributing
 
-See [doc/development.rst](https://github.com/fossasia/pslab-python/blob/development/docs/development.rst) to get started.
+See [CONTRIBUTING.md](https://github.com/fossasia/pslab-python/blob/development/CONTRIBUTING.md) to get started.
 
 ## License
 
