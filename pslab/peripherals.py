@@ -1,95 +1,9 @@
 import logging
 import time
-from warnings import warn
 
-import numpy as np
-
-import PSL.commands_proto as CP
-from PSL.i2c import I2CMaster, I2CSlave
+import pslab.protocol as CP
 
 logger = logging.getLogger(__name__)
-
-
-class I2C(I2CMaster, I2CSlave):  # for backwards compatibility
-    """
-    Methods to interact with the I2C port. An instance of Labtools.Packet_Handler must be passed to the init function
-
-
-    Example::  Read Values from an HMC5883L 3-axis Magnetometer(compass) [GY-273 sensor] connected to the I2C port
-        >>> ADDRESS = 0x1E
-        >>> from PSL import sciencelab
-        >>> I = sciencelab.connect()
-        #Alternately, you may skip using I2C as a child instance of Interface,
-        #and instead use I2C=PSL.Peripherals.I2C(PSL.packet_handler.Handler())
-
-        # writing to 0x1E, set gain(0x01) to smallest(0 : 1x)
-        >>> I.I2C.writeBulk(ADDRESS,[0x01,0])
-
-        # writing to 0x1E, set mode conf(0x02), continuous measurement(0)
-        >>> I.I2C.writeBulk(ADDRESS,[0x02,0])
-
-        # read 6 bytes from addr register on I2C device located at ADDRESS
-        >>> vals = I.I2C.readBulk(ADDRESS,addr,6)
-
-        >>> from numpy import int16
-        #conversion to signed datatype
-        >>> x=int16((vals[0]<<8)|vals[1])
-        >>> y=int16((vals[2]<<8)|vals[3])
-        >>> z=int16((vals[4]<<8)|vals[5])
-        >>> print (x,y,z)
-
-    """
-
-    def __init__(self, H):
-        I2CMaster.__init__(self, H)
-        I2CSlave.__init__(self, H, None)
-        warn("I2C is deprecated; use I2CMaster and I2CSlave", DeprecationWarning)
-
-    def start(self, address, rw):  # pylint: disable=arguments-differ
-        self.address = address
-        return super()._start(rw)
-
-    def restart(self, address, rw):
-        self.address = address
-        return super()._start(rw)
-
-    def simpleRead(self, address, numbytes):
-        self.address = address
-        return super().read(numbytes)
-
-    def simple_read_byte(self, address):
-        self.address = address
-        return super().read_byte()
-
-    def simple_read_int(self, address):
-        self.address = address
-        return super().read_int()
-
-    def simple_read_long(self, address):
-        self.address = address
-        return super().read_long()
-
-    def readBulk(self, device_address, register_address, bytes_to_read):
-        self.address = device_address
-        return super().read(bytes_to_read, register_address)
-
-    def read_bulk_byte(self, device_address, register_address):
-        self.address = device_address
-        return super().read_byte(register_address)
-
-    def read_bulk_int(self, device_address, register_address):
-        self.address = device_address
-        return super().read_int(register_address)
-
-    def read_bulk_long(self, device_address, register_address):
-        self.address = device_address
-        return super().read_long(register_address)
-
-    def writeBulk(self, device_address, bytestream):
-        self.address = device_address
-        register_address = bytestream[0]
-        bytes_to_write = bytestream[1:]
-        return super().write(bytes_to_write, register_address)
 
 
 class SPI():

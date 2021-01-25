@@ -8,24 +8,25 @@ When integration testing, connect:
 
 import pytest
 
-from PSL.multimeter import Multimeter
-from PSL.packet_handler import Handler, MockHandler
-from PSL.sciencelab import ScienceLab
+from pslab.instrument.multimeter import Multimeter
+from pslab.instrument.power_supply import PowerSupply
+from pslab.serial_handler import MockHandler, SerialHandler
+
 
 RELTOL = 0.05
 
 
 @pytest.fixture
-def multi(handler: Handler) -> Multimeter:
+def multi(handler: SerialHandler) -> Multimeter:
     handler._logging = True
     return Multimeter(handler)
 
 
 @pytest.fixture
-def source(handler: Handler):
+def source(handler: SerialHandler):
     if not isinstance(handler, MockHandler):
-        psl = ScienceLab()
-        psl.set_pv1(2.2)
+        ps = PowerSupply()
+        ps.pv1.voltage = 2.2
 
 
 def test_measure_resistance(multi: Multimeter):

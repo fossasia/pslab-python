@@ -9,13 +9,14 @@ Integer = struct.Struct("I")  # size 4
 ACKNOWLEDGE = Byte.pack(254)
 MAX_SAMPLES = 10000
 DATA_SPLITTING = 200
+CLOCK_RATE = 64e6
 
 # /*----flash memory----*/
-FLASH = Byte.pack(1)
-READ_FLASH = Byte.pack(1)
-WRITE_FLASH = Byte.pack(2)
-WRITE_BULK_FLASH = Byte.pack(3)
-READ_BULK_FLASH = Byte.pack(4)
+# FLASH = Byte.pack(1)
+# READ_FLASH = Byte.pack(1)
+# WRITE_FLASH = Byte.pack(2)
+# WRITE_BULK_FLASH = Byte.pack(3)
+# READ_BULK_FLASH = Byte.pack(4)
 
 # /*-----ADC------*/
 ADC = Byte.pack(2)
@@ -29,10 +30,10 @@ GET_CAPTURE_CHANNEL = Byte.pack(7)
 SET_PGA_GAIN = Byte.pack(8)
 GET_VOLTAGE = Byte.pack(9)
 GET_VOLTAGE_SUMMED = Byte.pack(10)
-START_ADC_STREAMING = Byte.pack(11)
+# START_ADC_STREAMING = Byte.pack(11)
 SELECT_PGA_CHANNEL = Byte.pack(12)
 CAPTURE_12BIT = Byte.pack(13)
-CAPTURE_MULTIPLE = Byte.pack(14)
+# CAPTURE_MULTIPLE = Byte.pack(14)
 SET_HI_CAPTURE = Byte.pack(15)
 SET_LO_CAPTURE = Byte.pack(16)
 
@@ -214,11 +215,11 @@ NRF_WRITEADDRESSES = Byte.pack(23)
 # ---------Non standard IO protocols--------
 
 NONSTANDARD_IO = Byte.pack(14)
-HX711_HEADER = Byte.pack(1)
+# HX711_HEADER = Byte.pack(1)
 HCSR04_HEADER = Byte.pack(2)
-AM2302_HEADER = Byte.pack(3)
-TCD1304_HEADER = Byte.pack(4)
-STEPPER_MOTOR = Byte.pack(5)
+# AM2302_HEADER = Byte.pack(3)
+# TCD1304_HEADER = Byte.pack(4)
+# STEPPER_MOTOR = Byte.pack(5)
 
 # --------COMMUNICATION PASSTHROUGHS--------
 # Data sent to the device is directly routed to output ports such as (SCL, SDA for UART)
@@ -227,7 +228,7 @@ PASSTHROUGHS = Byte.pack(15)
 PASS_UART = Byte.pack(1)
 
 # /*--------STOP STREAMING------*/
-STOP_STREAMING = Byte.pack(253)
+# STOP_STREAMING = Byte.pack(253)
 
 # /*------INPUT CAPTURE---------*/
 # capture modes
@@ -250,38 +251,3 @@ CS2 = Byte.pack(7)
 # resolutions
 TEN_BIT = Byte.pack(10)
 TWELVE_BIT = Byte.pack(12)
-
-
-'''
-def reverse_bits(x):
-	return int('{:08b}'.format(x)[::-1], 2)
-
-def InttoString(val):
-	return	ShortInt.pack(int(val))
-
-def StringtoInt(string):
-	return	ShortInt.unpack(string)[0]
-
-def StringtoLong(string):
-	return	Integer.unpack(string)[0]
-
-def getval12(val):
-	return val*3.3/4095
-
-def getval10(val):
-	return val*3.3/1023
-
-
-def getL(F,C):
-	return 1.0/(C*4*math.pi*math.pi*F*F)
-
-def getF(L,C):
-	return 1.0/(2*math.pi*math.sqrt(L*C))
-
-def getLx(f1,f2,f3,Ccal):
-	a=(f1/f3)**2
-	b=(f1/f2)**2
-	c=(2*math.pi*f1)**2
-	return (a-1)*(b-1)/(Ccal*c)
-
-'''

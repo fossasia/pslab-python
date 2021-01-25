@@ -22,15 +22,15 @@ from typing import List, Tuple
 
 import numpy as np
 
-import PSL.commands_proto as CP
-from PSL.logic_analyzer import LogicAnalyzer
-from PSL.oscilloscope import Oscilloscope
-from PSL.packet_handler import Handler
-from PSL.waveform_generator import WaveformGenerator, PWMGenerator
+import pslab.protocol as CP
+from pslab.instrument.logic_analyzer import LogicAnalyzer
+from pslab.instrument.oscilloscope import Oscilloscope
+from pslab.instrument.waveform_generator import WaveformGenerator, PWMGenerator
+from pslab.serial_handler import SerialHandler
 
 
 def logic_analyzer(
-    device: Handler, channels: int, duration: float
+    device: SerialHandler, channels: int, duration: float
 ) -> Tuple[List[str], List[np.ndarray]]:
     """Capture logic events on up to four channels simultaneously.
 
@@ -69,7 +69,7 @@ def logic_analyzer(
 
 
 def oscilloscope(
-    device: Handler, channels: int, duration: float
+    device: SerialHandler, channels: int, duration: float
 ) -> Tuple[List[str], List[np.ndarray]]:
     """Capture varying voltage signals on up to four channels simultaneously.
 
@@ -118,7 +118,7 @@ INSTRUMENTS = {
 }
 
 
-def collect(handler: Handler, args: argparse.Namespace):
+def collect(handler: SerialHandler, args: argparse.Namespace):
     """Collect data from instruments, and write it in file or stdout.
 
     Parameters
@@ -160,7 +160,7 @@ def collect(handler: Handler, args: argparse.Namespace):
         file.close()
 
 
-def wave(handler: Handler, args: argparse.Namespace):
+def wave(handler: SerialHandler, args: argparse.Namespace):
     """Generate or load wave.
 
     Parameters
@@ -190,7 +190,7 @@ def wave(handler: Handler, args: argparse.Namespace):
         waveform_generator.load_table(channel=args.channel, points=y)
 
 
-def pwm(handler: Handler, args: argparse.Namespace):
+def pwm(handler: SerialHandler, args: argparse.Namespace):
     """Generate PWM.
 
     Parameters
@@ -224,7 +224,7 @@ def main(args: argparse.Namespace):
     args : :class:`argparse.Namespace`
         Parsed arguments.
     """
-    handler = Handler(port=args.port)
+    handler = SerialHandler(port=args.port)
 
     if args.function == "collect":
         collect(handler, args)

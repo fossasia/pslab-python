@@ -21,25 +21,24 @@ class DigitalInput:
 
     Parameters
     ----------
-    name : {"LA1", "LA2", "LA3", "LA4", "RES", "EXT", "FRQ"}
+    name : {"LA1", "LA2", "LA3", "LA4", "RES", "FRQ"}
         Name of the digital channel to model.
 
     Attributes
     ----------
     name : str
-        One of {"LA1", "LA2", "LA3", "LA4", "RES", "EXT", "FRQ"}.
+        One of {"LA1", "LA2", "LA3", "LA4", "RES", "FRQ"}.
     number : int
         Number used to refer to this channel in the firmware.
     datatype : str
-        Either "int" or "long", depending on if a 16 or 32-bit counter is used to
-        capture timestamps for this channel.
+        Either "int" or "long", depending on if a 16 or 32-bit counter is used
+        to capture timestamps for this channel.
     events_in_buffer : int
-        Number of logic events detected on this channel, the timestamps of which are
-        currently being held in the device's ADC buffer.
+        Number of logic events detected on this channel, the timestamps of
+        which are currently being held in the device's ADC buffer.
     buffer_idx : Union[int, None]
-        Location in the device's ADC buffer where the events are stored. None if no
-        events captured by this channel are currently held in the buffer.
-    logic_mode
+        Location in the device's ADC buffer where the events are stored. None
+        if no events captured by this channel are currently held in the buffer.
     """
 
     def __init__(self, name: str):
@@ -47,13 +46,12 @@ class DigitalInput:
         self.number = DIGITAL_INPUTS.index(self.name)
         self.datatype = "long"
         self.events_in_buffer = 0
-        self._events_in_buffer = 0
         self.buffer_idx = None
         self._logic_mode = MODES["any"]
 
     @property
     def logic_mode(self) -> str:
-        """Get or set the type of logic event which should be captured on this channel.
+        """str: Type of logic event which should be captured on this channel.
 
         The options are:
                 any:            Capture every edge.
