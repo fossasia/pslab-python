@@ -3,15 +3,18 @@
 Examples
 --------
 Set I2C bus speed to 400 kbit/s:
+
 >>> from pslab.bus.i2c import I2CMaster, I2CSlave
 >>> bus = I2CMaster()
 >>> bus.configure(frequency=4e5)
 
 Scan for connected devices:
+
 >>> bus.scan()
 [96, 104]
 
 Connect to the PSLab's built-in DS1307 RTC:
+
 >>> rtc = I2CSlave(address=104)
 """
 import logging

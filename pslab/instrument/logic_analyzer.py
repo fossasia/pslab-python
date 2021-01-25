@@ -627,7 +627,7 @@ class LogicAnalyzer(ADCBufferMixin):
         ----------
         trigger_channel : {"LA1", "LA2", "LA3", "LA4"}
             The digital input on which to trigger.
-        trigger_condition : {"disabled", "falling", "rising"}
+        trigger_mode : {"disabled", "falling", "rising"}
             The type of logic level change on which to trigger.
         """
         self.trigger_channel = trigger_channel

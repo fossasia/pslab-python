@@ -36,6 +36,7 @@ extensions = [
     'sphinx.ext.viewcode',
     'sphinx.ext.mathjax',
     'sphinx.ext.napoleon',
+    'recommonmark',
 ]
 
 mathjax_path = 'file:///usr/share/javascript/mathjax/MathJax.js'
@@ -46,7 +47,7 @@ templates_path = ['_templates']
 # The suffix(es) of source filenames.
 # You can specify multiple suffix as a list of string:
 # source_suffix = ['.rst', '.md']
-source_suffix = '.rst'
+source_suffix = ['.rst', '-md']
 
 # The encoding of source files.
 # source_encoding = 'utf-8-sig'
@@ -55,7 +56,7 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = u'FOSSASIA PSLab'
+project = u'pslab-python'
 copyright = u'2021, FOSSASIA'
 author = u'FOSSASIA Developers'
 
@@ -232,7 +233,7 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-    (master_doc, 'pslab-python.tex', u'pslab-python Documentation',
+    (master_doc, 'pslab-python.tex', u'pslab-python documentation',
      u'FOSSASIA Developers', 'manual'),
 ]
 
@@ -262,7 +263,7 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    (master_doc, 'pslab-python', u'pslab-python Documentation',
+    (master_doc, 'pslab-python', u'pslab-python documentation',
      [author], 1)
 ]
 
@@ -276,7 +277,7 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-    (master_doc, 'pslab-python', u'pslab-python Documentation',
+    (master_doc, 'pslab-python', u'pslab-python documentation',
      author, 'pslab-python', 'One line description of project.',
      'Miscellaneous'),
 ]

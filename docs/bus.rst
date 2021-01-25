@@ -1,19 +1,14 @@
-pslab.bus package
-=================
-
-Module contents
----------------
+Bus
+===
 
 .. automodule:: pslab.bus
     :members:
     :undoc-members:
     :show-inheritance:
 
-Submodules
-----------
 
-pslab.bus.i2c module
---------------------
+I2C
+---
 
 .. automodule:: pslab.bus.i2c
     :members:
