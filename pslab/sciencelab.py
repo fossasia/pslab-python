@@ -43,6 +43,9 @@ class ScienceLab(SerialHandler):
         self.i2c = I2CMaster(device=self)
         self.nrf = NRF24L01(device=self)
 
+        if "V6" in self.version:  # Set the built-in WS2812B to green :)
+            self.rgb_led([0, 20, 0])
+
     @property
     def temperature(self):
         """float: Temperature of the MCU in degrees Celsius."""
