@@ -35,9 +35,9 @@ pslab-python can be installed from PyPI:
 1. Plug in the PSLab device and check that both the LEDs light up.
 2. The following piece of code should run without errors:
 ```
-from PSL import sciencelab
-I = sciencelab.connect()
-capacitance = I.multimeter.measure_capacitance()
+from pslab import ScienceLab
+psl = ScienceLab()
+capacitance = psl.multimeter.measure_capacitance()
 print(capacitance)
 ```
 
