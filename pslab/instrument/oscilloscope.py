@@ -25,15 +25,6 @@ class Oscilloscope(ADCBufferMixin):
     device : :class:`SerialHandler`, optional
         Serial interface for communicating with the PSLab device. If not
         provided, a new one will be created.
-
-    Attributes
-    ----------
-    trigger_voltage : float
-        Trigger capture when voltage crosses this value.
-    trigger_enabled : bool
-        Whether or not to wait for trigger condition before capture start.
-    trigger_channel : str
-        Name of channel to trigger on.
     """
 
     _CH234 = ["CH2", "CH3", "MIC"]
@@ -42,9 +33,9 @@ class Oscilloscope(ADCBufferMixin):
         self._device = SerialHandler() if device is None else device
         self._channels = {a: AnalogInput(a) for a in ANALOG_CHANNELS}
         self._channel_one_map = "CH1"
-        self.trigger_voltage = 0
-        self.trigger_enabled = False
-        self.trigger_channel = "CH1"
+        self._trigger_voltage = None
+        self._trigger_enabled = False
+        self._trigger_channel = "CH1"
         self._set_gain("CH1", 1)
         self._set_gain("CH2", 1)
 
@@ -53,7 +44,7 @@ class Oscilloscope(ADCBufferMixin):
         channels: int,
         samples: int,
         timegap: float,
-        trigger: Union[bool, float] = None,
+        trigger: Union[float, bool] = None,
         trigger_channel: str = None,
         block: bool = True,
     ) -> List[np.ndarray]:
@@ -89,7 +80,7 @@ class Oscilloscope(ADCBufferMixin):
             limitations; i.e. to get 12-bit samples only one channel may be
             sampled, there must be no active trigger, and the time gap must be
             1 µs or greater.
-        trigger : float, optional
+        trigger : float or bool, optional
             Voltage at which to trigger sampling. Triggering is disabled by
             default. Trigger settings persist between calls; disable by setting
             trigger=False.
@@ -128,14 +119,16 @@ class Oscilloscope(ADCBufferMixin):
             self._channel_one_map = channels
             channels = 1
 
+        if trigger_channel is None:
+            self._trigger_channel = self._channel_one_map
+        else:
+            self._trigger_channel = trigger_channel
+
         if trigger is False:
-            self.trigger_enabled = False
+            self._trigger_enabled = False
         elif trigger is not None:
-            if trigger_channel is None:
-                self.trigger_channel = self._channel_one_map
-            else:
-                self.trigger_channel = trigger_channel
-            self.configure_trigger(voltage=trigger)
+            if trigger != self._trigger_voltage:
+                self.configure_trigger(voltage=trigger)
 
         self._check_args(channels, samples, timegap)
         timegap = int(timegap * 8) / 8
@@ -313,11 +306,11 @@ class Oscilloscope(ADCBufferMixin):
             If the trigger channel is set to a channel which cannot be sampled.
         """
         if enable is False:
-            self.trigger_enabled = False
+            self._trigger_enabled = False
             return
 
         if channel is not None:
-            self.trigger_channel = channel
+            self._trigger_channel = channel
 
         if self.trigger_channel == self._channel_one_map:
             channel = 0
@@ -333,7 +326,22 @@ class Oscilloscope(ADCBufferMixin):
         level = self._channels[self.trigger_channel].unscale(voltage)
         self._device.send_int(level)
         self._device.get_ack()
-        self.trigger_enabled = True
+        self._trigger_enabled = True
+
+    @property
+    def trigger_enabled(self) -> bool:
+        """bool: Wait for trigger condition before capture start."""
+        return self._trigger_enabled
+
+    @property
+    def trigger_channel(self) -> str:
+        """str: Name of channel to trigger on."""
+        return self._trigger_channel
+
+    @property
+    def trigger_voltage(self) -> float:
+        """float: Trigger when voltage crosses this value."""
+        return self._trigger_voltage
 
     def select_range(self, channel: str, voltage_range: Union[int, float]):
         """Set appropriate gain automatically.
