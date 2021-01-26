@@ -74,9 +74,9 @@ def test_get_ack_success(mock_serial, mock_handler):
 
 
 def test_get_ack_failure(mock_serial, mock_handler):
-    error = 3
     mock_serial().read.return_value = b""
-    assert mock_handler.get_ack() == error
+    with pytest.raises(SerialException):
+        mock_handler.get_ack()
 
 
 def test_send_bytes(mock_serial, mock_handler):
@@ -98,9 +98,8 @@ def test_receive(mock_serial, mock_handler):
 
 def test_receive_failure(mock_serial, mock_handler):
     mock_serial().read.return_value = b""
-    r = mock_handler.get_byte()
-    mock_serial().read.assert_called_with(1)
-    assert r == -1
+    with pytest.raises(SerialException):
+        mock_handler.get_byte()
 
 
 def test_wait_for_data(mock_serial, mock_handler):
