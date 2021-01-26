@@ -83,7 +83,7 @@ class SerialHandler:
                 raise OSError(e)
 
     @staticmethod
-    def _list_ports() -> List[str]:  # Promote to public?
+    def _list_ports() -> List[str]:
         """Return a list of serial port names."""
         return [p.device for p in list_ports.comports()]
 
@@ -196,26 +196,31 @@ class SerialHandler:
         self._write_log(version, "RX")
         return version.decode("utf-8")
 
-    def get_ack(self) -> int:  # Make _internal?
+    def get_ack(self) -> int:
         """Get response code from PSLab.
-
-        Also functions as handshake.
 
         Returns
         -------
         int
             Response code. Meanings:
-                1 SUCCESS
-                2 ARGUMENT_ERROR
-                3 FAILED
+                0x01 ACK
+                0x10 I2C ACK
+                0x20 I2C bus collision
+                0x10 Radio max retransmits
+                0x20 Radio not present
+                0x40 Radio reply timout
         """
         response = self.read(1)
 
-        try:
-            return CP.Byte.unpack(response)[0]
-        except Exception as e:
-            logger.error(e)
-            return 3  # raise exception instead?
+        if not response:
+            raise serial.SerialException("Timeout while waiting for ACK.")
+
+        ack = CP.Byte.unpack(response)[0]
+
+        if not (ack & 0x01):
+            raise serial.SerialException("Received non ACK byte while waiting for ACK.")
+
+        return ack
 
     @staticmethod
     def _get_integer_type(size: int) -> struct.Struct:
@@ -250,7 +255,11 @@ class SerialHandler:
         Returns
         -------
         int
-            Unpacked data, or -1 if too few bytes were read.
+            Unpacked data.
+
+        Raises
+        ------
+        SerialException if too few bytes received.
         """
         received = self.read(size)
 
@@ -258,8 +267,9 @@ class SerialHandler:
             unpacker = self._get_integer_type(size)
             retval = unpacker.unpack(received)[0]
         else:
-            logger.error(f"Requested {size} bytes, got {len(received)}.")
-            retval = -1  # raise an exception instead?
+            raise serial.SerialException(
+                f"Requested {size} bytes, got {len(received)}."
+            )
 
         return retval
 
