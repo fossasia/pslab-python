@@ -6,7 +6,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="pslab",
-    version="2.0.0.rc3",
+    version="2.0.0",
     description="Pocket Science Lab by FOSSASIA",
     long_description=long_description,
     long_description_content_type="text/markdown",
@@ -38,6 +38,6 @@ setuptools.setup(
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
         "Operating System :: OS Independent",
-        "Development Status :: 4 - Beta",
+        "Development Status :: 5 - Production/Stable",
     ],
 )
