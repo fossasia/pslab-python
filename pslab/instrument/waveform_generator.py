@@ -103,11 +103,11 @@ class WaveformGenerator:
     Reduce the amplitude on SI1:
 
     >>> import numpy as np
-    >>> wavegen.load_equation("SI1", lambda x: 1.5*np.sin(x), [0, 2*np.pi])
+    >>> wavegen.load_function("SI1", lambda x: 1.5*np.sin(x), [0, 2*np.pi])
 
     Output two superimposed sine waves on SI2:
 
-    >>> wavegen.load_equation("SI2", lambda x: 2*np.sin(x) + np.sin(5*x), [0, 2*np.pi])
+    >>> wavegen.load_function("SI2", lambda x: 2*np.sin(x) + np.sin(5*x), [0, 2*np.pi])
     """
 
     _HIGHRES_TABLE_SIZE = 512
@@ -232,10 +232,10 @@ class WaveformGenerator:
 
         return table_size
 
-    def load_equation(
+    def load_function(
         self, channel: str, function: Union[str, Callable], span: List[float] = None
     ):
-        """Load a custom waveform equation.
+        """Load a custom waveform function.
 
         Parameters
         ----------
@@ -251,7 +251,8 @@ class WaveformGenerator:
             for a sine wave or triangle wave with amplitude 3.3 V.
         span : List[float], optional
             The minimum and maximum x values between which to evaluate
-            'function'. Omit if 'function' is 'sine' or 'tria'.
+            'function'. Should typically correspond to one period. Omit if
+            'function' is 'sine' or 'tria'.
         """
         if function == "sine":
 
