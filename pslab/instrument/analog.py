@@ -207,7 +207,7 @@ class AnalogOutput:
     wavetype : {'sine', 'tria', 'custom'}
         Type of waveform on this pin. 'sine' is a sine wave with amplitude
         3.3 V, 'tria' is a triangle wave with amplitude 3.3 V, 'custom' is any
-        other waveform set with :meth:`load_equation` or :meth:`load_table`.
+        other waveform set with :meth:`load_function` or :meth:`load_table`.
     """
 
     RANGE = (-3.3, 3.3)

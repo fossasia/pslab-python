@@ -188,7 +188,7 @@ def test_collect_json_file(collect, tmp_path):
 
 def test_wave_load_table(wave, mocker):
     wavegen = WaveformGenerator(mocker.Mock())
-    wavegen.load_equation("SI1", "tria")
+    wavegen.load_function("SI1", "tria")
 
     def tria(x):
         return AnalogOutput.RANGE[1] * (abs(x % 4 - 2) - 1)
@@ -210,7 +210,7 @@ def test_wave_load_table_expand(wave):
 
 def test_wave_load_tablefile(wave, mocker, tmp_path):
     wavegen = WaveformGenerator(mocker.Mock())
-    wavegen.load_equation("SI1", "tria")
+    wavegen.load_function("SI1", "tria")
 
     def tria(x):
         return AnalogOutput.RANGE[1] * (abs(x % 4 - 2) - 1)
