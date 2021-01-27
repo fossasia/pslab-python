@@ -29,7 +29,7 @@ class ScienceLab(SerialHandler):
     multimeter : pslab.Multimeter
     power_supply : pslab.PowerSupply
     i2c : pslab.I2CMaster
-    nrf : pslab.NRF24L01
+    nrf : pslab.peripherals.NRF24L01
     """
 
     def __init__(self):
