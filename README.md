@@ -10,7 +10,7 @@ The Python library for the [Pocket Science Lab](https://pslab.io) from FOSSASIA.
 
 This repository hosts the Python library for communicating with the Pocket Science Lab open hardware platform (PSLab). Using this library you can communicate with the PSLab using simple Python code. The Python library is also used by the PSLab GUI as a backend component.
 
-The goal of PSLab is to create an Open Source hardware device (open on all layers) and software applications that can be used for experiments by teachers, students and scientists. Our tiny pocket lab provides an array of instruments for doing science and engineering experiments. It provides functions of numerous measurement tools including an oscilloscope, a waveform generator, a logic analyzer, a programmable voltage and current source, and even a component to control robots with up to four servos.
+The goal of PSLab is to create an Open Source hardware device (open on all layers) and software applications that can be used for an experimental purpose by teachers, students and scientists. Our tiny pocket lab provides an array of instruments for doing science and engineering experiments. It provides functions of numerous measurement tools including an oscilloscope, a waveform generator, a logic analyzer, a programmable voltage and current source, and even a component to control robots with up to four servos.
 
 For more information see [https://pslab.io](https://pslab.io).
 
@@ -43,7 +43,7 @@ print(capacitance)
 
 ## Communication
 
-* If you encounter any bugs, please file them in our [issue tracker](https://github.com/fossasia/pslab-python/issues).
+* If you encounter any bug, please file them in our [issue tracker](https://github.com/fossasia/pslab-python/issues).
 * You can chat with the PSLab developers on [Gitter](https://gitter.im/fossasia/pslab).
 * There is also a [mailing list](https://groups.google.com/forum/#!forum/pslab-fossasia).
 
@@ -55,4 +55,4 @@ See [CONTRIBUTING.md](https://github.com/fossasia/pslab-python/blob/development/
 
 ## License
 
-This library is free and open source software licensed under the [GPL v3](https://github.com/fossasia/pslab-python/blob/development/README.md). The copyright is owned by FOSSASIA.
+This library is a free and open source software licensed under the [GPL v3](https://github.com/fossasia/pslab-python/blob/development/README.md). The copyright is owned by FOSSASIA.
