@@ -211,7 +211,17 @@ class CurrentSource(Source):
 
     @current.setter
     def current(self, value: float):
-        raw = 0 if value == 0 else self.unscale(value)
-        raw = int(np.clip(raw, 0, self._RESOLUTION))
-        self._multi_write(raw)
-        self._current = self.scale(raw)
+        # Output current is a function of the voltage set on the MCP4728's V+
+        # pin (assuming negligible load resistance):
+        #    I(V) = 3.3e-3 - V / 1000
+        # I.e. the lower the voltage the higher the current. However, the
+        # function is discontinuous in V = 0:
+        #    I(0) = 0
+        if value == 0:
+            self._multi_write(0)
+            self._current = 0
+        else:
+            raw = self.unscale(value)
+            raw = int(np.clip(raw, 0, self._RESOLUTION))
+            self._multi_write(raw)
+            self._current = self.scale(raw)
