@@ -2,7 +2,7 @@
 
 Example
 -------
->>> from PSL import cli
+>>> from pslab import cli
 >>> parser, subparser = cli.get_parser()
 >>> cli.add_collect_args(subparser)
 >>> cli.add_wave_args(subparser)
