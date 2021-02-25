@@ -32,7 +32,7 @@ setuptools.setup(
         ]
     },
     entry_points = {
-        'console_scripts': ['pslab=PSL.cli:cmdline'],
+        'console_scripts': ['pslab=pslab.cli:cmdline'],
     },
     classifiers=[
         "Programming Language :: Python :: 3",
