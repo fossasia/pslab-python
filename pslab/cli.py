@@ -99,7 +99,6 @@ def oscilloscope(
     active_channels = ([scope._channel_one_map] + scope._CH234)[:channels]
     xy = [np.array([]) for _ in range(1 + channels)]
 
-    total_ts = 0
     while duration > 0:
         if duration >= max_duration:
             samples = max_samples
@@ -107,12 +106,8 @@ def oscilloscope(
             samples = round((duration * 1e6) / min_timegap)
 
         st = time.time()
-        new_xy = scope.capture(channels, samples, min_timegap)
-        new_xy[0] += total_ts * 1e6
-        xy = np.append(xy, new_xy, axis=1)
-        ts = time.time() - st
-        total_ts += ts
-        duration -= ts
+        xy = np.append(xy, scope.capture(channels, samples, min_timegap), axis=1)
+        duration -= time.time() - st
 
     return ["Timestamp"] + active_channels, xy
 
