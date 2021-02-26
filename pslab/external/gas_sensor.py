@@ -113,9 +113,7 @@ class MQ135:
 
     @property
     def _sensor_resistance(self):
-        return (
-            (self.vcc / self._voltage - 1) * self.r_load / self._correction
-        )
+        return (self.vcc / self._voltage - 1) * self.r_load / self._correction
 
     def measure_concentration(self):
         """Measure the concentration of the configured gas.
@@ -126,7 +124,9 @@ class MQ135:
             Gas concentration in ppm.
         """
         try:
-            return self._params[0] * (self._sensor_resistance / self.r0) ** self._params[1]
+            return (
+                self._params[0] * (self._sensor_resistance / self.r0) ** self._params[1]
+            )
         except TypeError:
             raise TypeError("r0 is not set.")
 
