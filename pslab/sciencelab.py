@@ -32,8 +32,13 @@ class ScienceLab(SerialHandler):
     nrf : pslab.peripherals.NRF24L01
     """
 
-    def __init__(self):
-        super().__init__()
+    def __init__(
+        self,
+        port: str = None,
+        baudrate: int = 1000000,
+        timeout: float = 1.0,
+    ):
+        super().__init__(port, baudrate, timeout)
         self.logic_analyzer = LogicAnalyzer(device=self)
         self.oscilloscope = Oscilloscope(device=self)
         self.waveform_generator = WaveformGenerator(device=self)
@@ -210,10 +215,10 @@ class ScienceLab(SerialHandler):
         return data
 
     def _device_id(self):
-        a = self.read_program_address(0x800FF8)
-        b = self.read_program_address(0x800FFA)
-        c = self.read_program_address(0x800FFC)
-        d = self.read_program_address(0x800FFE)
+        a = self._read_program_address(0x800FF8)
+        b = self._read_program_address(0x800FFA)
+        c = self._read_program_address(0x800FFC)
+        d = self._read_program_address(0x800FFE)
         val = d | (c << 16) | (b << 32) | (a << 48)
         return val
 
