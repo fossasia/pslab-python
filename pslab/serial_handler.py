@@ -23,6 +23,40 @@ import pslab.protocol as CP
 logger = logging.getLogger(__name__)
 
 
+def detect():
+    """Detect connected PSLab devices.
+
+    Returns
+    -------
+    devices : dict of str: str
+        Dictionary containing port name as keys and device version on that
+        port as values.
+    """
+    regex = []
+
+    for vid, pid in zip(SerialHandler._USB_VID, SerialHandler._USB_PID):
+        regex.append(f"{vid:04x}:{pid:04x}")
+
+    regex = "(" + "|".join(regex) + ")"
+    port_info_generator = list_ports.grep(regex)
+    pslab_devices = {}
+
+    for port_info in port_info_generator:
+        version = _get_version(port_info.device)
+        if any(expected in version for expected in ["PSLab", "CSpark"]):
+            pslab_devices[port_info.device] = version
+
+    return pslab_devices
+
+
+def _get_version(port: str) -> str:
+    interface = serial.Serial(port=port, baudrate=1e6, timeout=1)
+    interface.write(CP.COMMON)
+    interface.write(CP.GET_VERSION)
+    version = interface.readline()
+    return version.decode("utf-8")
+
+
 class SerialHandler:
     """Provides methods for communicating with the PSLab hardware.
 
@@ -98,9 +132,11 @@ class SerialHandler:
         Parameters
         ----------
         port : str, optional
-            The name of the port to which the PSLab is connected as a string. On
-            Posix this is a path, e.g. "/dev/ttyACM0". On Windows, it's a numbered
-            COM port, e.g. "COM5". Will be autodetected if not specified.
+            The name of the port to which the PSLab is connected as a string.
+            On Posix this is a path, e.g. "/dev/ttyACM0". On Windows, it's a
+            numbered COM port, e.g. "COM5". Will be autodetected if not
+            specified. If multiple PSLab devices are connected, port must be
+            specified.
         baudrate : int, optional
             Symbol rate in bit/s. The default value is 1000000.
         timeout : float, optional
@@ -111,6 +147,8 @@ class SerialHandler:
         ------
         SerialException
             If connection could not be established.
+        RuntimeError
+            If ultiple devices are connected and no port was specified.
         """
         # serial.Serial opens automatically if port is not None.
         self.interface = serial.Serial(
@@ -119,28 +157,31 @@ class SerialHandler:
             timeout=timeout,
             write_timeout=timeout,
         )
+        pslab_devices = detect()
 
         if self.interface.is_open:
             # User specified a port.
             version = self.get_version()
         else:
-            regex = []
-            for vid, pid in zip(self._USB_VID, self._USB_PID):
-                regex.append(f"{vid:04x}:{pid:04x}")
-
-            regex = "(" + "|".join(regex) + ")"
-            port_info_generator = list_ports.grep(regex)
-
-            for port_info in port_info_generator:
-                self.interface.port = port_info.device
+            if len(pslab_devices) == 1:
+                self.interface.port = list(pslab_devices.keys())[0]
                 self.interface.open()
                 version = self.get_version()
-                if any(expected in version for expected in ["PSLab", "CSpark"]):
-                    break
+            elif len(pslab_devices) > 1:
+                found = ""
+
+                for port, version in pslab_devices.items():
+                    found += f"{port}: {version}"
+
+                raise RuntimeError(
+                    "Multiple PSLab devices found:\n"
+                    f"{found}"
+                    "Please choose a device by specifying a port."
+                )
             else:
                 version = ""
 
-        if any(expected in version for expected in ["PSLab", "CSpark"]):
+        if self.interface.port in pslab_devices:
             self.version = version
             logger.info(f"Connected to {self.version} on {self.interface.port}.")
         else:
@@ -174,13 +215,11 @@ class SerialHandler:
         port = self.interface.port if port is None else port
         timeout = self.interface.timeout if timeout is None else timeout
 
-        self.interface = serial.Serial(
+        self.connect(
             port=port,
             baudrate=baudrate,
             timeout=timeout,
-            write_timeout=timeout,
         )
-        self.connect()
 
     def get_version(self) -> str:
         """Query PSLab for its version and return it as a decoded string.
