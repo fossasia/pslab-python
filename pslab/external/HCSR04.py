@@ -1,4 +1,4 @@
-from PSL.commands_proto import CP
+import pslab.protocol as CP
 
 
 class HCSR04:
