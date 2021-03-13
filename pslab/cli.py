@@ -15,6 +15,9 @@ instrument='logic_analyzer', json=False, port=None)
 import argparse
 import csv
 import json
+import platform
+import os.path
+import shutil
 import sys
 import time
 from itertools import zip_longest
@@ -22,6 +25,7 @@ from typing import List, Tuple
 
 import numpy as np
 
+import pslab
 import pslab.protocol as CP
 from pslab.instrument.logic_analyzer import LogicAnalyzer
 from pslab.instrument.oscilloscope import Oscilloscope
@@ -224,6 +228,10 @@ def main(args: argparse.Namespace):
     args : :class:`argparse.Namespace`
         Parsed arguments.
     """
+    if args.function == "install":
+        install(args)
+        return
+
     handler = SerialHandler(port=args.port)
 
     if args.function == "collect":
@@ -456,4 +464,55 @@ def cmdline(args: List[str] = None):
     add_collect_args(subparser)
     add_wave_args(subparser)
     add_pwm_args(subparser)
+    add_install_args(subparser)
     main(parser.parse_args(args))
+
+
+def install(args: argparse.Namespace):
+    """Install udev rule on Linux.
+
+    Parameters
+    ----------
+    args : :class:`argparse.Namespace`
+        Parsed arguments.
+    """
+    if not platform.system() == "Linux":
+        print(f"Installation not required on {platform.system()}.")
+        return
+    else:
+        try:
+            SerialHandler.check_udev()
+        except OSError:
+            _install()
+            return
+
+        if args.force:
+            _install()
+            return
+
+        print("udev rule already installed.")
+
+
+def _install():
+    udev_rules = os.path.join(pslab.__path__[0], "99-pslab.rules")
+    target = "/etc/udev/rules.d/99-pslab.rules"
+    shutil.copyfile(udev_rules, target)
+    return
+
+
+def add_install_args(subparser: argparse._SubParsersAction):
+    """Add arguments for install function to ArgumentParser.
+
+    Parameters
+    ----------
+    subparser : :class:`argparse._SubParsersAction`
+        SubParser to add other arguments related to install function.
+    """
+    install = subparser.add_parser("install")
+    install.add_argument(
+        "-f",
+        "--force",
+        action="store_true",
+        default=False,
+        help="Overwrite existing udev rules.",
+    )
