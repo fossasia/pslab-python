@@ -18,6 +18,7 @@ from typing import List, Union
 import serial
 from serial.tools import list_ports
 
+import pslab
 import pslab.protocol as CP
 
 logger = logging.getLogger(__name__)
@@ -79,7 +80,7 @@ class SerialHandler:
         baudrate: int = 1000000,
         timeout: float = 1.0,
     ):
-        self._check_udev()
+        self.check_udev()
         self.version = ""
         self._log = b""
         self._logging = False
@@ -98,7 +99,8 @@ class SerialHandler:
         self.connected = self.interface.is_open
 
     @staticmethod
-    def _check_udev():
+    def check_udev():
+        """Check if udev rule is installed on Linux."""
         if platform.system() == "Linux":
             udev_paths = [
                 "/run/udev/rules.d/",
@@ -110,11 +112,11 @@ class SerialHandler:
                 if os.path.isfile(udev_rules):
                     break
             else:
-                e = (
+                raise OSError(
                     "A udev rule must be installed to access the PSLab. "
-                    + "Please copy 99-pslab.rules to /etc/udev/rules.d/."
+                    "Please run 'pslab install' as root, or copy "
+                    f"{pslab.__path__[0]}/99-pslab.rules to {udev_paths[1]}."
                 )
-                raise OSError(e)
 
     @staticmethod
     def _list_ports() -> List[str]:
@@ -401,7 +403,8 @@ class MockHandler(SerialHandler):
         super().__init__(port, baudrate, timeout)
 
     @staticmethod
-    def _check_udev():
+    def check_udev():
+        """See :meth:`SerialHandler.check_udev`."""
         pass
 
     def connect(

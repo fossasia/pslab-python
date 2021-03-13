@@ -30,7 +30,7 @@ def mock_serial(mocker):
 
 @pytest.fixture
 def mock_handler(mocker, mock_serial, mock_list_ports):
-    mocker.patch("pslab.serial_handler.SerialHandler._check_udev")
+    mocker.patch("pslab.serial_handler.SerialHandler.check_udev")
     mock_list_ports.grep.return_value = mock_ListPortInfo()
     return SerialHandler()
 
@@ -47,21 +47,21 @@ def test_detect(mocker, mock_serial, mock_list_ports):
 
 def test_connect_scan_port(mocker, mock_serial, mock_list_ports):
     mock_list_ports.grep.return_value = mock_ListPortInfo()
-    mocker.patch("pslab.serial_handler.SerialHandler._check_udev")
+    mocker.patch("pslab.serial_handler.SerialHandler.check_udev")
     SerialHandler()
     mock_serial().open.assert_called()
 
 
 def test_connect_scan_failure(mocker, mock_serial, mock_list_ports):
     mock_list_ports.grep.return_value = mock_ListPortInfo(found=False)
-    mocker.patch("pslab.serial_handler.SerialHandler._check_udev")
+    mocker.patch("pslab.serial_handler.SerialHandler.check_udev")
     with pytest.raises(SerialException):
         SerialHandler()
 
 
 def test_connect_multiple_connected(mocker, mock_serial, mock_list_ports):
     mock_list_ports.grep.return_value = mock_ListPortInfo(multiple=True)
-    mocker.patch("pslab.serial_handler.SerialHandler._check_udev")
+    mocker.patch("pslab.serial_handler.SerialHandler.check_udev")
     with pytest.raises(RuntimeError):
         SerialHandler()
 
