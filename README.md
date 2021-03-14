@@ -25,7 +25,7 @@ pslab-python can be installed from PyPI:
 
 	$ pip install pslab
 
-**Note**: Linux users must additionally install a udev rules file for pslab-python to be able to communicate with the PSLab device. The file [99-pslab.rules](https://github.com/fossasia/pslab-python/blob/development/99-pslab.rules) should be copied to /etc/udev/rules.d/.
+**Note**: Linux users must either install a udev rule by running 'pslab install' as root, or be part of the 'dialout' group in order for pslab-python to be able to communicate with the PSLab device.
 
 **Note**: If you are only interested in using PSLab as an acquisition device without a display/GUI, only pslab-python needs to be installed. If you would like a GUI, install the [pslab-desktop app](https://github.com/fossasia/pslab-desktop) and follow the instructions of the Readme in that repo.
 
