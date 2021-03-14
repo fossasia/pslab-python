@@ -7,8 +7,9 @@ Example
 >>> version = device.get_version()
 >>> device.disconnect()
 """
+import grp
 import logging
-import os.path
+import os
 import platform
 import struct
 import time
@@ -80,7 +81,7 @@ class SerialHandler:
         baudrate: int = 1000000,
         timeout: float = 1.0,
     ):
-        self.check_udev()
+        self.check_serial_access_permission()
         self.version = ""
         self._log = b""
         self._logging = False
@@ -99,9 +100,13 @@ class SerialHandler:
         self.connected = self.interface.is_open
 
     @staticmethod
-    def check_udev():
-        """Check if udev rule is installed on Linux."""
+    def check_serial_access_permission():
+        """Check that we have permission to use the tty on Linux."""
         if platform.system() == "Linux":
+            for group in os.getgroups():
+                if grp.getgrgid(group).gr_name == "dialout":
+                    return
+
             udev_paths = [
                 "/run/udev/rules.d/",
                 "/etc/udev/rules.d/",
@@ -113,8 +118,13 @@ class SerialHandler:
                     break
             else:
                 raise OSError(
-                    "A udev rule must be installed to access the PSLab. "
-                    "Please run 'pslab install' as root, or copy "
+                    "You are not a member of the dialout group and therefore "
+                    "do not have permission to talk to serial devices. Please "
+                    "add the current user to the dialout group. After logging "
+                    "out and then logging back in you will be able to access "
+                    "the PSLab.\n"
+                    "Alternativelly, a udev rule can be installed by running "
+                    "'pslab install' as root, or by copying "
                     f"{pslab.__path__[0]}/99-pslab.rules to {udev_paths[1]}."
                 )
 
@@ -403,8 +413,8 @@ class MockHandler(SerialHandler):
         super().__init__(port, baudrate, timeout)
 
     @staticmethod
-    def check_udev():
-        """See :meth:`SerialHandler.check_udev`."""
+    def check_serial_access_permission():
+        """See :meth:`SerialHandler.check_serial_access_permission`."""
         pass
 
     def connect(

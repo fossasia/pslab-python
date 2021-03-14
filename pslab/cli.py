@@ -481,7 +481,7 @@ def install(args: argparse.Namespace):
         return
     else:
         try:
-            SerialHandler.check_udev()
+            SerialHandler.check_serial_access_permission()
         except OSError:
             _install()
             return
@@ -490,7 +490,7 @@ def install(args: argparse.Namespace):
             _install()
             return
 
-        print("udev rule already installed.")
+        print("User is in dialout group or udev rule is already installed.")
 
 
 def _install():
@@ -514,5 +514,5 @@ def add_install_args(subparser: argparse._SubParsersAction):
         "--force",
         action="store_true",
         default=False,
-        help="Overwrite existing udev rules.",
+        help="Overwrite existing udev rule.",
     )
