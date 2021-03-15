@@ -534,7 +534,7 @@ class LogicAnalyzer(ADCBufferMixin):
                 a += 1
 
         p = CP.MAX_SAMPLES // 4
-        progress = self._get_initial_states_and_progress()[1]
+        progress = self._get_initial_states_and_progress()[0]
         for a in active_channels:
             p = min(progress[a], p)
 
@@ -550,7 +550,38 @@ class LogicAnalyzer(ADCBufferMixin):
             state, e.g. {'LA1': True, 'LA2': True, 'LA3': True, 'LA4': False}.
             True means HIGH, False means LOW.
         """
-        return self._get_initial_states_and_progress()[0]
+        before, after = self._get_initial_states_and_progress()[1:]
+        initial_states = {
+            "LA1": (before & 1 != 0),
+            "LA2": (before & 2 != 0),
+            "LA3": (before & 4 != 0),
+            "LA4": (before & 8 != 0),
+        }
+
+        if before != after:
+            disagreements = before ^ after
+            uncertain_states = [
+                disagreements & 1 != 0,
+                disagreements & 2 != 0,
+                disagreements & 4 != 0,
+                disagreements & 8 != 0,
+            ]
+            timestamps = self.fetch_data()
+
+            if len(timestamps) == 1:
+                # One channel mode does not record states after start.
+                return initial_states
+
+            channels = ["LA1", "LA2", "LA3", "LA4"]
+            for i, state in enumerate(uncertain_states[: len(timestamps)]):
+                if state:
+                    if timestamps[i][0] > 0.1:  # µs
+                        # States captured immediately after start are usually
+                        # better than immediately before, except when an event
+                        # was captures within ~100 ns of start.
+                        initial_states[channels[i]] = not initial_states[channels[i]]
+
+        return initial_states
 
     def get_xy(
         self, timestamps: List[np.ndarray], initial_states: Dict[str, bool] = None
@@ -593,7 +624,7 @@ class LogicAnalyzer(ADCBufferMixin):
 
         return xy
 
-    def _get_initial_states_and_progress(self) -> Tuple[Dict[str, bool], List[int]]:
+    def _get_initial_states_and_progress(self) -> Tuple[int, int, int]:
         self._device.send_byte(CP.TIMING)
         self._device.send_byte(CP.GET_INITIAL_DIGITAL_STATES)
         initial = self._device.get_int()
@@ -602,14 +633,8 @@ class LogicAnalyzer(ADCBufferMixin):
         progress[1] = (self._device.get_int() - initial) // 2 - CP.MAX_SAMPLES // 4
         progress[2] = (self._device.get_int() - initial) // 2 - 2 * CP.MAX_SAMPLES // 4
         progress[3] = (self._device.get_int() - initial) // 2 - 3 * CP.MAX_SAMPLES // 4
-        s = self._device.get_byte()
-        initial_states = {
-            "LA1": (s & 1 != 0),
-            "LA2": (s & 2 != 0),
-            "LA3": (s & 4 != 0),
-            "LA4": (s & 8 != 0),
-        }
-        self._device.get_byte()  # INITIAL_DIGITAL_STATES_ERR
+        states_immediately_before_start = self._device.get_byte()
+        states_immediately_after_start = self._device.get_byte()
         self._device.get_ack()
 
         for e, i in enumerate(progress):
@@ -618,7 +643,7 @@ class LogicAnalyzer(ADCBufferMixin):
             elif i < 0:
                 progress[e] = 0
 
-        return initial_states, progress
+        return progress, states_immediately_before_start, states_immediately_after_start
 
     def configure_trigger(self, trigger_channel: str, trigger_mode: str):
         """Set up trigger channel and trigger condition.
