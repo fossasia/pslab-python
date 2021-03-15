@@ -134,8 +134,7 @@ class Oscilloscope(ADCBufferMixin):
         timegap = int(timegap * 8) / 8
         
         for channel in ("CH1", "CH2"):
-            self._set_gain(channel, gain)
-        
+            self._set_gain(channel, self._channels[channel].gain)
         self._capture(channels, samples, timegap)
         x = [timegap * np.arange(samples)]
 
