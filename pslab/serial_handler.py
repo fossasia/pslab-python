@@ -7,7 +7,11 @@ Example
 >>> version = device.get_version()
 >>> device.disconnect()
 """
-import grp
+try:
+    import grp
+except ImportError:
+    pass
+
 import logging
 import os
 import platform
