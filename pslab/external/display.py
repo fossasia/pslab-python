@@ -75,6 +75,8 @@ class SSD1306(I2CSlave):
     _CHARGEPUMP = 0x8D
     _EXTERNALVCC = 0x1
     _SWITCHCAPVCC = 0x2
+    _SET_COL_ADDR = 0x21
+    _SET_PAGE_ADDR = 0x22
 
     # fmt: off
     _INIT_DATA = [
@@ -118,18 +120,21 @@ class SSD1306(I2CSlave):
         self._logo = gfx["logo"]
         self._font = gfx["font"]
 
+        print("init oled")
         for command in self._INIT_DATA:
             self._write_command(command)
 
     def draw_logo(self):
         """Print someone's logo on the display."""
+        print("draw logo")
         self.scroll("stop")
         self.clear()
         self._buffer = self._logo
         self.update()
 
     def _write_command(self, command: int):
-        self.write(bytes([command]))
+        print(hex(command))
+        self.write_byte(command)
 
     def _write_data(self, data: list):
         self.write(bytes(data), register_address=0x40)
@@ -151,6 +156,17 @@ class SSD1306(I2CSlave):
         while a < self._WIDTH * self._HEIGHT // 8:
             self._write_data(self._buffer[a : a + 16])
             a += 16
+
+    def show(self):
+        x0 = 0
+        x1 = self._WIDTH - 1
+        self._write_command(self._SET_COL_ADDR)
+        self._write_command(x0)
+        self._write_command(x1)
+        self._write_command(self._SET_PAGE_ADDR)
+        self._write_command(0)
+        self._write_command(self._HEIGHT // 8)
+        self._write_data(self._buffer[0 : 16])
 
     @property
     def contrast(self) -> int:
