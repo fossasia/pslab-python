@@ -1,1 +1,1 @@
-../CONTRIBUTING.md
+Contributions should folloe guidelines mentioned.
