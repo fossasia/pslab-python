@@ -14,7 +14,6 @@ Example
 >>> oled.scroll("stop")
 """
 import json
-import time
 import os.path
 
 from PIL import Image
@@ -25,7 +24,7 @@ __location__ = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file
 
 
 class SSD1306(I2CSlave):
-    """Interface to a monochrome OLED display.
+    """Interface to a monochrome OLED display driven by an SSD1306 chip.
 
     Parameters
     ----------
@@ -69,6 +68,7 @@ class SSD1306(I2CSlave):
     _ADDRESS = 0x3C
     _WIDTH = 128
     _HEIGHT = 64
+    _LOWCOLUMNOFFSET = 0
 
     _SETCONTRAST = 0x81
     _DISPLAYALLON_RESUME = 0xA4
@@ -116,8 +116,8 @@ class SSD1306(I2CSlave):
     ]
     # fmt: on
 
-    def __init__(self, speed="slow", sh1106=False):
-        super().__init__(self._ADDRESS)
+    def __init__(self, device=None, speed="slow"):
+        super().__init__(device=device, address=self._ADDRESS)
         self._buffer = [0 for a in range(1024)]
         self.cursor = [0, 0]
         self.textsize = 1
@@ -126,7 +126,6 @@ class SSD1306(I2CSlave):
         self.wrap = True
         self._contrast = 0xFF
         self.speed = speed
-        self.sh1106 = sh1106
 
         with open(os.path.join(__location__, "ssd1306_gfx.json"), "r") as f:
             gfx = json.load(f)
@@ -142,7 +141,6 @@ class SSD1306(I2CSlave):
     def display_logo(self):
         """Display pslab.io logo."""
         self.scroll("stop")
-        self.clear()
         self._buffer = self._logo[:]
         self.update()
 
@@ -161,16 +159,20 @@ class SSD1306(I2CSlave):
     def update(self):
         """Redraw display."""
         for i in range(8):
-            self._write_command(self._SETLOWCOLUMN | 2 if self.sh1106 else 0)
+            self._write_command(self._SETLOWCOLUMN | self._LOWCOLUMNOFFSET)
             self._write_command(self._SETHIGHCOLUMN | 0)
             self._write_command(self._SETPAGESTART | i)
 
             if self.speed == "slow":
                 for j in range(self._WIDTH):
-                    self._write_data([self._buffer[i*self._WIDTH + j]])
+                    self._write_data([self._buffer[i * self._WIDTH + j]])
             elif self.speed == "medium":
                 for j in range(self._WIDTH // 8):
-                    self._write_data(self._buffer[i*self._WIDTH + j*8 : i*self._WIDTH + 8*(j+1)])
+                    self._write_data(
+                        self._buffer[
+                            i * self._WIDTH + j * 8 : i * self._WIDTH + 8 * (j + 1)
+                        ]
+                    )
             else:
                 self._write_data(self._buffer[self._WIDTH * i : self._WIDTH * (i + 1)])
 
@@ -342,16 +344,26 @@ class SSD1306(I2CSlave):
                     if size == 1:
                         self.draw_pixel(x0 + i, y0 + j, color, False)
                     else:
-                        self.fill_rectangle(x0 + (i * size), y0 + (j * size), size, size, color, False)
+                        self.fill_rectangle(
+                            x0 + (i * size), y0 + (j * size), size, size, color, False
+                        )
                 elif bg != color:
                     if size == 1:
                         self.draw_pixel(x0 + i, y0 + j, bg, False)
                     else:
-                        self.fill_rect(x0 + i * size, y0 + j * size, size, size, bg, False)
+                        self.fill_rectangle(
+                            x0 + i * size, y0 + j * size, size, size, bg, False
+                        )
                 line >>= 1
 
-    def scroll(self, direction):
-        """Scroll the screen contents."""
+    def scroll(self, direction: str):
+        """Scroll the screen contents.
+
+        Parameters
+        ----------
+        direction : {'left', 'right', 'stop'}
+            Scrolling direction.
+        """
         if direction == "left":
             self._write_command(0x27)  # up-0x29 ,2A left-0x27 right0x26
         if direction == "right":
@@ -361,7 +373,14 @@ class SSD1306(I2CSlave):
         if direction in ["topleft", "bottomleft"]:
             self._write_command(0x2A)  # up-0x29 ,2A left-0x27 right0x26
 
-        if direction in ["left", "right", "topright", "topleft", "bottomleft", "bottomright"]:
+        if direction in [
+            "left",
+            "right",
+            "topright",
+            "topleft",
+            "bottomleft",
+            "bottomright",
+        ]:
             self._write_command(0x0)  # dummy
             self._write_command(0x0)  # start page
             self._write_command(0x7)  # time interval 0b100 - 3 frames
@@ -380,13 +399,13 @@ class SSD1306(I2CSlave):
         if direction == "stop":
             self._write_command(0x2E)
 
-    def pulse(self):
-        """Turn the display on and off."""
-        for a in range(2):
-            self._write_command(self._DISPLAYOFF)
-            time.sleep(0.1)
-            self._write_command(self._DISPLAYON)
-            time.sleep(0.1)
+    def poweron(self):
+        """Turn the display on."""
+        self._write_command(self._DISPLAYON)
+
+    def poweroff(self):
+        """Turn the display off."""
+        self._write_command(self._DISPLAYOFF)
 
     def display(self, image: Image):
         """Display an image.
@@ -397,10 +416,10 @@ class SSD1306(I2CSlave):
             A PIL.Image instance.
         """
         if not image.size == (128, 64):
-            image.resize((128, 64))
+            image = image.resize((128, 64))
 
         if not image.mode == "1":
-            image.convert("1")
+            image = image.convert("1")
 
         image_data = image.getdata()
         pixels_per_page = self._WIDTH * 8
@@ -411,17 +430,29 @@ class SSD1306(I2CSlave):
             offsets = [y + self._WIDTH * i for i in range(8)]
 
             for x in range(self._WIDTH):
-                buf[x] = \
-                    (image_data[x + offsets[0]] and 0x01) | \
-                    (image_data[x + offsets[1]] and 0x02) | \
-                    (image_data[x + offsets[2]] and 0x04) | \
-                    (image_data[x + offsets[3]] and 0x08) | \
-                    (image_data[x + offsets[4]] and 0x10) | \
-                    (image_data[x + offsets[5]] and 0x20) | \
-                    (image_data[x + offsets[6]] and 0x40) | \
-                    (image_data[x + offsets[7]] and 0x80)
+                buf[x] = (
+                    (image_data[x + offsets[0]] and 0x01)
+                    | (image_data[x + offsets[1]] and 0x02)
+                    | (image_data[x + offsets[2]] and 0x04)
+                    | (image_data[x + offsets[3]] and 0x08)
+                    | (image_data[x + offsets[4]] and 0x10)
+                    | (image_data[x + offsets[5]] and 0x20)
+                    | (image_data[x + offsets[6]] and 0x40)
+                    | (image_data[x + offsets[7]] and 0x80)
+                )
 
             buffer += list(buf)
 
         self._buffer = buffer
         self.update()
+
+
+class SH1106(SSD1306):
+    """Interface to a monochrome OLED display driven by an SH1106 chip.
+
+    SH1106 is a common OLED driver which is almost identical to the SSD1306.
+    OLED displays are sometimes advertised as using SSD1306 when they in fact
+    use SH1106.
+    """
+
+    _LOWCOLUMNOFFSET = 2
