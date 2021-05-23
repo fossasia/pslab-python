@@ -16,7 +16,12 @@ Example
 import json
 import os.path
 
-from PIL import Image
+try:
+    from PIL import Image
+
+    HASPIL = True
+except ImportError:
+    HASPIL = False
 
 from pslab.bus import I2CSlave
 
@@ -415,6 +420,11 @@ class SSD1306(I2CSlave):
         image : Image
             A PIL.Image instance.
         """
+        if not HASPIL:
+            raise ImportError(
+                "Displaying images requires PIL, but it is not installed."
+            )
+
         if not image.size == (128, 64):
             image = image.resize((128, 64))
 
