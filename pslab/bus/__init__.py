@@ -4,6 +4,7 @@
 """
 from pslab.bus.i2c import I2CMaster, I2CSlave
 
-
-class DeviceNotFoundError(RuntimeError):
-    pass
+__all__ = (
+    "I2CMaster",
+    "I2CSlave",
+)
