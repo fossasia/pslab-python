@@ -1,0 +1,51 @@
+name: pslab-python
+
+on:
+  - push
+  - pull_request
+
+jobs:
+    lint:
+        name: Lint
+        runs-on: ubuntu-latest
+        # The setup steps are duplicated between jobs. We should create a
+        # composite action for the setup, once composite actions support
+        # "uses".
+        steps:
+        - uses: actions/checkout@v1
+        - uses: actions/setup-python@v2
+          with:
+              python-version: ${{ matrix.python-version }}
+        - run: |
+              python -m pip install --upgrade pip
+              pip install tox tox-gh-actions
+        - run: tox -e lint
+
+    docs:
+        name: Docs
+        runs-on: ubuntu-latest
+        steps:
+        - uses: actions/checkout@v1
+        - uses: actions/setup-python@v2
+          with:
+              python-version: ${{ matrix.python-version }}
+        - run: |
+              python -m pip install --upgrade pip
+              pip install tox tox-gh-actions
+        - run: tox -e docs
+
+    test:
+        name: Test
+        runs-on: ubuntu-latest
+        strategy:
+            matrix:
+                python-version: [3.6, 3.7, 3.8, 3.9]
+        steps:
+        - uses: actions/checkout@v1
+        - uses: actions/setup-python@v2
+          with:
+              python-version: ${{ matrix.python-version }}
+        - run: |
+              python -m pip install --upgrade pip
+              pip install tox tox-gh-actions
+        - run: tox -e playback
