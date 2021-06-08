@@ -57,7 +57,7 @@ def test_configure(la: LogicAnalyzer, master: I2CMaster, slave: I2CSlave):
     frequency = 1.25e5
     master.configure(frequency)
     la.capture(1, block=False)
-    slave._start(1)
+    slave._start(ADDRESS, 1)
     slave._stop()
     la.stop()
     (scl,) = la.fetch_data()
@@ -81,7 +81,7 @@ def test_status(master: I2CMaster):
 
 def test_start_slave(la: LogicAnalyzer, slave: I2CSlave):
     la.capture(2, block=False)
-    slave._start(1)
+    slave._start(ADDRESS, 1)
     la.stop()
     slave._stop()
     init = la.get_initial_states()
@@ -92,7 +92,7 @@ def test_start_slave(la: LogicAnalyzer, slave: I2CSlave):
 
 
 def test_stop_slave(la: LogicAnalyzer, slave: I2CSlave):
-    slave._start(1)
+    slave._start(ADDRESS, 1)
     la.capture(2, block=False)
     slave._stop()
     la.stop()
