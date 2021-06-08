@@ -302,8 +302,8 @@ class Oscilloscope(ADCBufferMixin):
         >>> from pslab import Oscilloscope
         >>> scope = Oscilloscope()
         >>> scope.configure_trigger(channel='CH1', voltage=1.1)
-        >>> xy = scope.capture(channels=1, samples=800, timegap=2)
-        >>> diff = abs(xy[1, 0] - 1.1)  # Should be small unless a timeout occurred.
+        >>> x, y = scope.capture(channels=1, samples=800, timegap=2)
+        >>> diff = abs(y[0] - 1.1)  # Should be small unless a timeout occurred.
 
         Raises
         ------
