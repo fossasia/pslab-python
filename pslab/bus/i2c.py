@@ -39,6 +39,9 @@ class I2CPrimitive:
         created.
     """
 
+    _MIN_BRGVAL = 2
+    _MAX_BRGVAL = 511
+
     _ACK = 0
     _READ = 1
     _WRITE = 0
@@ -47,6 +50,28 @@ class I2CPrimitive:
         self._device = device if device is not None else SerialHandler()
         self._running = False
         self._mode = None
+
+    def _init(self):
+        self._device.send_byte(CP.I2C_HEADER)
+        self._device.send_byte(CP.I2C_INIT)
+        self._device.get_ack()
+
+    def _configure(self, brgval: int):
+        """Configure bus brgval.
+
+        Parameters
+        ----------
+        brgval : int
+            Brgval of SCL in Hz.
+        """
+        if self._MIN_BRGVAL <= brgval <= self._MAX_BRGVAL:
+            self._device.send_byte(CP.I2C_HEADER)
+            self._device.send_byte(CP.I2C_CONFIG)
+            self._device.send_int(brgval)
+            self._device.get_ack()
+        else:
+            e = f"Brgval must be between {self._MIN_BRGVAL} and {self._MAX_BRGVAL}."
+            raise ValueError(e)
 
     def _start(self, address: int, mode: int) -> int:
         """Initiate I2C transfer.
@@ -365,16 +390,12 @@ class I2CMaster(I2CPrimitive):
         created.
     """
 
-    _MIN_BRGVAL = 2
-    _MAX_BRGVAL = 511
     # Specs say typical delay is 110 ns to 130 ns; 150 ns from testing.
     _SCL_DELAY = 150e-9
 
     def __init__(self, device: SerialHandler = None):
         super().__init__(device)
-        self._device.send_byte(CP.I2C_HEADER)
-        self._device.send_byte(CP.I2C_INIT)
-        self._device.get_ack()
+        self._init()
         self.configure(125e3)  # 125 kHz is as low as the PSLab can go.
 
     def configure(self, frequency: float):
@@ -385,21 +406,23 @@ class I2CMaster(I2CPrimitive):
         frequency : float
             Frequency of SCL in Hz.
         """
-        brgval = int((1 / frequency - self._SCL_DELAY) * CP.CLOCK_RATE - 2)
+        brgval = self._get_i2c_brgval(frequency)
 
         if self._MIN_BRGVAL <= brgval <= self._MAX_BRGVAL:
-            self._device.send_byte(CP.I2C_HEADER)
-            self._device.send_byte(CP.I2C_CONFIG)
-            self._device.send_int(brgval)
-            self._device.get_ack()
+            self._configure(brgval)
         else:
             min_frequency = self._get_i2c_frequency(self._MAX_BRGVAL)
             max_frequency = self._get_i2c_frequency(self._MIN_BRGVAL)
             e = f"Frequency must be between {min_frequency} and {max_frequency} Hz."
             raise ValueError(e)
 
-    def _get_i2c_frequency(self, brgval: int) -> float:
-        return 1 / ((brgval + 2) / CP.CLOCK_RATE + self._SCL_DELAY)
+    @classmethod
+    def _get_i2c_brgval(cls, frequency: float) -> int:
+        return int((1 / frequency - cls._SCL_DELAY) * CP.CLOCK_RATE - 2)
+
+    @classmethod
+    def _get_i2c_frequency(cls, brgval: int) -> float:
+        return 1 / ((brgval + 2) / CP.CLOCK_RATE + cls._SCL_DELAY)
 
     def scan(self) -> List[int]:
         """Scan I2C port for connected devices.
