@@ -6,7 +6,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="pslab",
-    version="2.3.2",
+    version="2.4.0",
     description="Pocket Science Lab by FOSSASIA",
     long_description=long_description,
     long_description_content_type="text/markdown",
