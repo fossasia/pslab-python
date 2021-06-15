@@ -60,11 +60,11 @@ class I2C(I2CPrimitive):
         pass
 
     def __enter__(self):
-        """Just a dummy method."""
+        """Just a dummy context manager."""
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:
-        """Just a dummy method."""
+        """Call :meth:`deinit` on context exit."""
         self.deinit()
 
     def scan(self) -> List[int]:
