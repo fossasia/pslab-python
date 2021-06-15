@@ -29,7 +29,7 @@ Get gyro reading from BNO055 using adafruit_bno055, board(just a wrapper for bus
 """
 from typing import List, Union
 
-from pslab.bus.i2c import I2CPrimitive, I2CSlave
+from pslab.bus.i2c import I2CPrimitive
 from pslab.serial_handler import SerialHandler
 
 __all__ = "I2C"
@@ -75,15 +75,7 @@ class I2C(I2CPrimitive):
         addrs : list of int
             List of 7-bit addresses on which slave devices replied.
         """
-        addrs = []
-
-        for address in range(0x08, 0x77):
-            slave = I2CSlave(address, self._device)
-
-            if slave.ping():
-                addrs.append(address)
-
-        return addrs
+        return self._scan(0x08, 0x77)
 
     def try_lock(self) -> bool:  # pylint: disable=no-self-use
         """Just a dummy method."""
