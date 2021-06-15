@@ -97,6 +97,31 @@ class I2CPrimitive:
     def _get_i2c_frequency(cls, brgval: int) -> float:
         return 1 / ((brgval + 2) / CP.CLOCK_RATE + cls._SCL_DELAY)
 
+    def _scan(self, start: int = 1, end: int = 128) -> List[int]:
+        """Scan I2C port for connected devices.
+
+        Parameters
+        ----------
+        start : int
+            Address to start scaning at. Defaults to 1(0 is the general call address).
+        end : int
+            Address to scan up to. Defaults to 128.
+
+        Returns
+        -------
+        addrs : list of int
+            List of 7-bit addresses on which slave devices replied.
+        """
+        addrs = []
+
+        for address in range(start, end):
+            slave = I2CSlave(address, self._device)
+
+            if slave.ping():
+                addrs.append(address)
+
+        return addrs
+
     def _start(self, address: int, mode: int) -> int:
         """Initiate I2C transfer.
 
@@ -442,17 +467,13 @@ class I2CMaster(I2CPrimitive):
         addrs : list of int
             List of 7-bit addresses on which slave devices replied.
         """
-        addrs = []
+        addrs = self._scan(1, 128)
 
-        for address in range(1, 128):  # 0 is the general call address.
-            slave = I2CSlave(address, self._device)
-
-            if slave.ping():
-                addrs.append(address)
-                logger.info(
-                    f"Response from slave on {hex(address)} "
-                    + f"({sensors.get(address, 'None')})."
-                )
+        for address in addrs:
+            logger.info(
+                f"Response from slave on {hex(address)} "
+                + f"({sensors.get(address, 'None')})."
+            )
 
         return addrs
 
