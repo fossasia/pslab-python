@@ -78,6 +78,13 @@ def test_capture_two(scope):
     verify_periods(x, y2, scope._channels["CH2"])
 
 
+def test_capture_three(scope):
+    x, y1, y2, y3 = scope.capture(channels=3, samples=500, timegap=2)
+    verify_periods(x, y1, scope._channels["CH1"])
+    verify_periods(x, y2, scope._channels["CH2"])
+    verify_periods(x, y3, scope._channels["CH3"])
+
+
 def test_capture_four(scope):
     x, y1, y2, y3, _ = scope.capture(channels=4, samples=500, timegap=2)
     verify_periods(x, y1, scope._channels["CH1"])

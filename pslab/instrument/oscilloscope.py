@@ -177,6 +177,7 @@ class Oscilloscope(ADCBufferMixin):
         channels_idx = {
             1: 0,
             2: 1,
+            3: 2,
             4: 2,
         }
         min_timegaps = [[0.5, 0.75], [0.875, 0.875], [1.75, 1.75]]
