@@ -14,3 +14,5 @@ __all__ = (
     "WaveformGenerator",
     "ScienceLab",
 )
+
+__version__ = "2.4.0"
