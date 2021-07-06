@@ -27,6 +27,7 @@ Get gyro reading from BNO055 using adafruit_bno055, board(just a wrapper for bus
 >>> sensor = adafruit_bno055.BNO055_I2C(i2c)
 >>> print(sensor.gyro)
 """
+
 from typing import List, Union
 
 from pslab.bus.i2c import I2CPrimitive
