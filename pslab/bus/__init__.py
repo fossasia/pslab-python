@@ -2,6 +2,7 @@
 
 (SPI and UART still TODO)
 """
+
 from pslab.bus.i2c import I2CMaster, I2CSlave
 
 __all__ = (
