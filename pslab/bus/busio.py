@@ -31,6 +31,7 @@ Get gyro reading from BNO055 using adafruit_bno055, board(just a wrapper for bus
 from typing import List, Union
 
 from pslab.bus.i2c import _I2CPrimitive
+from pslab.bus.spi import _SPIPrimitive
 from pslab.serial_handler import SerialHandler
 
 __all__ = "I2C"
@@ -178,3 +179,197 @@ class I2C(_I2CPrimitive):
         self._restart(address, 1)
         buffer_in[in_start:in_end] = self._read(bytes_to_read)
         self._stop()
+
+
+class SPI(_SPIPrimitive):
+    """Busio SPI Class for CircuitPython Compatibility.
+
+    Parameters
+    ----------
+    device : :class:`SerialHandler`, optional
+        Serial connection to PSLab device. If not provided, a new one will be
+        created.
+    """
+
+    def __init__(self, device: SerialHandler = None, frequency: int = 125e3):
+        super().__init__(device)
+        ppre, spre = self._get_prescaler(25e4)
+        self._set_parameters(ppre, spre, 1, 0, 1)
+        self._bits = 8
+
+    @property
+    def frequency(self) -> int:
+        """Get the actual SPI bus frequency (rounded).
+
+        This may not match the frequency requested due to internal limitations.
+        """
+        return round(self._frequency)
+
+    def deinit(self) -> None:
+        """Just a dummy method."""
+        pass
+
+    def __enter__(self):
+        """Just a dummy context manager."""
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+        """Call :meth:`deinit` on context exit."""
+        self.deinit()
+
+    def configure(
+        self,
+        *,
+        baudrate: int = 100000,
+        polarity: int = 0,
+        phase: int = 0,
+        bits: int = 8,
+    ) -> None:
+        """Configure the SPI bus.
+
+        Parameters
+        ----------
+        baudrate : int
+            The desired clock rate in Hertz. The actual clock rate may be
+            higher or lower due to the granularity of available clock settings.
+            Check the frequency attribute for the actual clock rate.
+        polarity : int
+            The base state of the clock line (0 or 1)
+        phase : int
+            The edge of the clock that data is captured. First (0) or second (1).
+            Rising or falling depends on clock polarity.
+        bits : int
+            The number of bits per word.
+        """
+        if polarity not in (0, 1):
+            raise ValueError("Invalid polarity")
+        if phase not in (0, 1):
+            raise ValueError("Invalid phase")
+        if bits not in self._INTEGER_TYPE_MAP:
+            raise ValueError("Invalid number of bits")
+
+        ppre, spre = self._get_prescaler(baudrate)
+        cke = (phase ^ 1) & 1
+        self._set_parameters(ppre, spre, cke, polarity, 1)
+        self._bits = bits
+
+    def try_lock(self) -> bool:  # pylint: disable=no-self-use
+        """Just a dummy method."""
+        return True
+
+    def unlock(self) -> None:
+        """Just a dummy method."""
+        pass
+
+    def write(
+        self,
+        buffer: Union[ReadableBuffer, List[int]],
+        *,
+        start: int = 0,
+        end: int = None,
+    ) -> None:
+        """Write the data contained in buffer. If the buffer is empty, nothing happens.
+
+        Parameters
+        ----------
+        buffer : bytes or bytearray or memoryview or list_of_int (for bits >8)
+            Write out the data in this buffer.
+        start : int
+            Start of the slice of `buffer` to write out: `buffer[start:end]`.
+        end : int
+            End of the slice; this index is not included. Defaults to `len(buffer)`.
+        """
+        end = len(buffer) if end is None else end
+        buffer = buffer[start:end]
+
+        if not buffer:
+            return
+
+        self._start()
+        self._write_bulk(buffer, self._bits)
+        self._stop()
+
+    def readinto(
+        self,
+        buffer: Union[WriteableBuffer, List[int]],
+        *,
+        start: int = 0,
+        end: int = None,
+        write_value: int = 0,
+    ) -> None:
+        """Read into `buffer` while writing `write_value` for each byte read.
+
+        If the number of bytes to read is 0, nothing happens.
+
+        Parameters
+        ----------
+        buffer : bytearray or memoryview or list_of_int (for bits >8)
+            Read data into this buffer.
+        start : int
+            Start of the slice of `buffer` to read into: `buffer[start:end]`.
+        end : int
+            End of the slice; this index is not included. Defaults to `len(buffer)`.
+        write_value : int
+            Value to write while reading. (Usually ignored.)
+        """
+        end = len(buffer) if end is None else end
+        bytes_to_read = end - start
+
+        if bytes_to_read == 0:
+            return
+
+        self._start()
+        data = self._transfer_bulk([write_value] * bytes_to_read, self._bits)
+        self._stop()
+
+        for i, v in zip(range(start, end), data):
+            buffer[i] = v
+
+    def write_readinto(
+        self,
+        buffer_out: Union[ReadableBuffer, List[int]],
+        buffer_in: Union[WriteableBuffer, List[int]],
+        *,
+        out_start: int = 0,
+        out_end: int = None,
+        in_start: int = 0,
+        in_end: int = None,
+    ):
+        """Write out the data in buffer_out while simultaneously read into buffer_in.
+
+        The lengths of the slices defined by buffer_out[out_start:out_end] and
+        buffer_in[in_start:in_end] must be equal. If buffer slice lengths are both 0,
+        nothing happens.
+
+        Parameters
+        ----------
+        buffer_out : bytes or bytearray or memoryview or list_of_int (for bits >8)
+            Write out the data in this buffer.
+        buffer_in : bytearray or memoryview or list_of_int (for bits >8)
+            Read data into this buffer.
+        out_start : int
+            Start of the slice of `buffer_out` to write out:
+            `buffer_out[out_start:out_end]`.
+        out_end : int
+            End of the slice; this index is not included. Defaults to `len(buffer_out)`
+        in_start : int
+            Start of the slice of `buffer_in` to read into:`buffer_in[in_start:in_end]`
+        in_end : int
+            End of the slice; this index is not included. Defaults to `len(buffer_in)`
+        """
+        out_end = len(buffer_out) if out_end is None else out_end
+        in_end = len(buffer_in) if in_end is None else in_end
+        buffer_out = buffer_out[out_start:out_end]
+        bytes_to_read = in_end - in_start
+
+        if len(buffer_out) != bytes_to_read:
+            raise ValueError("buffer slices must be of equal length")
+        if bytes_to_read == 0:
+            return
+
+        self._start()
+        data = self._transfer_bulk(buffer_out, self._bits)
+        self._stop()
+
+        for i, v in zip(range(in_start, in_end), data):
+            buffer_in[i] = v
