@@ -19,9 +19,7 @@ Transfer a random byte over SPI:
 0
 """
 
-import numpy as np
 import sys
-from itertools import product
 from typing import List, Tuple
 
 import pslab.protocol as CP
@@ -102,14 +100,25 @@ class _SPIPrimitive:
 
     @classmethod
     def _get_prescaler(cls, frequency: float) -> Tuple[int]:
-        frequencys = []
-        for p, s in product(cls._PPRE_MAP, cls._SPRE_MAP):
-            frequencys.append(CP.CLOCK_RATE / (p * s))
+        min_diff = CP.CLOCK_RATE  # highest
+        # minimum frequency
+        ppre = 0
+        spre = 0
 
-        frequencys = np.array(frequencys)
-        idx = np.abs(frequencys - frequency).argmin()
+        for p in range(len(cls._PPRE_MAP)):
+            for s in range(len(cls._SPRE_MAP)):
 
-        return divmod(idx, len(cls._SPRE_MAP))
+                freq = CP.CLOCK_RATE / (cls._PPRE_MAP[p] * cls._SPRE_MAP[s])
+                if frequency >= freq:
+
+                    diff = frequency - freq
+                    if min_diff > diff:
+                        # better match
+                        min_diff = diff
+                        ppre = p
+                        spre = s
+
+        return ppre, spre
 
     @staticmethod
     def _save_config(
