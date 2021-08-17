@@ -285,54 +285,6 @@ class ScienceLab(SerialHandler):
         self.send_byte(1 if persist else 0)
         self.send_int(int(round(((64e6 / baudrate) / 4) - 1)))
 
-    def set_uart_baud(self, baudrate: int):
-        """Set the baudrate of the UART bus.
-
-        Parameters
-        ----------
-        baudrate : int
-            Baudrate to set on the UART bus.
-        """
-        self.send_byte(CP.UART_2)
-        self.send_byte(CP.SET_BAUD)
-        self.send_int(int(round(((64e6 / baudrate) / 4) - 1)))
-        self.get_ack()
-
-    def write_uart(self, byte: int):
-        """Write a single byte to the UART bus.
-
-        Parameters
-        ----------
-        byte : int
-            Byte value to write to the UART bus.
-        """
-        self.send_byte(CP.UART_2)
-        self.send_byte(CP.SEND_BYTE)
-        self.send_byte(byte)
-        self.get_ack()
-
-    def read_uart(self):
-        """Read a single byte from the UART bus.
-
-        Returns
-        -------
-        byte : int
-            Byte value read from the UART bus."""
-        self.send_byte(CP.UART_2)
-        self.send_byte(CP.READ_BYTE)
-        return self.get_byte()
-
-    def read_uart_status(self):
-        """Return available bytes in UART buffer.
-
-        Returns
-        -------
-        status : int
-        """
-        self.send_byte(CP.UART_2)
-        self.send_byte(CP.READ_UART2_STATUS)
-        return self.get_byte()
-
     def read_log(self):
         """Read hardware debug log.
 
