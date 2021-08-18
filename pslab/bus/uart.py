@@ -133,19 +133,17 @@ class _UARTPrimitive:
             error_message.append("Parity and data selection bits must be 2-bits.")
         if st not in (0, 1):
             error_message.append("Stop bits select must be a bit.")
-
-        self._device.send_byte(CP.UART_2)
-        self._device.send_byte(CP.SET_MODE)
-
         # Verifying whether the firmware support current subcommand.
-        if self._device.get_byte() == 4:
-            self._device.send_byte((pd << 1) | st)
-            self._device.get_ack()
-            self._save_config(mode=(pd, st))
-        else:
+        if self._device.version not in ["PSLab V6"]:
             raise RuntimeError(
                 "This firmware version doesn't support this functionality."
             )
+
+        self._device.send_byte(CP.UART_2)
+        self._device.send_byte(CP.SET_MODE)
+        self._device.send_byte((pd << 1) | st)
+        self._device.get_ack()
+        self._save_config(mode=(pd, st))
 
     def _read_uart_status(self) -> int:
         """Return whether receive buffer has data.
