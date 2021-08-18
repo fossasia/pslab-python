@@ -19,10 +19,10 @@ Transfer a random byte over SPI:
 0
 """
 
-import sys
 from typing import List, Tuple
 
 import pslab.protocol as CP
+from pslab.bus import classmethod_
 from pslab.serial_handler import SerialHandler
 
 __all__ = (
@@ -36,21 +36,6 @@ _SPRE = 2
 _CKP = 0  # Clock Polarity 0
 _CKE = 1  # Clock Phase 0 | Clock Edge 1
 _SMP = 1
-
-
-class classmethod_(classmethod):
-    """Support chaining classmethod and property."""
-
-    def __init__(self, f):
-        self.f = f
-        super().__init__(f)
-
-    def __get__(self, obj, cls=None):
-        # classmethod() to support chained decorators; new in python 3.9.
-        if sys.version_info < (3, 9) and isinstance(self.f, property):
-            return self.f.__get__(cls)
-        else:
-            return super().__get__(obj, cls)
 
 
 class _SPIPrimitive:

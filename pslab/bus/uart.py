@@ -13,31 +13,15 @@ Send a byte over UART:
 >>> bus.write_byte(0x55)
 """
 
-import sys
 from typing import Tuple
 
 import pslab.protocol as CP
+from pslab.bus import classmethod_
 from pslab.serial_handler import SerialHandler
 
 __all__ = "UART"
 _BRGVAL = 0x22  # BaudRate = 460800.
 _MODE = (0, 0)  # 8-bit data and no parity, 1 stop bit.
-
-
-class classmethod_(classmethod):
-    """Support chaining classmethod and property."""
-
-    def __init__(self, f):
-        self.f = f
-        super().__init__(f)
-
-    def __get__(self, obj, cls=None):
-        """Check python version and return appropriate getter."""
-        # classmethod() to support chained decorators; new in python 3.9.
-        if sys.version_info < (3, 9) and isinstance(self.f, property):
-            return self.f.__get__(cls)
-        else:
-            return super().__get__(obj, cls)
 
 
 class _UARTPrimitive:
