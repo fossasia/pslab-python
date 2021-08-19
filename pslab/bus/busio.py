@@ -28,13 +28,21 @@ Get gyro reading from BNO055 using adafruit_bno055, board(just a wrapper for bus
 >>> print(sensor.gyro)
 """
 
-from typing import List, Union
+import time
+from enum import Enum
+from itertools import zip_longest
+from typing import List, Union, Optional
 
 from pslab.bus.i2c import _I2CPrimitive
 from pslab.bus.spi import _SPIPrimitive
+from pslab.bus.uart import _UARTPrimitive
 from pslab.serial_handler import SerialHandler
 
-__all__ = "I2C"
+__all__ = (
+    "I2C",
+    "SPI",
+    "UART",
+)
 ReadableBuffer = Union[bytes, bytearray, memoryview]
 WriteableBuffer = Union[bytearray, memoryview]
 
@@ -51,7 +59,7 @@ class I2C(_I2CPrimitive):
         Frequency of SCL in Hz.
     """
 
-    def __init__(self, device: SerialHandler = None, frequency: int = 125e3):
+    def __init__(self, device: SerialHandler = None, *, frequency: int = 125e3):
         # 125 kHz is as low as the PSLab can go.
         super().__init__(device)
         self._init()
@@ -191,7 +199,7 @@ class SPI(_SPIPrimitive):
         created.
     """
 
-    def __init__(self, device: SerialHandler = None, frequency: int = 125e3):
+    def __init__(self, device: SerialHandler = None):
         super().__init__(device)
         ppre, spre = self._get_prescaler(25e4)
         self._set_parameters(ppre, spre, 1, 0, 1)
@@ -373,3 +381,207 @@ class SPI(_SPIPrimitive):
 
         for i, v in zip(range(in_start, in_end), data):
             buffer_in[i] = v
+
+
+class Parity(Enum):
+    EVEN = 1
+    ODD = 2
+
+
+class UART(_UARTPrimitive):
+    """Busio UART Class for CircuitPython Compatibility.
+
+    Parameters
+    ----------
+    device : :class:`SerialHandler`, optional
+        Serial connection to PSLab device. If not provided, a new one will be
+        created.
+    baudrate : int, optional
+        The transmit and receive speed. Defaults to 9600.
+    bits : int, optional
+        The number of bits per byte, 8 or 9. Defaults to 8 bits.
+    parity : :class:`Parity`, optional
+        The parity used for error checking. Defaults to None.
+        Only 8 bits per byte supports parity.
+    stop : int, optional
+        The number of stop bits, 1 or 2. Defaults to 1.
+    timeout : float, optional
+        The timeout in seconds to wait for the first character and between
+        subsequent characters when reading. Defaults to 1.
+    """
+
+    def __init__(
+        self,
+        device: SerialHandler = None,
+        *,
+        baudrate: int = 9600,
+        bits: int = 8,
+        parity: Parity = None,
+        stop: int = 1,
+        timeout: float = 1,
+    ):
+        super().__init__(device)
+        self._set_uart_baud(baudrate)
+
+        if bits == 8:
+            pd = 0
+        elif bits == 9:
+            pd = 3
+        else:
+            raise ValueError("Invalid number of bits")
+
+        if bits == 9 and parity is not None:
+            raise ValueError("Invalid parity")
+        if stop not in (1, 2):
+            raise ValueError("Invalid number of stop bits")
+
+        pd += parity.value
+
+        try:
+            self._set_uart_mode(pd, stop - 1)
+        except RuntimeError:
+            pass
+
+        self._timeout = timeout
+
+    @property
+    def baudrate(self):
+        """Get the current baudrate."""
+        return self._baudrate
+
+    @property
+    def in_waiting(self):
+        """Get the number of bytes in the input buffer, available to be read.
+
+        PSLab is limited to check, whether at least one byte in the buffer(1) or not(0).
+        """
+        return self._read_uart_status()
+
+    @property
+    def timeout(self):
+        """Get the current timeout, in seconds (float)."""
+        return self._timeout
+
+    def deinit(self) -> None:
+        """Just a dummy method."""
+        pass
+
+    def __enter__(self):
+        """Just a dummy context manager."""
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+        """Call :meth:`deinit` on context exit."""
+        self.deinit()
+
+    def _read_with_timeout(self, nbytes: int = None, *, line=False):
+        if nbytes == 0:
+            return None
+
+        start_time = time.time()
+        data = bytearray()
+        total_read = 0
+
+        while (time.time() - start_time) <= self._timeout:
+            has_char = self._read_uart_status()
+            if has_char:
+                char = self._read_byte()
+                start_time = time.time()
+
+                if line and char == 0xA:
+                    break
+
+                data.append(char)
+                total_read += 1
+
+            if nbytes and total_read == nbytes:
+                break
+
+            time.sleep(0.01)
+
+        return bytes(data) if data else None
+
+    def read(self, nbytes: int = None) -> Optional[bytes]:
+        """Read characters.
+
+        If `nbytes` is specified then read at most that many bytes. Otherwise,
+        read everything that arrives until the connection times out.
+
+        Providing the number of bytes expected is highly recommended because
+        it will be faster.
+
+        Parameters
+        ----------
+        nbytes : int, optional
+            Number of bytes to read. Defaults to None.
+
+        Returns
+        -------
+        bytes or None
+            Data read.
+        """
+        return self._read_with_timeout(nbytes)
+
+    def readinto(self, buf: WriteableBuffer) -> int:
+        """Read bytes into the `buf`. Read at most `len(buf)` bytes.
+
+        Parameters
+        ----------
+        buf : bytearray or memoryview
+            Read data into this buffer.
+
+        Returns
+        -------
+        int
+            Number of bytes read and stored into `buf`.
+        """
+        nbytes = len(buf)
+        data = self._read_with_timeout(nbytes)
+
+        if data is None:
+            return 0
+        else:
+            nbuf = len(data)
+
+            for i, c in zip(range(nbuf), data):
+                buf[i] = c
+
+            return nbuf
+
+    def readline(self) -> Optional[bytes]:
+        """Read a line, ending in a newline character.
+
+        return None if a timeout occurs sooner, or return everything readable
+        if no newline is found within timeout.
+
+        Returns
+        -------
+        bytes or None
+            Data read.
+        """
+        return self._read_with_timeout(None, line=True)
+
+    def write(self, buf: ReadableBuffer) -> int:
+        """Write the buffer of bytes to the bus.
+
+        Parameters
+        ----------
+        buf : bytes or bytearray or memoryview
+            Write out the char in this buffer.
+
+        Returns
+        -------
+        int
+            Number of bytes written.
+        """
+        written = 0
+
+        for msb, lsb in zip_longest(buf[1::2], buf[::2]):
+            if msb is not None:
+                self._write_int((msb << 8) | lsb)
+                written += 2
+            else:
+                self._write_byte(lsb)
+                written += 1
+
+        return written
