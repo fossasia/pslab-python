@@ -2,8 +2,8 @@
 
 When integration testing, the PSLab's logic analyzer is used to verify the
 function of the I2C bus. Before running the integration tests, connect:
-    TxD2->LA1
-    RxD2->SQ1
+    TxD2->LA1 | PGD2 -> LA1 (for v5)
+    RxD2->SQ1 | PGC2 -> SQ1 (for v5)
 """
 
 import pytest
@@ -12,11 +12,6 @@ from pslab.bus.uart import UART
 from pslab.instrument.logic_analyzer import LogicAnalyzer
 from pslab.instrument.waveform_generator import PWMGenerator
 from pslab.serial_handler import SerialHandler, MockHandler
-
-SPI_SUPPORTED_DEVICES = [
-    # "PSLab vMOCK",  # Uncomment after adding recording json files.
-    "PSLab V6",
-]
 
 WRITE_DATA = 0x55
 TXD2 = "LA1"
@@ -32,8 +27,6 @@ TXD_STOP = 1  # if data MSB is 0
 
 @pytest.fixture
 def uart(handler: SerialHandler) -> UART:
-    if handler.version not in SPI_SUPPORTED_DEVICES:
-        pytest.skip("UART2 not supported by this device.")
     handler._logging = True
     return UART(device=handler)
 
