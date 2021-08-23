@@ -21,7 +21,7 @@ SPI_SUPPORTED_DEVICES = [
 WRITE_DATA = 0x55
 TXD2 = "LA1"
 RXD2 = "SQ1"
-PWM_FERQUENCY = UART._baudrate
+PWM_FERQUENCY = UART._baudrate // 2
 MICROSECONDS = 1e-6
 RELTOL = 0.05
 # Number of expected logic level changes.
@@ -59,13 +59,14 @@ def test_configure(la: LogicAnalyzer, uart: UART):
     uart.write_byte(WRITE_DATA)
     la.stop()
     (txd2,) = la.fetch_data()
-    start_to_stop = 1 + 8 + 1
+    start_to_stop = 9
     period = (txd2[-1] - txd2[0]) / start_to_stop
+
     assert (period * MICROSECONDS) ** -1 == pytest.approx(baudrate, rel=RELTOL)
 
 
 def test_write_byte(la: LogicAnalyzer, uart: UART):
-    la.capture(3, block=False)
+    la.capture(1, block=False)
     uart.write_byte(WRITE_DATA)
     la.stop()
     (txd2,) = la.fetch_data()
@@ -74,7 +75,7 @@ def test_write_byte(la: LogicAnalyzer, uart: UART):
 
 
 def test_write_int(la: LogicAnalyzer, uart: UART):
-    la.capture(3, block=False)
+    la.capture(1, block=False)
     uart.write_int((WRITE_DATA << 8) | WRITE_DATA)
     la.stop()
     (txd2,) = la.fetch_data()
@@ -85,10 +86,10 @@ def test_write_int(la: LogicAnalyzer, uart: UART):
 def test_read_byte(pwm: PWMGenerator, uart: UART):
     value = uart.read_byte()
 
-    assert value in (0, 0xFF)
+    assert value in (0x55, 0xAA)
 
 
 def test_read_int(pwm: PWMGenerator, uart: UART):
     value = uart.read_int()
 
-    assert value in (0, 0xFFFF)
+    assert value in (0x5555, 0x55AA, 0xAA55, 0xAAAA)
