@@ -19,7 +19,7 @@ from pslab.serial_handler import SerialHandler, MockHandler
 
 SPI_SUPPORTED_DEVICES = [
     # "PSLab vMOCK",  # Uncomment after adding recording json files.
-    "PSLab V6",
+    "PSLab V6\n",
 ]
 
 WRITE_DATA8 = 0b10100101
