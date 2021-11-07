@@ -490,7 +490,7 @@ def install(args: argparse.Namespace):
             _install()
             return
 
-        print("User is in dialout group or udev rule is already installed.")
+        print("User is in dialout/uucp group or udev rule is already installed.")
 
 
 def _install():

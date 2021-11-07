@@ -85,11 +85,11 @@ class SerialHandler:
         baudrate: int = 1000000,
         timeout: float = 1.0,
     ):
-        self.check_serial_access_permission()
         self.version = ""
         self._log = b""
         self._logging = False
         self.interface = serial.Serial()
+
         self.send_byte = partial(self._send, size=1)
         update_wrapper(self.send_byte, self._send)
         self.send_int = partial(self._send, size=2)
@@ -100,6 +100,8 @@ class SerialHandler:
         update_wrapper(self.get_int, self._receive)
         self.get_long = partial(self._receive, size=4)
         update_wrapper(self.get_long, self._receive)
+
+        self.check_serial_access_permission()
         self.connect(port=port, baudrate=baudrate, timeout=timeout)
         self.connected = self.interface.is_open
 
@@ -107,8 +109,14 @@ class SerialHandler:
     def check_serial_access_permission():
         """Check that we have permission to use the tty on Linux."""
         if platform.system() == "Linux":
+            if os.geteuid() == 0:  # Running as root?
+                return
+
             for group in os.getgroups():
-                if grp.getgrgid(group).gr_name == "dialout":
+                if grp.getgrgid(group).gr_name in (
+                    "dialout",
+                    "uucp",
+                ):
                     return
 
             udev_paths = [
@@ -119,17 +127,22 @@ class SerialHandler:
             for p in udev_paths:
                 udev_rules = os.path.join(p, "99-pslab.rules")
                 if os.path.isfile(udev_rules):
-                    break
+                    return
             else:
-                raise OSError(
-                    "You are not a member of the dialout group and therefore "
-                    "do not have permission to talk to serial devices. Please "
-                    "add the current user to the dialout group. After logging "
-                    "out and then logging back in you will be able to access "
-                    "the PSLab.\n"
-                    "Alternativelly, a udev rule can be installed by running "
-                    "'pslab install' as root, or by copying "
-                    f"{pslab.__path__[0]}/99-pslab.rules to {udev_paths[1]}."
+                raise PermissionError(
+                    "The current user does not have permission to access "
+                    "the PSLab device. To solve this, either:"
+                    "\n\n"
+                    "1. Add the user to the 'dialout' (on Debian-based "
+                    "systems) or 'uucp' (on Arch-based systems) group."
+                    "\n"
+                    "2. Install a udev rule to allow any user access to the "
+                    "device by running 'pslab install' as root, or by "
+                    "manually copying "
+                    f"{pslab.__path__[0]}/99-pslab.rules into {udev_paths[1]}."
+                    "\n\n"
+                    "You may also need to reboot the system for the "
+                    "permission changes to take effect."
                 )
 
     @staticmethod
