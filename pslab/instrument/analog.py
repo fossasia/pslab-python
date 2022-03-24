@@ -74,7 +74,7 @@ class AnalogInput:
 
     def __init__(self, name: str):
         self._name = name
-        self._resolution = 2 ** 10 - 1
+        self._resolution = 2**10 - 1
 
         if self._name == "CH1":
             self.programmable_gain_amplifier = 1
@@ -140,7 +140,7 @@ class AnalogInput:
     def resolution(self, value: int):
         if value not in (10, 12):
             raise ValueError("Resolution must be 10 or 12 bits.")
-        self._resolution = 2 ** value - 1
+        self._resolution = 2**value - 1
         self._calibrate()
 
     def _calibrate(self):

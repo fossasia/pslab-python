@@ -109,7 +109,7 @@ class MQ135:
         t = self._temperature()
         h = self._humidity()
         a, b, c, d = *self._TEMPERATURE_CORRECTION, self._HUMIDITY_CORRECTION
-        return a * t ** 2 + b * t + c + d * (h - 0.65)
+        return a * t**2 + b * t + c + d * (h - 0.65)
 
     @property
     def _sensor_resistance(self):

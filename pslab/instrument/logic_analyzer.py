@@ -92,7 +92,7 @@ class LogicAnalyzer(ADCBufferMixin):
 
             try:
                 period = (t[1] - t[0]) * 1e-6 / 16
-                frequency = period ** -1
+                frequency = period**-1
             except IndexError:
                 frequency = 0
 
@@ -123,7 +123,7 @@ class LogicAnalyzer(ADCBufferMixin):
             else:
                 return 0
         else:
-            return period ** -1
+            return period**-1
 
     def _get_high_frequency(self, channel: str) -> float:
         """Measure high frequency signals using firmware.
@@ -403,7 +403,7 @@ class LogicAnalyzer(ADCBufferMixin):
         self._device.get_ack()
 
     def _capture_four(self, e2e_time: float):
-        rollover_time = (2 ** 16 - 1) / CP.CLOCK_RATE
+        rollover_time = (2**16 - 1) / CP.CLOCK_RATE
         e2e_time = 0 if e2e_time is None else e2e_time
 
         if e2e_time > rollover_time * self._PRESCALERS[3]:
@@ -513,7 +513,7 @@ class LogicAnalyzer(ADCBufferMixin):
 
         for i, diff in enumerate(np.diff(raw_timestamps)):
             if diff <= 0:  # Counter has rolled over.
-                raw_timestamps[i + 1 :] += 2 ** 16 - 1
+                raw_timestamps[i + 1 :] += 2**16 - 1
 
         return raw_timestamps
 

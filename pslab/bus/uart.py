@@ -36,7 +36,7 @@ class _UARTPrimitive:
     """
 
     _MIN_BRGVAL = 0
-    _MAX_BRGVAL = 2 ** 16 - 1
+    _MAX_BRGVAL = 2**16 - 1
 
     _brgval = _BRGVAL
     _mode = _MODE
