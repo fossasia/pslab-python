@@ -68,4 +68,4 @@ class Servo:
         angle /= self._angle_range  # Normalize
         angle *= self._max_angle_pulse - self._min_angle_pulse  # Scale
         angle += self._min_angle_pulse  # Offset
-        return angle / (self._frequency ** -1 * MICROSECONDS)
+        return angle / (self._frequency**-1 * MICROSECONDS)

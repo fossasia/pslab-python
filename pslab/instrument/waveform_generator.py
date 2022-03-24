@@ -64,7 +64,7 @@ def _get_wavelength(frequency: float, table_size: int = 1) -> Tuple[int, int]:
     """
     for prescaler in _PRESCALERS:
         timegap = int(round(CP.CLOCK_RATE / frequency / prescaler / table_size))
-        if 0 < timegap < 2 ** 16:
+        if 0 < timegap < 2**16:
             return timegap, prescaler
 
     e = (

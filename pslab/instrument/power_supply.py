@@ -119,7 +119,7 @@ class Source:
         "PV3": 1,
         "PCS": 0,
     }
-    _RESOLUTION = 2 ** 12 - 1
+    _RESOLUTION = 2**12 - 1
     _MULTI_WRITE = 0b01000000
 
     def __init__(self, mcp4728: I2CSlave, name: str):
