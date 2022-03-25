@@ -108,7 +108,7 @@ class HCSR04:
         self._pwm.set_state(**{self._trig.lower(): 0})
         (t,) = self._la.fetch_data()
         self._sanity_check(len(t), 2 * average)
-        high_times = t[::2] - t[1::2]
+        high_times = t[1::2] - t[::2]
         return speed_of_sound * high_times.mean() / 2 * 1e-6
 
     def _sanity_check(self, events: int, expected_events: int):
