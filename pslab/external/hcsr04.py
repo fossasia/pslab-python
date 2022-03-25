@@ -6,7 +6,7 @@ from pslab.instrument.waveform_generator import PWMGenerator
 from pslab.serial_handler import SerialHandler
 
 
-class HCSR04(LogicAnalyzer, PWMGenerator):
+class HCSR04:
     """Read data from ultrasonic distance sensor HC-SR04/HC-SR05.
 
     These sensors can measure distances between 2 cm to 4 m (SR04) / 4.5 m
@@ -60,8 +60,8 @@ class HCSR04(LogicAnalyzer, PWMGenerator):
         echo: str = "LA1",
     ):
         self._device = device
-        LogicAnalyzer.__init__(self, self._device)
-        PWMGenerator.__init__(self, self._device)
+        self._la = LogicAnalyzer(self._device)
+        self._pwm = PWMGenerator(self._device)
         self._trig = trig
         self._echo = echo
         self._measure_period = 60e-3  # Minimum recommended by datasheet.
@@ -93,26 +93,26 @@ class HCSR04(LogicAnalyzer, PWMGenerator):
         TimeoutError if the end of the ECHO pulse is not detected (i.e. the
                      object is too far away).
         """
-        self.capture(
+        self._la.capture(
             channels=self._echo,
             events=2 * average,
             block=False,
         )
-        self.generate(
+        self._pwm.generate(
             channels=self._trig,
             frequency=self._measure_period**-1,
             duty_cycles=self._trigger_pulse_length / self._measure_period,
         )
-        time.sleep(self._measure_period * average)
-        self.set_state(**{self._trig.lower(): 0})
-        (t,) = self.fetch_data()
+        # Wait one extra period to make sure we don't miss the final edge.
+        time.sleep(self._measure_period * (average + 1))
+        self._pwm.set_state(**{self._trig.lower(): 0})
+        (t,) = self._la.fetch_data()
         self._sanity_check(len(t), 2 * average)
         high_times = t[::2] - t[1::2]
         return speed_of_sound * high_times.mean() / 2 * 1e-6
 
     def _sanity_check(self, events: int, expected_events: int):
-        if self.get_initial_states()[self._echo]:
+        if self._la.get_initial_states()[self._echo]:
             raise RuntimeError("ECHO pin was HIGH when measurement started.")
-
         if events < expected_events:
             raise TimeoutError
