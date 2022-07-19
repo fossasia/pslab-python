@@ -6,7 +6,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="pslab",
-    version="2.5.0",
+    version="2.6.0b0",
     description="Pocket Science Lab by FOSSASIA",
     long_description=long_description,
     long_description_content_type="text/markdown",
@@ -31,8 +31,8 @@ setuptools.setup(
             "99-pslab.rules",
         ]
     },
-    entry_points = {
-        'console_scripts': ['pslab=pslab.cli:cmdline'],
+    entry_points={
+        "console_scripts": ["pslab=pslab.cli:cmdline"],
     },
     classifiers=[
         "Programming Language :: Python :: 3",
