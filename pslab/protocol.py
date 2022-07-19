@@ -166,6 +166,7 @@ SET_RGB2 = Byte.pack(17)
 READ_LOG = Byte.pack(18)
 RESTORE_STANDALONE = Byte.pack(19)
 GET_ALTERNATE_HIGH_FREQUENCY = Byte.pack(20)
+SET_RGB_COMMON = Byte.pack(21)
 SET_RGB3 = Byte.pack(22)
 
 START_CTMU = Byte.pack(23)

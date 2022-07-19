@@ -46,12 +46,9 @@ class ScienceLab(SerialHandler):
         self.pwm_generator = PWMGenerator(device=self)
         self.multimeter = Multimeter(device=self)
         self.power_supply = PowerSupply(device=self)
-        self.i2c = I2CMaster(device=self)
-        self.spi = SPIMaster(device=self)
-        self.nrf = NRF24L01(device=self)
-
-        if "V6" in self.version:  # Set the built-in WS2812B to green :)
-            self.rgb_led([0, 20, 0])
+        # self.i2c = I2CMaster(device=self)
+        # self.spi = SPIMaster(device=self)
+        # self.nrf = NRF24L01(device=self)
 
     @property
     def temperature(self):
@@ -105,7 +102,7 @@ class ScienceLab(SerialHandler):
         self.get_ack()
         vmax = 3.3
         resolution = 12
-        voltage = vmax * raw_voltage / (2 ** resolution - 1)
+        voltage = vmax * raw_voltage / (2**resolution - 1)
         return voltage
 
     def _start_ctmu(self, current_range: int, trim: int, tgen: int = 1):
@@ -160,15 +157,17 @@ class ScienceLab(SerialHandler):
 
         >>> psl.rgb_led([[10,0,0],[0,10,10],[10,0,10]], output="SQ1", order="RGB")
         """
-        if output == "RGB":
-            pin = CP.SET_RGB1
-        elif output == "PGC":
-            pin = CP.SET_RGB2
-        elif output == "SQ1":
-            pin = CP.SET_RGB3
+        if "6" in self.version:
+            pins = {"ONBOARD": 0, "SQ1": 1, "SQ2": 2, "SQ3": 3, "SQ4": 4}
         else:
+            pins = {"RGB": CP.SET_RGB1, "PGC": CP.SET_RGB2, "SQ1": CP.SET_RGB3}
+
+        try:
+            pin = pins[output]
+        except KeyError:
+            pinnames = ", ".join(pins.keys())
             raise ValueError(
-                f"Invalid output: {output}. output must be 'RGB', 'PCG', or 'SQ1'."
+                f"Invalid output: {output}. output must be  one of {pinnames}."
             )
 
         if not isinstance(colors[0], Iterable):
@@ -185,13 +184,21 @@ class ScienceLab(SerialHandler):
             )
 
         self.send_byte(CP.COMMON)
-        self.send_byte(pin)
+
+        if "6" in self.version:
+            self.send_byte(CP.SET_RGB_COMMON)
+        else:
+            self.send_byte(pin)
+
         self.send_byte(len(colors) * 3)
 
         for color in colors:
             self.send_byte(color[order.index("R")])
             self.send_byte(color[order.index("G")])
             self.send_byte(color[order.index("B")])
+
+        if "6" in self.version:
+            self.send_byte(pin)
 
         self.get_ack()
 
