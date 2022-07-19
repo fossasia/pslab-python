@@ -24,6 +24,7 @@ from itertools import zip_longest
 from typing import List, Tuple
 
 import numpy as np
+import mcbootflash
 
 import pslab
 import pslab.protocol as CP
@@ -230,6 +231,10 @@ def main(args: argparse.Namespace):
     """
     if args.function == "install":
         install(args)
+        return
+
+    if args.function == "flash":
+        flash(args)
         return
 
     handler = SerialHandler(port=args.port)
@@ -465,6 +470,7 @@ def cmdline(args: List[str] = None):
     add_wave_args(subparser)
     add_pwm_args(subparser)
     add_install_args(subparser)
+    add_flash_args(subparser)
     main(parser.parse_args(args))
 
 
@@ -516,3 +522,29 @@ def add_install_args(subparser: argparse._SubParsersAction):
         default=False,
         help="Overwrite existing udev rule.",
     )
+
+
+def flash(args: argparse.Namespace):
+    """Flash firmware over USB.
+
+    Parameters
+    ----------
+    args : :class:`argparse.Namespace`
+        Parsed arguments.
+    """
+    mcbootflash.flash(args)
+
+
+def add_flash_args(subparser: argparse._SubParsersAction):
+    """Add arguments for flash function to ArgumentParser.
+
+    Parameters
+    ----------
+    subparser : :class:`argparse._SubParsersAction`
+        SubParser to add other arguments related to flash function.
+    """
+    parser = mcbootflash.get_parser()
+    parser.prog = "pslab"
+    parser.usage = "Flash firmware to PSLab v6."
+    parser.add_argument("-b", "--baudrate", default=460800, help=argparse.SUPPRESS)
+    subparser.add_parser("flash", parents=[parser], add_help=False)
