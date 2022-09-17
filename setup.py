@@ -14,7 +14,7 @@ setuptools.setup(
     author_email="pslab-fossasia@googlegroups.com",
     url="https://pslab.io/",
     install_requires=["numpy>=1.16.3", "pyserial>=3.4", "scipy>=1.3.0"],
-    python_requires=">=3.6",
+    python_requires=">=3.7",
     packages=setuptools.find_packages(exclude=("tests",)),
     package_data={
         "": [
