@@ -339,6 +339,7 @@ class PWMGenerator:
     >>> pwmgen.set_states(sq2=True)
     """
 
+    _LOW_FREQUENCY_LIMIT = 4
     _HIGH_FREQUENCY_LIMIT = 1e7
 
     def __init__(self, device: SerialHandler = None):
@@ -404,8 +405,10 @@ class PWMGenerator:
                 + "Please use map_reference_clock for 16 & 32 MHz outputs."
             )
             raise ValueError(e)
-        elif frequency <= 0:
-            raise ValueError("Frequency must be positive.")
+        elif frequency < self._LOW_FREQUENCY_LIMIT:
+            raise ValueError(
+                f"Frequency must be at least {self._LOW_FREQUENCY_LIMIT} Hz."
+            )
         else:
             self._frequency = frequency
             channels, duty_cycles = _listify(channels, 4, duty_cycles)
