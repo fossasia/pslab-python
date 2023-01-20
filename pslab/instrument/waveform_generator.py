@@ -406,7 +406,9 @@ class PWMGenerator:
             )
             raise ValueError(e)
         elif frequency < self._LOW_FREQUENCY_LIMIT:
-            raise ValueError("Frequency must be at least 4 Hz.")
+            raise ValueError(
+                f"Frequency must be at least {self._LOW_FREQUENCY_LIMIT} Hz."
+            )
         else:
             self._frequency = frequency
             channels, duty_cycles = _listify(channels, 4, duty_cycles)
