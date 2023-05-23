@@ -92,10 +92,8 @@ class _SPIPrimitive:
 
         for p in range(len(cls._PPRE_MAP)):
             for s in range(len(cls._SPRE_MAP)):
-
                 freq = CP.CLOCK_RATE / (cls._PPRE_MAP[p] * cls._SPRE_MAP[s])
                 if frequency >= freq:
-
                     diff = frequency - freq
                     if min_diff > diff:
                         # better match
