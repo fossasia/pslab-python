@@ -1,0 +1,29 @@
+[build-system]
+requires = ["flit_core >=3.4,<4"]
+build-backend = "flit_core.buildapi"
+
+[project]
+name = "pslab"
+authors = [{name = "FOSSASIA PSLab Developers", email = "pslab-fossasia@googlegroups.com"}]
+dynamic = ["version", "description"]
+readme = "README.md"
+requires-python = ">=3.8"
+license = {file = "LICENSE"}
+dependencies = [
+    "pyserial",
+    "numpy",
+    "scipy",
+    "mcbootflash",
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+    "Operating System :: OS Independent",
+    "Development Status :: 5 - Production/Stable",
+]
+
+[project.urls]
+Home = "https://pslab.io/"
+
+[project.scripts]
+pslab = "pslab.cli:cmdline"
