@@ -1,3 +1,4 @@
+"""Pocket Science Lab by FOSSASIA."""
 from pslab.instrument.logic_analyzer import LogicAnalyzer
 from pslab.instrument.multimeter import Multimeter
 from pslab.instrument.oscilloscope import Oscilloscope
@@ -15,4 +16,4 @@ __all__ = (
     "ScienceLab",
 )
 
-__version__ = "2.5.0"
+__version__ = "2.6.0b0"
