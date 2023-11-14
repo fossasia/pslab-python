@@ -13,7 +13,7 @@ dependencies = [
     "pyserial",
     "numpy",
     "scipy",
-    "mcbootflash",
+    "mcbootflash >= 8.0.0",
 ]
 classifiers = [
     "Programming Language :: Python :: 3",

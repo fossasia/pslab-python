@@ -18,6 +18,7 @@ import json
 import platform
 import os.path
 import shutil
+import struct
 import sys
 import time
 from itertools import zip_longest
@@ -233,11 +234,11 @@ def main(args: argparse.Namespace):
         install(args)
         return
 
-    if args.function == "flash":
-        flash(args)
-        return
-
     handler = SerialHandler(port=args.port)
+
+    if args.function == "flash":
+        flash(handler, args.hexfile)
+        return
 
     if args.function == "collect":
         collect(handler, args)
@@ -524,15 +525,28 @@ def add_install_args(subparser: argparse._SubParsersAction):
     )
 
 
-def flash(args: argparse.Namespace):
+def flash(handler: SerialHandler, hexfile: str):
     """Flash firmware over USB.
 
-    Parameters
-    ----------
-    args : :class:`argparse.Namespace`
-        Parsed arguments.
+    PSLab must be in bootloader mode.
     """
-    mcbootflash.flash(args)
+    try:
+        bootattrs = mcbootflash.get_boot_attrs(handler)
+    except struct.error:
+        print("Flashing failed: PSLab is not in bootloader mode.")
+
+    mcbootflash.erase_flash(handler, bootattrs.memory_range, bootattrs.erase_size)
+    total_bytes, chunks = mcbootflash.chunked(hexfile, bootattrs)
+    written = 0
+
+    for chunk in chunks:
+        mcbootflash.write_flash(handler, chunk)
+        mcbootflash.checksum(handler, chunk)
+        written += len(chunk.data)
+        print(f"{written}/{total_bytes} bytes flashed.", end="\r")
+
+    print("", end="\n")
+    mcbootflash.self_verify(handler)
 
 
 def add_flash_args(subparser: argparse._SubParsersAction):
@@ -543,8 +557,9 @@ def add_flash_args(subparser: argparse._SubParsersAction):
     subparser : :class:`argparse._SubParsersAction`
         SubParser to add other arguments related to flash function.
     """
-    parser = mcbootflash.get_parser()
-    parser.prog = "pslab"
-    parser.usage = "Flash firmware to PSLab v6."
-    parser.add_argument("-b", "--baudrate", default=460800, help=argparse.SUPPRESS)
-    subparser.add_parser("flash", parents=[parser], add_help=False)
+    flash = subparser.add_parser("flash")
+    flash.add_argument(
+        "hexfile",
+        type=str,
+        help="an Intel HEX file containing application firmware",
+    )
