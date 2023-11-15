@@ -4,6 +4,7 @@ Every PSLab instrument can be imported and instantiated individually. However,
 if you need to use several at once the ScienceLab class provides a convenient
 collection.
 """
+import time
 from typing import Iterable, List
 
 import pslab.protocol as CP
@@ -125,6 +126,17 @@ class ScienceLab(SerialHandler):
         """
         self.send_byte(CP.COMMON)
         self.send_byte(CP.RESTORE_STANDALONE)
+
+    def enter_bootloader(self):
+        """Reboot and stay in bootloader mode."""
+        self.reset()
+        self.interface.baudrate = 460800
+        # The PSLab's RGB LED flashes some colors on boot.
+        boot_lightshow_time = 0.6
+        # Wait before sending magic number to make sure UART is initialized.
+        time.sleep(boot_lightshow_time / 2)
+        # PIC24 UART RX buffer is four bytes deep; no need to time it perfectly.
+        self.write(CP.Integer.pack(0xDECAFBAD))
 
     def rgb_led(self, colors: List, output: str = "RGB", order: str = "GRB"):
         """Set shade of a WS2812B RGB LED.
