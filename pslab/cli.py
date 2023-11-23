@@ -237,7 +237,7 @@ def main(args: argparse.Namespace):
     handler = SerialHandler(port=args.port)
 
     if args.function == "flash":
-        flash(handler, args.hexfile)
+        flash(pslab.ScienceLab(args.port), args.hexfile)
         return
 
     if args.function == "collect":
@@ -525,28 +525,34 @@ def add_install_args(subparser: argparse._SubParsersAction):
     )
 
 
-def flash(handler: SerialHandler, hexfile: str):
+def flash(psl: pslab.ScienceLab, hexfile: str):
     """Flash firmware over USB.
 
     PSLab must be in bootloader mode.
     """
+    if psl.interface.baudrate == 1000000:
+        psl.interface.timeout = 5
+        psl.enter_bootloader()
+
     try:
-        bootattrs = mcbootflash.get_boot_attrs(handler)
+        bootattrs = mcbootflash.get_boot_attrs(psl)
     except struct.error:
         print("Flashing failed: PSLab is not in bootloader mode.")
+        return
 
-    mcbootflash.erase_flash(handler, bootattrs.memory_range, bootattrs.erase_size)
+    mcbootflash.erase_flash(psl, bootattrs.memory_range, bootattrs.erase_size)
     total_bytes, chunks = mcbootflash.chunked(hexfile, bootattrs)
     written = 0
 
     for chunk in chunks:
-        mcbootflash.write_flash(handler, chunk)
-        mcbootflash.checksum(handler, chunk)
+        mcbootflash.write_flash(psl, chunk)
+        mcbootflash.checksum(psl, chunk)
         written += len(chunk.data)
         print(f"{written}/{total_bytes} bytes flashed.", end="\r")
 
     print("", end="\n")
-    mcbootflash.self_verify(handler)
+    mcbootflash.self_verify(psl)
+    mcbootflash.reset(psl)
 
 
 def add_flash_args(subparser: argparse._SubParsersAction):

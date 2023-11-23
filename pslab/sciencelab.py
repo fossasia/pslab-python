@@ -137,6 +137,8 @@ class ScienceLab(SerialHandler):
         time.sleep(boot_lightshow_time / 2)
         # PIC24 UART RX buffer is four bytes deep; no need to time it perfectly.
         self.write(CP.Integer.pack(0xDECAFBAD))
+        # Wait until lightshow is done to prevent accidentally overwriting magic number.
+        time.sleep(boot_lightshow_time)
 
     def rgb_led(self, colors: List, output: str = "RGB", order: str = "GRB"):
         """Set shade of a WS2812B RGB LED.
