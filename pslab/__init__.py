@@ -16,4 +16,4 @@ __all__ = (
     "ScienceLab",
 )
 
-__version__ = "2.6.0b0"
+__version__ = "3.0.0"
