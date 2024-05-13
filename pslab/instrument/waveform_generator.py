@@ -265,10 +265,10 @@ class WaveformGenerator:
         elif function == "tria":
 
             def tria(x):
-                return AnalogOutput.RANGE[1] * (abs(x % 4 - 2) - 1)
+                return AnalogOutput.RANGE[1] * abs(x % 4 - 2)
 
             function = tria
-            span = [-1, 3]
+            span = [0, 4]
             self._channels[channel].wavetype = "tria"
         else:
             self._channels[channel].wavetype = "custom"
