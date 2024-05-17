@@ -1,4 +1,5 @@
 """Ultrasonic distance sensors."""
+
 import time
 
 from pslab.instrument.logic_analyzer import LogicAnalyzer

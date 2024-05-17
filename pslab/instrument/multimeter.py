@@ -1,4 +1,5 @@
 """The PSLab's multimeter can measure voltage, resistance, and capacitance."""
+
 import time
 from typing import Tuple
 

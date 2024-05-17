@@ -12,6 +12,7 @@ Examples
 >>> ps.pcs
 0.00200014652014652
 """
+
 import numpy as np
 
 from pslab.bus.i2c import I2CSlave

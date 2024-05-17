@@ -7,6 +7,7 @@ Example
 >>> version = device.get_version()
 >>> device.disconnect()
 """
+
 try:
     import grp
 except ImportError:

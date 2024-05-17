@@ -6,6 +6,7 @@ Examples
 >>> servo = Servo("SQ1")
 >>> servo.angle = 30  # Turn motor to 30 degrees position.
 """
+
 from typing import Union
 
 from pslab.instrument.waveform_generator import PWMGenerator
