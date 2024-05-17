@@ -268,7 +268,7 @@ class WaveformGenerator:
                 return AnalogOutput.RANGE[1] * (abs(x % 4 - 2) - 1)
 
             function = tria
-            span = [-1, 3]
+            span = [0, 4]
             self._channels[channel].wavetype = "tria"
         else:
             self._channels[channel].wavetype = "custom"
