@@ -265,7 +265,7 @@ class WaveformGenerator:
         elif function == "tria":
 
             def tria(x):
-                return AnalogOutput.RANGE[1] * abs(x % 4 - 2)
+                return AnalogOutput.RANGE[1] * (abs(x % 4 - 2) - 1)
 
             function = tria
             span = [0, 4]
