@@ -22,8 +22,7 @@ class PowerSupply:
 
     An instance of PowerSupply controls three programmable voltage sources on
     pins PV1, PV2, and PV3, as well as a programmable current source on pin
-    PCS. The voltage/current on each source can be set via the voltage/current
-    properties of each source.
+    PCS.
 
     Parameters
     ----------
@@ -52,10 +51,8 @@ class PowerSupply:
     def _set_power(self, channel, output):
         self._device.send_byte(CP.DAC)
         self._device.send_byte(CP.SET_POWER)
-        print(channel)
         self._device.send_byte(channel)
         self._device.send_int(output)
-        print(output)
         return self._device.get_ack()
 
     @staticmethod
