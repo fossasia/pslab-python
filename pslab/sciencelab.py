@@ -4,6 +4,7 @@ Every PSLab instrument can be imported and instantiated individually. However,
 if you need to use several at once the ScienceLab class provides a convenient
 collection.
 """
+
 import time
 from typing import Iterable, List
 
