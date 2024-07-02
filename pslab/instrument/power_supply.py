@@ -6,16 +6,14 @@ Examples
 >>> ps = PowerSupply()
 >>> ps.pv1 = 4.5
 >>> ps.pv1
-4.499389499389499
+4.5
 
 >>> ps.pcs = 2e-3
 >>> ps.pcs
-0.00200014652014652
+0.002
 """
 
-import numpy as np
-
-from pslab.bus.i2c import I2CSlave
+import pslab.protocol as CP
 from pslab.serial_handler import SerialHandler
 
 
@@ -34,42 +32,73 @@ class PowerSupply:
         instance will be created automatically if not specified.
     """
 
-    _ADDRESS = 0x60
+    _REFERENCE = 3300
+    _PV1_CH = 3
+    _PV1_RANGE = (-5, 5)
+    _PV2_CH = 2
+    _PV2_RANGE = (-3.3, 3.3)
+    _PV3_CH = 1
+    _PV3_RANGE = (0, 3.3)
+    _PCS_CH = 0
+    _PCS_RANGE = (3.3e-3, 0)
 
     def __init__(self, device: SerialHandler = None):
         self._device = device if device is not None else SerialHandler()
-        self._mcp4728 = I2CSlave(self._ADDRESS, self._device)
-        self._pv1 = VoltageSource(self._mcp4728, "PV1")
-        self._pv2 = VoltageSource(self._mcp4728, "PV2")
-        self._pv3 = VoltageSource(self._mcp4728, "PV3")
-        self._pcs = CurrentSource(self._mcp4728)
+        self._pv1 = None
+        self._pv2 = None
+        self._pv3 = None
+        self._pcs = None
+
+    def _set_power(self, channel, output):
+        self._device.send_byte(CP.DAC)
+        self._device.send_byte(CP.SET_POWER)
+        print(channel)
+        self._device.send_byte(channel)
+        self._device.send_int(output)
+        print(output)
+        return self._device.get_ack()
+
+    @staticmethod
+    def _bound(value, output_range):
+        return max(min(value, max(output_range)), min(output_range))
+
+    def _scale(self, value, output_range):
+        scaled = (value - output_range[0]) / (output_range[1] - output_range[0])
+        return int(scaled * self._REFERENCE)
 
     @property
     def pv1(self):
         """float: Voltage on PV1; range [-5, 5] V."""
-        return self._pv1.voltage
+        return self._pv1
 
     @pv1.setter
     def pv1(self, value: float):
-        self._pv1.voltage = value
+        value = self._bound(value, self._PV1_RANGE)
+        ret = self._set_power(self._PV1_CH, self._scale(value, self._PV1_RANGE))
+        self._pv1 = value
+        return ret
 
     @property
     def pv2(self):
         """float: Voltage on PV2; range [-3.3, 3.3] V."""
-        return self._pv2.voltage
+        return self._pv2
 
     @pv2.setter
     def pv2(self, value: float):
-        self._pv2.voltage = value
+        value = self._bound(value, self._PV2_RANGE)
+        self._set_power(self._PV2_CH, self._scale(value, self._PV2_RANGE))
+        self._pv2 = value
 
     @property
     def pv3(self):
         """float: Voltage on PV3; range [0, 3.3] V."""
-        return self._pv3.voltage
+        return self._pv3
 
     @pv3.setter
     def pv3(self, value: float):
-        self._pv3.voltage = value
+        value = self._bound(value, self._PV3_RANGE)
+        self._set_power(self._PV3_CH, self._scale(value, self._PV3_RANGE))
+        self._pv3 = value
 
     @property
     def pcs(self):
@@ -93,136 +122,10 @@ class PowerSupply:
         current will be only a few hundred µA instead of the maximum available
         1.65 mA.
         """
-        return self._pcs.current
+        return self._pcs
 
     @pcs.setter
     def pcs(self, value: float):
-        self._pcs.current = value
-
-    @property
-    def _registers(self):
-        """Return the contents of the MCP4728's input registers and EEPROM."""
-        return self._mcp4728.read(24)
-
-
-class Source:
-    """Base class for voltage/current/power sources."""
-
-    _RANGE = {
-        "PV1": (-5, 5),
-        "PV2": (-3.3, 3.3),
-        "PV3": (0, 3.3),
-        "PCS": (3.3e-3, 0),
-    }
-    _CHANNEL_NUMBER = {
-        "PV1": 3,
-        "PV2": 2,
-        "PV3": 1,
-        "PCS": 0,
-    }
-    _RESOLUTION = 2**12 - 1
-    _MULTI_WRITE = 0b01000000
-
-    def __init__(self, mcp4728: I2CSlave, name: str):
-        self._mcp4728 = mcp4728
-        self.name = name
-        self.channel_number = self._CHANNEL_NUMBER[self.name]
-        slope = self._RANGE[self.name][1] - self._RANGE[self.name][0]
-        intercept = self._RANGE[self.name][0]
-        self._unscale = np.poly1d(
-            [self._RESOLUTION / slope, -self._RESOLUTION * intercept / slope]
-        )
-        self._scale = np.poly1d([slope / self._RESOLUTION, intercept])
-
-    def unscale(self, voltage: float) -> int:
-        """Return integer representation of a voltage.
-
-        Parameters
-        ----------
-        voltage : float
-            Voltage in Volt.
-
-        Returns
-        -------
-        raw : int
-            Integer represention of the voltage.
-        """
-        return int(round(self._unscale(voltage)))
-
-    def scale(self, raw: int) -> float:
-        """Convert an integer value to a voltage value.
-
-        Parameters
-        ----------
-        raw : int
-            Integer representation of a voltage value.
-
-        Returns
-        -------
-        voltage : float
-            Voltage in Volt.
-        """
-        return self._scale(raw)
-
-    def _multi_write(self, raw: int):
-        channel_select = self.channel_number << 1
-        command_byte = self._MULTI_WRITE | channel_select
-        data_byte1 = (raw >> 8) & 0x0F
-        data_byte2 = raw & 0xFF
-        self._mcp4728.write([data_byte1, data_byte2], register_address=command_byte)
-
-
-class VoltageSource(Source):
-    """Helper class for interfacing with PV1, PV2, and PV3."""
-
-    def __init__(self, mcp4728: I2CSlave, name: str):
-        self._voltage = 0
-        super().__init__(mcp4728, name)
-
-    @property
-    def voltage(self):
-        """float: Most recent voltage set on PVx in Volt.
-
-        The voltage on PVx can be set by writing to this attribute.
-        """
-        return self._voltage
-
-    @voltage.setter
-    def voltage(self, value: float):
-        raw = self.unscale(value)
-        raw = int(np.clip(raw, 0, self._RESOLUTION))
-        self._multi_write(raw)
-        self._voltage = self.scale(raw)
-
-
-class CurrentSource(Source):
-    """Helper class for interfacing with PCS."""
-
-    def __init__(self, mcp4728: I2CSlave):
-        self._current = 0
-        super().__init__(mcp4728, "PCS")
-
-    @property
-    def current(self):
-        """float: Most recent current value set on PCS in Ampere.
-
-        The current on PCS can be set by writing to this attribute.
-        """
-        return self._current
-
-    @current.setter
-    def current(self, value: float):
-        # Output current is a function of the voltage set on the MCP4728's V+
-        # pin (assuming negligible load resistance):
-        #    I(V) = 3.3e-3 - V / 1000
-        # I.e. the lower the voltage the higher the current. However, the
-        # function is discontinuous in V = 0:
-        #    I(0) = 0
-        if value == 0:
-            self._multi_write(0)
-            self._current = 0
-        else:
-            raw = self.unscale(value)
-            raw = int(np.clip(raw, 0, self._RESOLUTION))
-            self._multi_write(raw)
-            self._current = self.scale(raw)
+        value = self._bound(value, self._PCS_RANGE)
+        self._set_power(self._PCS_CH, self._scale(value, self._PCS_RANGE))
+        self._pcs = value

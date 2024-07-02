@@ -86,6 +86,7 @@ READ_UART2_STATUS = Byte.pack(8)
 DAC = Byte.pack(6)
 SET_DAC = Byte.pack(1)
 SET_CALIBRATED_DAC = Byte.pack(2)
+SET_POWER = Byte.pack(3)
 
 # /*--------WAVEGEN-----*/
 WAVEGEN = Byte.pack(7)
