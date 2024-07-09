@@ -31,7 +31,7 @@ class Multimeter(Oscilloscope):
     _CAPACITOR_DISCHARGED_VOLTAGE = 0.01 * max(INPUT_RANGES["CAP"])
 
     def __init__(self, device: SerialHandler = None):
-        self._stray_capacitance = 5e-11
+        self._stray_capacitance = 46e-12
         super().__init__(device)
 
     def measure_resistance(self) -> float:
@@ -125,47 +125,21 @@ class Multimeter(Oscilloscope):
             Capacitance in Farad.
         """
         for current_range in self._CURRENTS_RANGES:
-            for i, charge_time in enumerate([50000, 5000, 500, 50, 5]):
-                voltage, _ = self._measure_capacitance(current_range, 0, charge_time)
-
-                if voltage < self._CAPACITOR_CHARGED_VOLTAGE:
-                    if i:
-                        return self._binary_search_capacitance(
-                            current_range, charge_time, charge_time * 10
-                        )
-                    else:
-                        break  # Increase current.
+            charge_time = 10
+            for _ in range(10):
+                if charge_time > 50000:
+                    break  # Increase current.
+                voltage, capacitance = self._measure_capacitance(
+                    current_range, 0, charge_time
+                )
+                if 0.98 < voltage / self._CAPACITOR_CHARGED_VOLTAGE < 1.02:
+                    return capacitance
+                charge_time = int(
+                    charge_time * self._CAPACITOR_CHARGED_VOLTAGE / voltage
+                )
 
         # Capacitor too big, use alternative method.
         return self._measure_rc_capacitance()
-
-    def _binary_search_capacitance(
-        self,
-        current_range: int,
-        low_charge_time: int,
-        high_charge_time: int,
-    ) -> float:
-        charge_time = (high_charge_time + low_charge_time) // 2
-        voltage, capacitance = self._measure_capacitance(
-            current_range,
-            0,
-            charge_time,
-        )
-
-        if voltage / self._CAPACITOR_CHARGED_VOLTAGE < 0.98:
-            return self._binary_search_capacitance(
-                current_range,
-                charge_time,
-                high_charge_time,
-            )
-        elif voltage / self._CAPACITOR_CHARGED_VOLTAGE > 1.02:
-            return self._binary_search_capacitance(
-                current_range,
-                low_charge_time,
-                charge_time,
-            )
-        else:
-            return capacitance
 
     def _set_cap(self, state, charge_time):
         """Set CAP HIGH or LOW."""
