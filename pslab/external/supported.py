@@ -1,13 +1,14 @@
 import inspect
 
-from PSL.SENSORS import HMC5883L
-from PSL.SENSORS import MPU6050
-from PSL.SENSORS import MLX90614
-from PSL.SENSORS import BMP180
-from PSL.SENSORS import TSL2561
-from PSL.SENSORS import SHT21
-from PSL.SENSORS import BH1750
-from PSL.SENSORS import SSD1306
+from pslab.external import HMC5883L
+from pslab.external import MPU6050
+from pslab.external import MLX90614
+from pslab.external import BMP180
+from pslab.external import TSL2561
+from pslab.external import SHT21
+from pslab.external import BH1750
+from pslab.external import SSD1306
+from pslab.external import VL531X
 
 supported = {
     0x68: MPU6050,  # 3-axis gyro,3-axis accel,temperature
@@ -18,6 +19,7 @@ supported = {
     0x40: SHT21,  # Temperature, Humidity
     0x23: BH1750,  # Luminosity
     # 0x3C:SSD1306,    #OLED display
+    0x29: VL531X,  # Time-of-Flight Proximity Sensor
 }
 
 # auto generated map of names to classes
