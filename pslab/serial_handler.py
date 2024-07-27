@@ -95,6 +95,8 @@ class SerialHandler:
         update_wrapper(self.send_byte, self._send)
         self.send_int = partial(self._send, size=2)
         update_wrapper(self.send_int, self._send)
+        self.send_long = partial(self._send, size=4)
+        update_wrapper(self.send_long, self._send)
         self.get_byte = partial(self._receive, size=1)
         update_wrapper(self.get_byte, self._receive)
         self.get_int = partial(self._receive, size=2)
