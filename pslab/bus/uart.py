@@ -170,7 +170,9 @@ class _UARTPrimitive:
         self._device.send_byte(CP.UART_2)
         self._device.send_byte(CP.SEND_BYTE)
         self._device.send_byte(data)
-        self._device.get_ack()
+
+        if self._device.firmware.major < 3:
+            self._device.get_ack()
 
     def _write_int(self, data: int):
         """Write a single int to the UART bus.
