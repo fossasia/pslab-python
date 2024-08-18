@@ -1,5 +1,6 @@
 """TODO"""
 
+import enum
 import struct
 
 
@@ -179,16 +180,16 @@ FETCH_COUNT = Byte.pack(26)
 FILL_BUFFER = Byte.pack(27)
 
 # /*---------- BAUDRATE for main comm channel----*/
-SETBAUD = Byte.pack(12)
-BAUD9600 = Byte.pack(1)
-BAUD14400 = Byte.pack(2)
-BAUD19200 = Byte.pack(3)
-BAUD28800 = Byte.pack(4)
-BAUD38400 = Byte.pack(5)
-BAUD57600 = Byte.pack(6)
-BAUD115200 = Byte.pack(7)
-BAUD230400 = Byte.pack(8)
-BAUD1000000 = Byte.pack(9)
+SETBAUD_LEGACY = Byte.pack(12)
+BAUD9600_LEGACY = Byte.pack(1)
+BAUD14400_LEGACY = Byte.pack(2)
+BAUD19200_LEGACY = Byte.pack(3)
+BAUD28800_LEGACY = Byte.pack(4)
+BAUD38400_LEGACY = Byte.pack(5)
+BAUD57600_LEGACY = Byte.pack(6)
+BAUD115200_LEGACY = Byte.pack(7)
+BAUD230400_LEGACY = Byte.pack(8)
+BAUD1000000_LEGACY = Byte.pack(9)
 
 # /*-----------NRFL01 radio module----------*/
 NRFL01 = Byte.pack(13)
@@ -229,7 +230,8 @@ HCSR04_HEADER = Byte.pack(2)
 # --------COMMUNICATION PASSTHROUGHS--------
 # Data sent to the device is directly routed to output ports such as (SCL, SDA for UART)
 
-PASSTHROUGHS = Byte.pack(15)
+PASSTHROUGHS = Byte.pack(12)
+PASSTHROUGHS_LEGACY = Byte.pack(15)
 PASS_UART = Byte.pack(1)
 
 # /*--------STOP STREAMING------*/
