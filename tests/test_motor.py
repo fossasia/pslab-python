@@ -2,6 +2,7 @@
 
 Connect SQ1 -> LA1.
 """
+
 import pytest
 
 from pslab.external.motor import Servo
@@ -14,13 +15,11 @@ RELTOL = 0.01
 
 @pytest.fixture
 def servo(handler: SerialHandler) -> Servo:
-    handler._logging = True
     return Servo("SQ1", PWMGenerator(handler))
 
 
 @pytest.fixture
 def la(handler: SerialHandler) -> LogicAnalyzer:
-    handler._logging = True
     return LogicAnalyzer(handler)
 
 

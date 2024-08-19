@@ -1,6 +1,6 @@
 """Tests for PSL.multimeter.
 
-When integration testing, connect:
+Before running the tests, connect:
     PV1 -> 10K resistor -> VOL
     RES -> 10K resistor -> GND
     CAP -> 1 nF capacitor -> GND
@@ -10,7 +10,7 @@ import pytest
 
 from pslab.instrument.multimeter import Multimeter
 from pslab.instrument.power_supply import PowerSupply
-from pslab.serial_handler import MockHandler, SerialHandler
+from pslab.serial_handler import SerialHandler
 
 
 RELTOL = 0.05
@@ -18,15 +18,13 @@ RELTOL = 0.05
 
 @pytest.fixture
 def multi(handler: SerialHandler) -> Multimeter:
-    handler._logging = True
     return Multimeter(handler)
 
 
 @pytest.fixture
 def source(handler: SerialHandler):
-    if not isinstance(handler, MockHandler):
-        ps = PowerSupply()
-        ps.pv1.voltage = 2.2
+    ps = PowerSupply()
+    ps.pv1.voltage = 2.2
 
 
 def test_measure_resistance(multi: Multimeter):

@@ -87,8 +87,6 @@ class SerialHandler:
         timeout: float = 1.0,
     ):
         self.version = ""
-        self._log = b""
-        self._logging = False
         self.interface = serial.Serial()
 
         self.send_byte = partial(self._send, size=1)
@@ -264,7 +262,6 @@ class SerialHandler:
         self.send_byte(CP.COMMON)
         self.send_byte(CP.GET_VERSION)
         version = self.interface.readline()
-        self._write_log(version, "RX")
         return version.decode("utf-8")
 
     def get_ack(self) -> int:
@@ -345,9 +342,7 @@ class SerialHandler:
         return retval
 
     def read(self, number_of_bytes: int) -> bytes:
-        """Log incoming bytes.
-
-        Wrapper for Serial.read().
+        """Read bytes from serial port.
 
         Parameters
         ----------
@@ -359,26 +354,22 @@ class SerialHandler:
         bytes
             Bytes read from the serial port.
         """
-        data = self.interface.read(number_of_bytes)
-        self._write_log(data, "RX")
-        return data
+        return self.interface.read(number_of_bytes)
 
-    def write(self, data: bytes):
-        """Log outgoing bytes.
-
-        Wrapper for Serial.write().
+    def write(self, data: bytes) -> int:
+        """Write bytes to serial port.
 
         Parameters
         ----------
         data : int
             Bytes to write to the serial port.
-        """
-        self.interface.write(data)
-        self._write_log(data, "TX")
 
-    def _write_log(self, data: bytes, direction: str):
-        if self._logging:
-            self._log += direction.encode() + data + "STOP".encode()
+        Returns
+        -------
+        int
+            Number of bytes written.
+        """
+        return self.interface.write(data)
 
     def wait_for_data(self, timeout: float = 0.2) -> bool:
         """Wait for :timeout: seconds or until there is data in the input buffer.
@@ -401,96 +392,6 @@ class SerialHandler:
             time.sleep(0.02)
 
         return False
-
-
-RECORDED_TRAFFIC = iter([])
-"""An iterator returning (request, response) pairs.
-
-The request is checked against data written to the dummy serial port, and if it matches
-the response can be read back. Both request and response should be bytes-like.
-
-Intended to be monkey-patched by the calling test module.
-"""
-
-
-class MockHandler(SerialHandler):
-    """Mock implementation of :class:`SerialHandler` for testing.
-
-    Parameters
-    ----------
-    Same as :class:`SerialHandler`.
-    """
-
-    VERSION = "PSLab vMOCK"
-
-    def __init__(
-        self,
-        port: str = None,
-        baudrate: int = 1000000,
-        timeout: float = 1.0,
-    ):
-        self._in_buffer = b""
-        super().__init__(port, baudrate, timeout)
-
-    @staticmethod
-    def check_serial_access_permission():
-        """See :meth:`SerialHandler.check_serial_access_permission`."""
-        pass
-
-    def connect(
-        self,
-        port: str = None,
-        baudrate: int = 1000000,
-        timeout: float = 1.0,
-    ):
-        """See :meth:`SerialHandler.connect`."""
-        self.version = self.get_version()
-
-    def disconnect(self):
-        """See :meth:`SerialHandler.disconnect`."""
-        pass
-
-    def reconnect(
-        self,
-        port: str = None,
-        baudrate: int = None,
-        timeout: float = None,
-    ):
-        """See :meth:`SerialHandler.reconnect`."""
-        pass
-
-    def get_version(self) -> str:
-        """Return mock version."""
-        return self.VERSION
-
-    def read(self, number_of_bytes: int) -> bytes:
-        """Mimic the behavior of the serial bus by returning recorded RX traffic.
-
-        The returned data depends on how :meth:`write` was called prior to calling
-        :meth:`read`.
-
-        See also :meth:`SerialHandler.read`.
-        """
-        read_bytes = self._in_buffer[:number_of_bytes]
-        self._in_buffer = self._in_buffer[number_of_bytes:]
-        return read_bytes
-
-    def write(self, data: bytes):
-        """Add recorded RX data to buffer if written data equals recorded TX data.
-
-        See also :meth:`SerialHandler.write`.
-        """
-        tx, rx = next(RECORDED_TRAFFIC)
-        if tx == data:
-            self._in_buffer += rx
-
-    def wait_for_data(self, timeout: float = 0.2) -> bool:
-        """Return True if there is data in buffer, or return False after timeout."""
-        if self._in_buffer:
-            return True
-        else:
-            time.sleep(timeout)
-            return False
 
 
 class ADCBufferMixin:

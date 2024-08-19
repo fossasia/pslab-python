@@ -1,8 +1,7 @@
 """Tests for PSL.oscilloscope.
 
-When integration testing, the PSLab's analog output is used to generate a
-signal which is sampled by the oscilloscope. Before running the integration
-tests, connect:
+The PSLab's waveform generator is used to generate a signal which is sampled by the
+oscilloscope. Before running the tests, connect:
     SI1 -> CH1
     SI2 -> CH2
     SI1 -> CH3
@@ -13,24 +12,18 @@ import pytest
 
 from pslab.instrument.oscilloscope import Oscilloscope
 from pslab.instrument.waveform_generator import WaveformGenerator
-from pslab.serial_handler import MockHandler
 
 
 FREQUENCY = 1000
 MICROSECONDS = 1e-6
-ABSTOL = 4 * (16.5 - (-16.5)) / (2 ** 10 - 1)  # Four times lowest CH1/CH2 resolution.
+ABSTOL = 4 * (16.5 - (-16.5)) / (2**10 - 1)  # Four times lowest CH1/CH2 resolution.
 
 
 @pytest.fixture
 def scope(handler):
-    """Return an Oscilloscope instance.
-
-    In integration test mode, this function also enables the analog output.
-    """
-    if not isinstance(handler, MockHandler):
-        wave = WaveformGenerator(handler)
-        wave.generate(["SI1", "SI2"], FREQUENCY)
-        handler._logging = True
+    """Enable waveform generator and return an Oscilloscope instance."""
+    wave = WaveformGenerator(handler)
+    wave.generate(["SI1", "SI2"], FREQUENCY)
     return Oscilloscope(handler)
 
 
@@ -58,7 +51,7 @@ def test_capture_one_12bit(scope):
     _, y = scope.capture(channels=1, samples=1000, timegap=1)
     y.sort()
     resolution = min(np.diff(y)[np.diff(y) > 0])
-    expected = (16.5 - (-16.5)) / (2 ** 12 - 1)
+    expected = (16.5 - (-16.5)) / (2**12 - 1)
     assert resolution == pytest.approx(expected)
 
 

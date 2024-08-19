@@ -1,6 +1,6 @@
 """Tests for PSL.cli.
 
-When integration testing, connect:
+Before running the tests, connect:
     SQ1 -> LA1
     SQ2 -> LA2
     SQ3 -> LA3
