@@ -1,7 +1,7 @@
 """Tests for pslab.bus.uart.
 
-When integration testing, the PSLab's logic analyzer is used to verify the
-function of the I2C bus. Before running the integration tests, connect:
+The PSLab's logic analyzer is used to verify the function of the UART bus. Before
+running the tests, connect:
     TxD2->LA1 | PGD2 -> LA1 (for v5)
     RxD2->SQ1 | PGC2 -> SQ1 (for v5)
 """
@@ -11,7 +11,7 @@ import pytest
 from pslab.bus.uart import UART
 from pslab.instrument.logic_analyzer import LogicAnalyzer
 from pslab.instrument.waveform_generator import PWMGenerator
-from pslab.serial_handler import SerialHandler, MockHandler
+from pslab.serial_handler import SerialHandler
 
 WRITE_DATA = 0x55
 TXD2 = "LA1"
@@ -21,28 +21,24 @@ MICROSECONDS = 1e-6
 RELTOL = 0.05
 # Number of expected logic level changes.
 TXD_START = 1
-TXD_WRITE_DATA = 8 # if LSB is 1
+TXD_WRITE_DATA = 8  # if LSB is 1
 TXD_STOP = 1  # if data MSB is 0
 
 
 @pytest.fixture
 def uart(handler: SerialHandler) -> UART:
-    handler._logging = True
     return UART(device=handler)
 
 
 @pytest.fixture
 def la(handler: SerialHandler) -> LogicAnalyzer:
-    handler._logging = True
     return LogicAnalyzer(handler)
 
 
 @pytest.fixture
-def pwm(handler: SerialHandler) -> PWMGenerator:
-    if not isinstance(handler, MockHandler):
-        pwm = PWMGenerator(handler)
-        pwm.generate(RXD2, PWM_FERQUENCY, 0.5)
-        handler._logging = True
+def pwm(handler: SerialHandler) -> None:
+    pwm = PWMGenerator(handler)
+    pwm.generate(RXD2, PWM_FERQUENCY, 0.5)
 
 
 def test_configure(la: LogicAnalyzer, uart: UART):

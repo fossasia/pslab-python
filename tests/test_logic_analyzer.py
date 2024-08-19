@@ -17,7 +17,6 @@ import pytest
 import pslab.protocol as CP
 from pslab.instrument.logic_analyzer import LogicAnalyzer
 from pslab.instrument.waveform_generator import PWMGenerator
-from pslab.serial_handler import MockHandler
 
 
 EVENTS = 2495
@@ -26,19 +25,14 @@ DUTY_CYCLE = 0.5
 LOW_FREQUENCY = 100
 LOWER_FREQUENCY = 10
 MICROSECONDS = 1e6
-TWO_CLOCK_CYCLES = 2 * CP.CLOCK_RATE ** -1 * MICROSECONDS
+TWO_CLOCK_CYCLES = 2 * CP.CLOCK_RATE**-1 * MICROSECONDS
 
 
 @pytest.fixture
 def la(handler, request):
-    """Return a LogicAnalyzer instance.
-
-    In integration test mode, this function also enables the PWM output.
-    """
-    if not isinstance(handler, MockHandler):
-        pwm = PWMGenerator(handler)
-        enable_pwm(pwm, request.node.name)
-        handler._logging = True
+    """Turn on PWM output and return a LogicAnalyzer instance."""
+    pwm = PWMGenerator(handler)
+    enable_pwm(pwm, request.node.name)
     return LogicAnalyzer(handler)
 
 
@@ -82,7 +76,7 @@ def test_capture_four_channels(la):
 
 
 def test_capture_four_low_frequency(la):
-    e2e_time = (LOW_FREQUENCY ** -1) / 2
+    e2e_time = (LOW_FREQUENCY**-1) / 2
     t1 = la.capture(4, 10, e2e_time=e2e_time)[0]
     # When capturing every edge, the accuracy seems to depend on
     # the PWM prescaler as well as the logic analyzer prescaler.
@@ -93,7 +87,7 @@ def test_capture_four_low_frequency(la):
 
 
 def test_capture_four_lower_frequency(la):
-    e2e_time = LOW_FREQUENCY ** -1
+    e2e_time = LOW_FREQUENCY**-1
     t1 = la.capture(4, 10, modes=4 * ["rising"], e2e_time=e2e_time)[0]
     assert np.array(9 * [e2e_time * MICROSECONDS]) == pytest.approx(
         np.diff(t1), abs=TWO_CLOCK_CYCLES * LogicAnalyzer._PRESCALERS[2]
@@ -101,7 +95,7 @@ def test_capture_four_lower_frequency(la):
 
 
 def test_capture_four_lowest_frequency(la):
-    e2e_time = (LOW_FREQUENCY ** -1) * 16
+    e2e_time = (LOW_FREQUENCY**-1) * 16
     t1 = la.capture(4, 10, modes=4 * ["sixteen rising"], e2e_time=e2e_time, timeout=2)[
         0
     ]
@@ -111,14 +105,14 @@ def test_capture_four_lowest_frequency(la):
 
 
 def test_capture_four_too_low_frequency(la):
-    e2e_time = (LOWER_FREQUENCY ** -1) * 4
+    e2e_time = (LOWER_FREQUENCY**-1) * 4
     with pytest.raises(ValueError):
         la.capture(4, 10, modes=4 * ["four rising"], e2e_time=e2e_time, timeout=5)
 
 
 def test_capture_nonblocking(la):
     la.capture(1, EVENTS, block=False)
-    time.sleep(EVENTS * FREQUENCY ** -1)
+    time.sleep(EVENTS * FREQUENCY**-1)
     t = la.fetch_data()
     assert len(t[0]) >= EVENTS
 
@@ -126,7 +120,7 @@ def test_capture_nonblocking(la):
 def test_capture_rising_edges(la):
     events = 100
     t1, t2 = la.capture(2, events, modes=["any", "rising"])
-    expected = FREQUENCY ** -1 * MICROSECONDS / 2
+    expected = FREQUENCY**-1 * MICROSECONDS / 2
     result = t2 - t1 - (t2 - t1)[0]
     assert np.arange(0, expected * events, expected) == pytest.approx(
         result, abs=TWO_CLOCK_CYCLES
@@ -136,7 +130,7 @@ def test_capture_rising_edges(la):
 def test_capture_four_rising_edges(la):
     events = 100
     t1, t2 = la.capture(2, events, modes=["rising", "four rising"])
-    expected = FREQUENCY ** -1 * MICROSECONDS * 3
+    expected = FREQUENCY**-1 * MICROSECONDS * 3
     result = t2 - t1 - (t2 - t1)[0]
     assert np.arange(0, expected * events, expected) == pytest.approx(
         result, abs=TWO_CLOCK_CYCLES
@@ -146,7 +140,7 @@ def test_capture_four_rising_edges(la):
 def test_capture_sixteen_rising_edges(la):
     events = 100
     t1, t2 = la.capture(2, events, modes=["four rising", "sixteen rising"])
-    expected = FREQUENCY ** -1 * MICROSECONDS * 12
+    expected = FREQUENCY**-1 * MICROSECONDS * 12
     result = t2 - t1 - (t2 - t1)[0]
     assert np.arange(0, expected * events, expected) == pytest.approx(
         result, abs=TWO_CLOCK_CYCLES
@@ -178,7 +172,7 @@ def test_measure_interval(la):
     interval = la.measure_interval(
         channels=["LA1", "LA2"], modes=["rising", "falling"], timeout=0.1
     )
-    expected_interval = FREQUENCY ** -1 * MICROSECONDS * 0.5
+    expected_interval = FREQUENCY**-1 * MICROSECONDS * 0.5
     assert expected_interval == pytest.approx(interval, abs=TWO_CLOCK_CYCLES)
 
 
@@ -187,7 +181,7 @@ def test_measure_interval_same_channel(la):
     interval = la.measure_interval(
         channels=["LA1", "LA1"], modes=["rising", "falling"], timeout=0.1
     )
-    expected_interval = FREQUENCY ** -1 * DUTY_CYCLE * MICROSECONDS
+    expected_interval = FREQUENCY**-1 * DUTY_CYCLE * MICROSECONDS
     assert expected_interval == pytest.approx(interval, abs=TWO_CLOCK_CYCLES)
 
 
@@ -196,7 +190,7 @@ def test_measure_interval_same_channel_any(la):
     interval = la.measure_interval(
         channels=["LA1", "LA1"], modes=["any", "any"], timeout=0.1
     )
-    expected_interval = FREQUENCY ** -1 * DUTY_CYCLE * MICROSECONDS
+    expected_interval = FREQUENCY**-1 * DUTY_CYCLE * MICROSECONDS
     assert expected_interval == pytest.approx(interval, abs=TWO_CLOCK_CYCLES)
 
 
@@ -205,7 +199,7 @@ def test_measure_interval_same_channel_four_rising(la):
     interval = la.measure_interval(
         channels=["LA1", "LA1"], modes=["rising", "four rising"], timeout=0.1
     )
-    expected_interval = FREQUENCY ** -1 * 3 * MICROSECONDS
+    expected_interval = FREQUENCY**-1 * 3 * MICROSECONDS
     assert expected_interval == pytest.approx(interval, abs=TWO_CLOCK_CYCLES)
 
 
@@ -214,7 +208,7 @@ def test_measure_interval_same_channel_sixteen_rising(la):
     interval = la.measure_interval(
         channels=["LA1", "LA1"], modes=["rising", "sixteen rising"], timeout=0.1
     )
-    expected_interval = FREQUENCY ** -1 * 15 * MICROSECONDS
+    expected_interval = FREQUENCY**-1 * 15 * MICROSECONDS
     assert expected_interval == pytest.approx(interval, abs=TWO_CLOCK_CYCLES)
 
 
@@ -223,13 +217,13 @@ def test_measure_interval_same_channel_same_event(la):
     interval = la.measure_interval(
         channels=["LA3", "LA3"], modes=["rising", "rising"], timeout=0.1
     )
-    expected_interval = FREQUENCY ** -1 * MICROSECONDS
+    expected_interval = FREQUENCY**-1 * MICROSECONDS
     assert expected_interval == pytest.approx(interval, abs=TWO_CLOCK_CYCLES)
 
 
 def test_measure_duty_cycle(la):
     period, duty_cycle = la.measure_duty_cycle("LA4", timeout=0.1)
-    expected_period = FREQUENCY ** -1 * MICROSECONDS
+    expected_period = FREQUENCY**-1 * MICROSECONDS
     assert (expected_period, DUTY_CYCLE) == pytest.approx(
         (period, duty_cycle), abs=TWO_CLOCK_CYCLES
     )
@@ -263,19 +257,19 @@ def test_get_xy_falling_capture(la):
 
 def test_stop(la):
     la.capture(1, EVENTS, modes=["sixteen rising"], block=False)
-    time.sleep(EVENTS * FREQUENCY ** -1)
+    time.sleep(EVENTS * FREQUENCY**-1)
     progress_time = time.time()
     progress = la.get_progress()
     la.stop()
     stop_time = time.time()
-    time.sleep(EVENTS * FREQUENCY ** -1)
+    time.sleep(EVENTS * FREQUENCY**-1)
     assert progress < CP.MAX_SAMPLES // 4
     abstol = FREQUENCY * (stop_time - progress_time)
     assert progress == pytest.approx(la.get_progress(), abs=abstol)
 
 
 def test_get_states(la):
-    time.sleep(LOW_FREQUENCY ** -1)
+    time.sleep(LOW_FREQUENCY**-1)
     states = la.get_states()
     expected_states = {"LA1": True, "LA2": True, "LA3": True, "LA4": True}
     assert states == expected_states

@@ -1,6 +1,6 @@
 """Tests for pslab.waveform_generator.
 
-When integration testing, connect:
+Before running the tests, connect:
     SQ1 -> LA1
     SQ2 -> LA2
     SQ3 -> LA3
@@ -8,6 +8,7 @@ When integration testing, connect:
     SI1 -> CH1
     SI2 -> CH2
 """
+
 import time
 
 import numpy as np
@@ -35,25 +36,21 @@ def r_squared(y: np.ndarray, y_fit: np.ndarray) -> float:
 
 @pytest.fixture
 def pwm(handler: SerialHandler) -> PWMGenerator:
-    handler._logging = True
     return PWMGenerator(handler)
 
 
 @pytest.fixture
 def wave(handler: SerialHandler) -> WaveformGenerator:
-    handler._logging = True
     return WaveformGenerator(handler)
 
 
 @pytest.fixture
 def la(handler: SerialHandler) -> LogicAnalyzer:
-    handler._logging = True
     return LogicAnalyzer(handler)
 
 
 @pytest.fixture
 def scope(handler: SerialHandler) -> Oscilloscope:
-    handler._logging = True
     return Oscilloscope(handler)
 
 
@@ -209,9 +206,9 @@ def test_pwm_phase(pwm: PWMGenerator, la: LogicAnalyzer):
     interval = la.measure_interval(["LA1", "LA2"], ["rising", "rising"])
 
     if interval < 0:
-        interval += frequency ** -1 / MICROSECONDS
+        interval += frequency**-1 / MICROSECONDS
 
-    assert interval * MICROSECONDS == pytest.approx(frequency ** -1 * phase, rel=RELTOL)
+    assert interval * MICROSECONDS == pytest.approx(frequency**-1 * phase, rel=RELTOL)
 
 
 def test_set_state(pwm: PWMGenerator, la: LogicAnalyzer):

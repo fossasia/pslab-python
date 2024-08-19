@@ -1,7 +1,7 @@
 """Tests for pslab.bus.i2c.
 
-When integration testing, the PSLab's logic analyzer is used to verify the
-function of the I2C bus. Before running the integration tests, connect:
+The PSLab's logic analyzer is used to verify the function of the I2C bus. Before running
+the tests, connect:
     SCL->LA1
     SDA->LA2
 """
@@ -37,19 +37,16 @@ SDA_WRITE = 2
 
 @pytest.fixture
 def master(handler: SerialHandler) -> I2CMaster:
-    handler._logging = True
     return I2CMaster(device=handler)
 
 
 @pytest.fixture
 def slave(handler: SerialHandler) -> I2CSlave:
-    handler._logging = True
     return I2CSlave(ADDRESS, device=handler)
 
 
 @pytest.fixture
 def la(handler: SerialHandler) -> LogicAnalyzer:
-    handler._logging = True
     return LogicAnalyzer(handler)
 
 

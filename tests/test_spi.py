@@ -1,7 +1,7 @@
 """Tests for pslab.bus.spi.
 
-When integration testing, the PSLab's logic analyzer and PWM output are used to
-verify the function of the SPI bus. Before running the integration tests, connect:
+The PSLab's logic analyzer and PWM output are used to verify the function of the SPI
+bus. Before running the tests, connect:
     SCK    -> LA1
     SDO    -> LA2
     SDI    -> SQ1 and LA4
@@ -15,7 +15,7 @@ from numpy import ndarray
 from pslab.bus.spi import SPIMaster, SPISlave
 from pslab.instrument.logic_analyzer import LogicAnalyzer
 from pslab.instrument.waveform_generator import PWMGenerator
-from pslab.serial_handler import SerialHandler, MockHandler
+from pslab.serial_handler import SerialHandler
 
 SPI_SUPPORTED_DEVICES = [
     # "PSLab vMOCK",  # Uncomment after adding recording json files.
@@ -46,7 +46,6 @@ SDO_WRITE_DATA16 = 16
 def master(handler: SerialHandler) -> SPIMaster:
     if handler.version not in SPI_SUPPORTED_DEVICES:
         pytest.skip("SPI not supported by this device.")
-    handler._logging = True
     spi_master = SPIMaster(device=handler)
     yield spi_master
     spi_master.set_parameters()
@@ -56,16 +55,13 @@ def master(handler: SerialHandler) -> SPIMaster:
 def slave(handler: SerialHandler) -> SPISlave:
     if handler.version not in SPI_SUPPORTED_DEVICES:
         pytest.skip("SPI not supported by this device.")
-    handler._logging = True
     return SPISlave(device=handler)
 
 
 @pytest.fixture
 def la(handler: SerialHandler) -> LogicAnalyzer:
-    if not isinstance(handler, MockHandler):
-        pwm = PWMGenerator(handler)
-        pwm.generate(SDI[1], PWM_FERQUENCY, 0.5)
-        handler._logging = True
+    pwm = PWMGenerator(handler)
+    pwm.generate(SDI[1], PWM_FERQUENCY, 0.5)
     return LogicAnalyzer(handler)
 
 
@@ -82,7 +78,9 @@ def verify_value(
     pattern = ""
     for t in sck_ts:
         d, m = divmod(t - sdi_timestamps[0], pwm_half_period)
-        if m == pytest.approx(0, abs=0.1) or m == pytest.approx(pwm_half_period, abs=0.1):
+        if m == pytest.approx(0, abs=0.1) or m == pytest.approx(
+            pwm_half_period, abs=0.1
+        ):
             pattern += "[0,1]"
         elif d % 2:
             pattern += "1" if sdi_initstate else "0"

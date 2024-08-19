@@ -23,13 +23,11 @@ ABSTOL = 0.1
 
 @pytest.fixture
 def power(handler: SerialHandler) -> PowerSupply:
-    handler._logging = True
     return PowerSupply(handler)
 
 
 @pytest.fixture
 def multi(handler: SerialHandler) -> Multimeter:
-    handler._logging = True
     return Multimeter(handler)
 
 
