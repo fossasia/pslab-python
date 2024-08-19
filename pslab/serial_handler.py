@@ -8,6 +8,8 @@ Example
 >>> device.disconnect()
 """
 
+from __future__ import annotations
+
 try:
     import grp
 except ImportError:
@@ -18,6 +20,7 @@ import os
 import platform
 import struct
 import time
+from dataclasses import dataclass
 from functools import partial, update_wrapper
 from typing import List, Union
 
@@ -64,6 +67,29 @@ def _get_version(port: str) -> str:
     return version.decode("utf-8")
 
 
+@dataclass
+class FirmwareVersion:
+    """Version of pslab-firmware running on connected device.
+
+    Uses semantic versioning conventions.
+
+    Attributes
+    ----------
+    major : int
+        Major version. Incremented when backward imcompatible changes are made.
+    minor : int
+        Minor version. Incremented when new functionality is added, or existing
+        functionality is changed in a backward compatible manner.
+    patch : int
+        Patch version. Incremented when bug fixes are made with do not change the
+        PSLab's documented behavior.
+    """
+
+    major: int
+    minor: int
+    patch: int
+
+
 class SerialHandler:
     """Provides methods for communicating with the PSLab hardware.
 
@@ -105,6 +131,7 @@ class SerialHandler:
         self.check_serial_access_permission()
         self.connect(port=port, baudrate=baudrate, timeout=timeout)
         self.connected = self.interface.is_open
+        self.firmware = self.get_firmware_version()
 
     @staticmethod
     def check_serial_access_permission():
@@ -263,6 +290,30 @@ class SerialHandler:
         self.send_byte(CP.GET_VERSION)
         version = self.interface.readline()
         return version.decode("utf-8")
+
+    def get_firmware_version(self) -> FirmwareVersion:
+        """Get firmware version.
+
+        Returns
+        -------
+        tuple[int, int, int]
+            major, minor, patch.
+
+        """
+        self.send_byte(CP.COMMON)
+        self.send_byte(CP.GET_FW_VERSION)
+
+        try:
+            # Firmware version query was added in firmware version 3.0.0.
+            major = self.get_byte()
+            minor = self.get_byte()
+            patch = self.get_byte()
+        except serial.SerialException:
+            major = 2
+            minor = 0
+            patch = 0
+
+        return FirmwareVersion(major, minor, patch)
 
     def get_ack(self) -> int:
         """Get response code from PSLab.
