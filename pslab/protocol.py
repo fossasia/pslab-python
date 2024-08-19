@@ -152,6 +152,7 @@ GET_FREQUENCY = Byte.pack(3)
 GET_INDUCTANCE = Byte.pack(4)
 
 GET_VERSION = Byte.pack(5)
+GET_FW_VERSION = Byte.pack(6)
 
 RETRIEVE_BUFFER = Byte.pack(8)
 GET_HIGH_FREQUENCY = Byte.pack(9)
