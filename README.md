@@ -27,6 +27,8 @@ pslab-python can be installed from PyPI:
 
 **Note**: Linux users must either install a udev rule by running 'pslab install' as root, or be part of the 'dialout' group in order for pslab-python to be able to communicate with the PSLab device.
 
+**Note**: Windows users who use the PSLab v6 device must download and install the CP210x Windows Drivers from the [Silicon Labs website](https://www.silabs.com/developers/usb-to-uart-bridge-vcp-drivers?tab=downloads).
+
 **Note**: If you are only interested in using PSLab as an acquisition device without a display/GUI, only pslab-python needs to be installed. If you would like a GUI, install the [pslab-desktop app](https://github.com/fossasia/pslab-desktop) and follow the instructions of the Readme in that repo.
 
 
