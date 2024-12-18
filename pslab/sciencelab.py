@@ -9,14 +9,11 @@ import time
 from typing import Iterable, List
 
 import pslab.protocol as CP
-from pslab.bus.i2c import I2CMaster
-from pslab.bus.spi import SPIMaster
 from pslab.instrument.logic_analyzer import LogicAnalyzer
 from pslab.instrument.multimeter import Multimeter
 from pslab.instrument.oscilloscope import Oscilloscope
 from pslab.instrument.power_supply import PowerSupply
 from pslab.instrument.waveform_generator import PWMGenerator, WaveformGenerator
-from pslab.peripherals import NRF24L01
 from pslab.serial_handler import SerialHandler
 
 
@@ -48,9 +45,6 @@ class ScienceLab(SerialHandler):
         self.pwm_generator = PWMGenerator(device=self)
         self.multimeter = Multimeter(device=self)
         self.power_supply = PowerSupply(device=self)
-        # self.i2c = I2CMaster(device=self)
-        # self.spi = SPIMaster(device=self)
-        # self.nrf = NRF24L01(device=self)
 
     @property
     def temperature(self):
@@ -120,11 +114,7 @@ class ScienceLab(SerialHandler):
         self.get_ack()
 
     def reset(self):
-        """Reset the device.
-
-        Standalone mode will be enabled if an OLED is connected to the I2C
-        port.
-        """
+        """Reset the device."""
         self.send_byte(CP.COMMON)
         self.send_byte(CP.RESTORE_STANDALONE)
 
