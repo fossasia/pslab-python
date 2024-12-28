@@ -272,12 +272,8 @@ class ScienceLab(SerialHandler):
         self.send_int(value)
         self.get_ack()
 
-    def enable_uart_passthrough(self, baudrate: int, persist=False):
+    def enable_uart_passthrough(self, baudrate: int):
         """Relay all data received by the device to TXD/RXD.
-
-        If a period > 0.5 seconds elapses between two transmit/receive events,
-        the device resets and resumes normal mode. This timeout feature has
-        been implemented in lieu of a hard reset option.
 
         Can be used to load programs into secondary microcontrollers with
         bootloaders such ATMEGA or ESP8266
@@ -285,17 +281,29 @@ class ScienceLab(SerialHandler):
         Parameters
         ----------
         baudrate : int
-            Baudrate of the UART bus.
-        persist : bool, optional
-            If set to True, the device will stay in passthrough mode until the
-            next power cycle. Otherwise(default scenario), the device will
-            return to normal operation if no data is sent/received for a period
-            greater than one second at a time.
+            Baudrate of the UART2 bus.
         """
+        if self.firmware.major < 3:
+            self._uart_passthrough_legacy(baudrate)
+        else:
+            self._uart_passthrough(baudrate)
+
+    def _uart_passthrough(self, baudrate: int) -> None:
         self.send_byte(CP.PASSTHROUGHS)
         self.send_byte(CP.PASS_UART)
-        self.send_byte(1 if persist else 0)
-        self.send_int(int(round(((64e6 / baudrate) / 4) - 1)))
+        self.send_int(self._get_brgval(baudrate))
+        self.interface.baudrate = baudrate
+
+    def _uart_passthrough_legacy(self, baudrate: int) -> None:
+        self.send_byte(CP.PASSTHROUGHS_LEGACY)
+        self.send_byte(CP.PASS_UART)
+        disable_watchdog = 1
+        self.send_byte(disable_watchdog)
+        self.send_int(self._get_brgval(baudrate))
+
+    @staticmethod
+    def _get_brgval(baudrate: int) -> int:
+        return int((CP.CLOCK_RATE / (4 * baudrate)) - 1)
 
     def read_log(self):
         """Read hardware debug log.
