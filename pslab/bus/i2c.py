@@ -136,8 +136,8 @@ class _I2CPrimitive:
 
         Returns
         -------
-        response : int
-            Response from I2C slave device.
+        ackstat : int
+            ACK (0) or NACK (1) from addressed peripheral.
         """
         if self._mode == mode:
             return self._ACK
@@ -146,11 +146,12 @@ class _I2CPrimitive:
         secondary = CP.I2C_START if not self._running else CP.I2C_RESTART
         self._device.send_byte(secondary)
         self._device.send_byte((address << 1) | mode)
-        response = self._device.get_ack() >> 4  # ACKSTAT
+        response = self._device.get_ack()
+        ackstat = response >> 4
         self._running = True
         self._mode = mode
 
-        return response
+        return ackstat
 
     def _restart(self, address: int, mode: int) -> int:
         """Send repeated start.
@@ -167,17 +168,18 @@ class _I2CPrimitive:
 
         Returns
         -------
-        response : int
-            Response from I2C slave device.
+        ackstat : int
+            ACK (0) or NACK (1) from addressed peripheral.
         """
         self._device.send_byte(CP.I2C_HEADER)
         self._device.send_byte(CP.I2C_RESTART)
         self._device.send_byte((address << 1) | mode)
-        response = self._device.get_ack() >> 4  # ACKSTAT
+        response = self._device.get_ack()
+        ackstat = response >> 4
         self._running = True
         self._mode = mode
 
-        return response
+        return ackstat
 
     def _stop(self):
         """Stop I2C transfer."""
