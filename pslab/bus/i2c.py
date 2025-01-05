@@ -139,8 +139,12 @@ class _I2CPrimitive:
         ackstat : int
             ACK (0) or NACK (1) from addressed peripheral.
         """
-        if self._mode == mode:
-            return self._ACK
+        if self._mode is not None:
+            msg = (
+                f"An I2C transaction is already active on peripheral 0x{address:X}. "
+                "Use _restart instead."
+            )
+            raise RuntimeError(msg)
 
         self._device.send_byte(CP.I2C_HEADER)
         secondary = CP.I2C_START if not self._running else CP.I2C_RESTART
