@@ -515,7 +515,7 @@ class I2CSlave(_I2CPrimitive):
         response : bool
             True is slave responded, False otherwise.
         """
-        response = self._start(self.address, self._READ)
+        response = self._start(self.address, self._WRITE)
         self._stop()
 
         return response == self._ACK
