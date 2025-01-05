@@ -1,5 +1,7 @@
 # Changelog
 
+## [3.1.2] - Development
+
 ## [3.1.1] - 2025-01-05
 
 ### Changed
