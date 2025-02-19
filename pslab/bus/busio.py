@@ -36,7 +36,7 @@ from typing import List, Union, Optional
 from pslab.bus.i2c import _I2CPrimitive
 from pslab.bus.spi import _SPIPrimitive
 from pslab.bus.uart import _UARTPrimitive
-from pslab.serial_handler import SerialHandler
+from pslab.connection import ConnectionHandler
 
 __all__ = (
     "I2C",
@@ -59,7 +59,12 @@ class I2C(_I2CPrimitive):
         Frequency of SCL in Hz.
     """
 
-    def __init__(self, device: SerialHandler = None, *, frequency: int = 125e3):
+    def __init__(
+        self,
+        device: ConnectionHandler | None = None,
+        *,
+        frequency: int = 125e3,
+    ):
         # 125 kHz is as low as the PSLab can go.
         super().__init__(device)
         self._init()
@@ -199,7 +204,7 @@ class SPI(_SPIPrimitive):
         created.
     """
 
-    def __init__(self, device: SerialHandler = None):
+    def __init__(self, device: ConnectionHandler | None = None):
         super().__init__(device)
         ppre, spre = self._get_prescaler(25e4)
         self._set_parameters(ppre, spre, 1, 0, 1)
@@ -412,7 +417,7 @@ class UART(_UARTPrimitive):
 
     def __init__(
         self,
-        device: SerialHandler = None,
+        device: ConnectionHandler | None = None,
         *,
         baudrate: int = 9600,
         bits: int = 8,

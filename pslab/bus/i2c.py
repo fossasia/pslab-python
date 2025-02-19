@@ -22,7 +22,7 @@ import logging
 from typing import List
 
 import pslab.protocol as CP
-from pslab.serial_handler import SerialHandler
+from pslab.connection import ConnectionHandler, autoconnect
 from pslab.external.sensorlist import sensors
 
 __all__ = (
@@ -54,8 +54,8 @@ class _I2CPrimitive:
     _READ = 1
     _WRITE = 0
 
-    def __init__(self, device: SerialHandler = None):
-        self._device = device if device is not None else SerialHandler()
+    def __init__(self, device: ConnectionHandler | None = None):
+        self._device = device if device is not None else autoconnect()
         self._running = False
         self._mode = None
 
@@ -447,7 +447,7 @@ class I2CMaster(_I2CPrimitive):
         created.
     """
 
-    def __init__(self, device: SerialHandler = None):
+    def __init__(self, device: ConnectionHandler | None = None):
         super().__init__(device)
         self._init()
         self.configure(125e3)  # 125 kHz is as low as the PSLab can go.
@@ -506,7 +506,7 @@ class I2CSlave(_I2CPrimitive):
     def __init__(
         self,
         address: int,
-        device: SerialHandler = None,
+        device: ConnectionHandler | None = None,
     ):
         super().__init__(device)
         self.address = address

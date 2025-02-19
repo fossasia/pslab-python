@@ -11,9 +11,9 @@ from typing import Callable, List, Tuple, Union
 import numpy as np
 
 import pslab.protocol as CP
+from pslab.connection import ConnectionHandler, autoconnect
 from pslab.instrument.analog import AnalogOutput
 from pslab.instrument.digital import DigitalOutput, DIGITAL_OUTPUTS
-from pslab.serial_handler import SerialHandler
 
 logger = logging.getLogger(__name__)
 
@@ -117,9 +117,9 @@ class WaveformGenerator:
     _HIGH_FREQUENCY_WARNING = 5e3
     _HIGHRES_FREQUENCY_LIMIT = 1100
 
-    def __init__(self, device: SerialHandler = None):
+    def __init__(self, device: ConnectionHandler | None = None):
         self._channels = {n: AnalogOutput(n) for n in ("SI1", "SI2")}
-        self._device = device if device is not None else SerialHandler()
+        self._device = device if device is not None else autoconnect()
 
     def generate(
         self,
@@ -342,8 +342,8 @@ class PWMGenerator:
     _LOW_FREQUENCY_LIMIT = 4
     _HIGH_FREQUENCY_LIMIT = 1e7
 
-    def __init__(self, device: SerialHandler = None):
-        self._device = device if device is not None else SerialHandler()
+    def __init__(self, device: ConnectionHandler | None = None):
+        self._device = device if device is not None else autoconnect()
         self._channels = {n: DigitalOutput(n) for n in DIGITAL_OUTPUTS}
         self._frequency = 0
         self._reference_prescaler = 0

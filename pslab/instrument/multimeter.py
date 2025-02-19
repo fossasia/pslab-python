@@ -7,9 +7,9 @@ import numpy as np
 from scipy.optimize import curve_fit
 
 import pslab.protocol as CP
+from pslab.connection import ConnectionHandler
 from pslab.instrument.analog import GAIN_VALUES, INPUT_RANGES
 from pslab.instrument.oscilloscope import Oscilloscope
-from pslab.serial_handler import SerialHandler
 
 _MICROSECONDS = 1e-6
 
@@ -30,7 +30,7 @@ class Multimeter(Oscilloscope):
     _CAPACITOR_CHARGED_VOLTAGE = 0.9 * max(INPUT_RANGES["CAP"])
     _CAPACITOR_DISCHARGED_VOLTAGE = 0.01 * max(INPUT_RANGES["CAP"])
 
-    def __init__(self, device: SerialHandler = None):
+    def __init__(self, device: ConnectionHandler | None = None):
         self._stray_capacitance = 46e-12
         super().__init__(device)
 

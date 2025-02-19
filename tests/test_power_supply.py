@@ -13,7 +13,7 @@ import time
 import pytest
 import numpy as np
 
-from pslab.serial_handler import SerialHandler
+from pslab.connection import SerialHandler
 from pslab.instrument.multimeter import Multimeter
 from pslab.instrument.power_supply import PowerSupply
 

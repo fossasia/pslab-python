@@ -23,7 +23,7 @@ from typing import List, Tuple
 
 import pslab.protocol as CP
 from pslab.bus import classmethod_
-from pslab.serial_handler import SerialHandler
+from pslab.connection import ConnectionHandler, autoconnect
 
 __all__ = (
     "SPIMaster",
@@ -67,8 +67,8 @@ class _SPIPrimitive:
     _clock_edge = _CKE  # Clock Edge Select bit (inverse of Clock Phase bit).
     _smp = _SMP  # Data Input Sample Phase bit.
 
-    def __init__(self, device: SerialHandler = None):
-        self._device = device if device is not None else SerialHandler()
+    def __init__(self, device: ConnectionHandler | None = None):
+        self._device = device if device is not None else autoconnect()
 
     @classmethod_
     @property
@@ -419,7 +419,7 @@ class SPIMaster(_SPIPrimitive):
         created.
     """
 
-    def __init__(self, device: SerialHandler = None):
+    def __init__(self, device: ConnectionHandler | None = None):
         super().__init__(device)
         # Reset config
         self.set_parameters()
@@ -492,7 +492,7 @@ class SPISlave(_SPIPrimitive):
         created.
     """
 
-    def __init__(self, device: SerialHandler = None):
+    def __init__(self, device: ConnectionHandler | None = None):
         super().__init__(device)
 
     def transfer8(self, data: int) -> int:

@@ -14,8 +14,9 @@ from typing import Dict, List, Tuple, Union
 import numpy as np
 
 import pslab.protocol as CP
+from pslab.connection import ConnectionHandler, autoconnect
+from pslab.instrument.buffer import ADCBufferMixin
 from pslab.instrument.digital import DigitalInput, DIGITAL_INPUTS, MODES
-from pslab.serial_handler import ADCBufferMixin, SerialHandler
 
 
 class LogicAnalyzer(ADCBufferMixin):
@@ -46,8 +47,8 @@ class LogicAnalyzer(ADCBufferMixin):
     # delay between channels.
     _CAPTURE_DELAY = 2
 
-    def __init__(self, device: SerialHandler = None):
-        self._device = SerialHandler() if device is None else device
+    def __init__(self, device: ConnectionHandler | None = None):
+        self._device = device if device is not None else autoconnect()
         self._channels = {d: DigitalInput(d) for d in DIGITAL_INPUTS}
         self.trigger_channel = "LA1"
         self._trigger_channel = self._channels["LA1"]
@@ -108,7 +109,7 @@ class LogicAnalyzer(ADCBufferMixin):
         self._device.send_byte(CP.GET_FREQUENCY)
         self._device.send_int(int(timeout * 64e6) >> 16)
         self._device.send_byte(self._channels[channel].number)
-        self._device.wait_for_data(timeout)
+        time.sleep(timeout)
 
         error = self._device.get_byte()
         t = [self._device.get_long() for a in range(2)]

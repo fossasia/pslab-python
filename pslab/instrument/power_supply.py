@@ -14,7 +14,7 @@ Examples
 """
 
 import pslab.protocol as CP
-from pslab.serial_handler import SerialHandler
+from pslab.connection import ConnectionHandler, autoconnect
 
 
 class PowerSupply:
@@ -41,8 +41,8 @@ class PowerSupply:
     _PCS_CH = 0
     _PCS_RANGE = (3.3e-3, 0)
 
-    def __init__(self, device: SerialHandler = None):
-        self._device = device if device is not None else SerialHandler()
+    def __init__(self, device: ConnectionHandler | None = None):
+        self._device = device if device is not None else autoconnect()
         self._pv1 = None
         self._pv2 = None
         self._pv3 = None

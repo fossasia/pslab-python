@@ -15,7 +15,7 @@ from numpy import ndarray
 from pslab.bus.spi import SPIMaster, SPISlave
 from pslab.instrument.logic_analyzer import LogicAnalyzer
 from pslab.instrument.waveform_generator import PWMGenerator
-from pslab.serial_handler import SerialHandler
+from pslab.connection import SerialHandler
 
 SPI_SUPPORTED_DEVICES = [
     # "PSLab vMOCK",  # Uncomment after adding recording json files.

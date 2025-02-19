@@ -5,19 +5,21 @@ if you need to use several at once the ScienceLab class provides a convenient
 collection.
 """
 
+from __future__ import annotations
+
 import time
 from typing import Iterable, List
 
 import pslab.protocol as CP
+from pslab.connection import ConnectionHandler, SerialHandler, autoconnect
 from pslab.instrument.logic_analyzer import LogicAnalyzer
 from pslab.instrument.multimeter import Multimeter
 from pslab.instrument.oscilloscope import Oscilloscope
 from pslab.instrument.power_supply import PowerSupply
 from pslab.instrument.waveform_generator import PWMGenerator, WaveformGenerator
-from pslab.serial_handler import SerialHandler
 
 
-class ScienceLab(SerialHandler):
+class ScienceLab:
     """Aggregate interface for the PSLab's instruments.
 
     Attributes
@@ -32,19 +34,14 @@ class ScienceLab(SerialHandler):
     nrf : pslab.peripherals.NRF24L01
     """
 
-    def __init__(
-        self,
-        port: str = None,
-        baudrate: int = 1000000,
-        timeout: float = 1.0,
-    ):
-        super().__init__(port, baudrate, timeout)
-        self.logic_analyzer = LogicAnalyzer(device=self)
-        self.oscilloscope = Oscilloscope(device=self)
-        self.waveform_generator = WaveformGenerator(device=self)
-        self.pwm_generator = PWMGenerator(device=self)
-        self.multimeter = Multimeter(device=self)
-        self.power_supply = PowerSupply(device=self)
+    def __init__(self, device: ConnectionHandler | None = None):
+        self.device = device if device is not None else autoconnect()
+        self.logic_analyzer = LogicAnalyzer(device=self.device)
+        self.oscilloscope = Oscilloscope(device=self.device)
+        self.waveform_generator = WaveformGenerator(device=self.device)
+        self.pwm_generator = PWMGenerator(device=self.device)
+        self.multimeter = Multimeter(device=self.device)
+        self.power_supply = PowerSupply(device=self.device)
 
     @property
     def temperature(self):
@@ -91,43 +88,47 @@ class ScienceLab(SerialHandler):
         -------
         voltage : float
         """
-        self.send_byte(CP.COMMON)
-        self.send_byte(CP.GET_CTMU_VOLTAGE)
-        self.send_byte((channel) | (current_range << 5) | (tgen << 7))
+        self.device.send_byte(CP.COMMON)
+        self.device.send_byte(CP.GET_CTMU_VOLTAGE)
+        self.device.send_byte((channel) | (current_range << 5) | (tgen << 7))
         raw_voltage = self.get_int() / 16  # 16*voltage across the current source
-        self.get_ack()
+        self.device.get_ack()
         vmax = 3.3
         resolution = 12
         voltage = vmax * raw_voltage / (2**resolution - 1)
         return voltage
 
     def _start_ctmu(self, current_range: int, trim: int, tgen: int = 1):
-        self.send_byte(CP.COMMON)
-        self.send_byte(CP.START_CTMU)
-        self.send_byte((current_range) | (tgen << 7))
-        self.send_byte(trim)
-        self.get_ack()
+        self.device.send_byte(CP.COMMON)
+        self.device.send_byte(CP.START_CTMU)
+        self.device.send_byte((current_range) | (tgen << 7))
+        self.device.send_byte(trim)
+        self.device.get_ack()
 
     def _stop_ctmu(self):
-        self.send_byte(CP.COMMON)
-        self.send_byte(CP.STOP_CTMU)
-        self.get_ack()
+        self.device.send_byte(CP.COMMON)
+        self.device.send_byte(CP.STOP_CTMU)
+        self.device.get_ack()
 
     def reset(self):
         """Reset the device."""
-        self.send_byte(CP.COMMON)
-        self.send_byte(CP.RESTORE_STANDALONE)
+        self.device.send_byte(CP.COMMON)
+        self.device.send_byte(CP.RESTORE_STANDALONE)
 
     def enter_bootloader(self):
         """Reboot and stay in bootloader mode."""
+        if not isinstance(self.device, SerialHandler):
+            msg = "cannot enter bootloader over wireless"
+            raise RuntimeError(msg)
+
         self.reset()
-        self.interface.baudrate = 460800
+        self.device.interface.baudrate = 460800
         # The PSLab's RGB LED flashes some colors on boot.
         boot_lightshow_time = 0.6
         # Wait before sending magic number to make sure UART is initialized.
         time.sleep(boot_lightshow_time / 2)
         # PIC24 UART RX buffer is four bytes deep; no need to time it perfectly.
-        self.write(CP.Integer.pack(0xDECAFBAD))
+        self.device.write(CP.Integer.pack(0xDECAFBAD))
         # Wait until lightshow is done to prevent accidentally overwriting magic number.
         time.sleep(boot_lightshow_time)
 
@@ -162,7 +163,7 @@ class ScienceLab(SerialHandler):
 
         >>> psl.rgb_led([[10,0,0],[0,10,10],[10,0,10]], output="SQ1", order="RGB")
         """
-        if "6" in self.version:
+        if "6" in self.device.version:
             pins = {"ONBOARD": 0, "SQ1": 1, "SQ2": 2, "SQ3": 3, "SQ4": 4}
         else:
             pins = {"RGB": CP.SET_RGB1, "PGC": CP.SET_RGB2, "SQ1": CP.SET_RGB3}
@@ -188,24 +189,24 @@ class ScienceLab(SerialHandler):
                 f"Invalid order: {order}. order must contain 'R', 'G', and 'B'."
             )
 
-        self.send_byte(CP.COMMON)
+        self.device.send_byte(CP.COMMON)
 
-        if "6" in self.version:
-            self.send_byte(CP.SET_RGB_COMMON)
+        if "6" in self.device.version:
+            self.device.send_byte(CP.SET_RGB_COMMON)
         else:
-            self.send_byte(pin)
+            self.device.send_byte(pin)
 
-        self.send_byte(len(colors) * 3)
+        self.device.send_byte(len(colors) * 3)
 
         for color in colors:
-            self.send_byte(color[order.index("R")])
-            self.send_byte(color[order.index("G")])
-            self.send_byte(color[order.index("B")])
+            self.device.send_byte(color[order.index("R")])
+            self.device.send_byte(color[order.index("G")])
+            self.device.send_byte(color[order.index("B")])
 
-        if "6" in self.version:
-            self.send_byte(pin)
+        if "6" in self.device.version:
+            self.device.send_byte(pin)
 
-        self.get_ack()
+        self.device.get_ack()
 
     def _read_program_address(self, address: int):
         """Return the value stored at the specified address in program memory.
@@ -220,12 +221,12 @@ class ScienceLab(SerialHandler):
         data : int
             16-bit wide value read from program memory.
         """
-        self.send_byte(CP.COMMON)
-        self.send_byte(CP.READ_PROGRAM_ADDRESS)
-        self.send_int(address & 0xFFFF)
-        self.send_int((address >> 16) & 0xFFFF)
-        data = self.get_int()
-        self.get_ack()
+        self.device.send_byte(CP.COMMON)
+        self.device.send_byte(CP.READ_PROGRAM_ADDRESS)
+        self.device.send_int(address & 0xFFFF)
+        self.device.send_int((address >> 16) & 0xFFFF)
+        data = self.device.get_int()
+        self.device.get_ack()
         return data
 
     def _device_id(self):
@@ -249,11 +250,11 @@ class ScienceLab(SerialHandler):
         data : int
             16-bit wide value read from RAM.
         """
-        self.send_byte(CP.COMMON)
-        self.send_byte(CP.READ_DATA_ADDRESS)
-        self.send_int(address & 0xFFFF)
-        data = self.get_int()
-        self.get_ack()
+        self.device.send_byte(CP.COMMON)
+        self.device.send_byte(CP.READ_DATA_ADDRESS)
+        self.device.send_int(address & 0xFFFF)
+        data = self.device.get_int()
+        self.device.get_ack()
         return data
 
     def _write_data_address(self, address: int, value: int):
@@ -266,11 +267,11 @@ class ScienceLab(SerialHandler):
         value : int
             Value to write to RAM.
         """
-        self.send_byte(CP.COMMON)
-        self.send_byte(CP.WRITE_DATA_ADDRESS)
-        self.send_int(address & 0xFFFF)
-        self.send_int(value)
-        self.get_ack()
+        self.device.send_byte(CP.COMMON)
+        self.device.send_byte(CP.WRITE_DATA_ADDRESS)
+        self.device.send_int(address & 0xFFFF)
+        self.device.send_int(value)
+        self.device.get_ack()
 
     def enable_uart_passthrough(self, baudrate: int):
         """Relay all data received by the device to TXD/RXD.
@@ -289,17 +290,17 @@ class ScienceLab(SerialHandler):
             self._uart_passthrough(baudrate)
 
     def _uart_passthrough(self, baudrate: int) -> None:
-        self.send_byte(CP.PASSTHROUGHS)
-        self.send_byte(CP.PASS_UART)
-        self.send_int(self._get_brgval(baudrate))
-        self.interface.baudrate = baudrate
+        self.device.send_byte(CP.PASSTHROUGHS)
+        self.device.send_byte(CP.PASS_UART)
+        self.device.send_int(self._get_brgval(baudrate))
+        self.device.interface.baudrate = baudrate
 
     def _uart_passthrough_legacy(self, baudrate: int) -> None:
-        self.send_byte(CP.PASSTHROUGHS_LEGACY)
-        self.send_byte(CP.PASS_UART)
+        self.device.send_byte(CP.PASSTHROUGHS_LEGACY)
+        self.device.send_byte(CP.PASS_UART)
         disable_watchdog = 1
-        self.send_byte(disable_watchdog)
-        self.send_int(self._get_brgval(baudrate))
+        self.device.send_byte(disable_watchdog)
+        self.device.send_int(self._get_brgval(baudrate))
 
     @staticmethod
     def _get_brgval(baudrate: int) -> int:
@@ -313,8 +314,8 @@ class ScienceLab(SerialHandler):
         log : bytes
             Bytes read from the hardware debug log.
         """
-        self.send_byte(CP.COMMON)
-        self.send_byte(CP.READ_LOG)
-        log = self.interface.readline().strip()
+        self.device.send_byte(CP.COMMON)
+        self.device.send_byte(CP.READ_LOG)
+        log = self.device.interface.readline().strip()
         self.get_ack()
         return log

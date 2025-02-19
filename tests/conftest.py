@@ -2,10 +2,12 @@
 
 import pytest
 
-from pslab import serial_handler
+from pslab.connection import SerialHandler
 
 
 @pytest.fixture
 def handler():
     """Return a SerialHandler instance."""
-    return serial_handler.SerialHandler()
+    sh = SerialHandler()
+    sh.connect()
+    return sh
