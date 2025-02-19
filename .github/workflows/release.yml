@@ -1,0 +1,34 @@
+name: Draft release
+
+on:
+  push:
+    tags:
+      - '[0-9]+.[0-9]+.[0-9]+'
+
+jobs:
+  set-body:
+    runs-on: ubuntu-latest
+
+    steps:
+    - run: sudo apt install pcregrep
+
+    - uses: actions/checkout@v4
+
+    - name: Parse changelog
+      id: parse-changelog
+      run: |
+        tag='${{ github.ref_name }}'
+        re_current_tag="## \[$tag\].*\n\n" # Match, but do not capture, current version tag, then...
+        re_changes_body='((.|\n)+?)' # capture everything including newlines...
+        re_previous_tag='## \[[0-9]+.[0-9]+.[0-9]+\]' # until previous version tag.
+        re_full="${re_current_tag}${re_changes_body}${re_previous_tag}"
+        echo 'match<<EOF' >> $GITHUB_OUTPUT
+        # Match multiple lines, output capture group 1.
+        pcregrep -M -o1 "$re_full" ./CHANGELOG.md >> $GITHUB_OUTPUT
+        echo 'EOF' >> $GITHUB_OUTPUT
+
+    - name: Set release body
+      uses: softprops/action-gh-release@v2
+      with:
+        draft: true
+        body: ${{ steps.parse-changelog.outputs.match }}

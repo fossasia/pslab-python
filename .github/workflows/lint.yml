@@ -1,4 +1,4 @@
-name: pslab-python
+name: lint
 
 on:
   - push
