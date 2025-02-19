@@ -11,7 +11,7 @@ import pytest
 from pslab.bus.uart import UART
 from pslab.instrument.logic_analyzer import LogicAnalyzer
 from pslab.instrument.waveform_generator import PWMGenerator
-from pslab.serial_handler import SerialHandler
+from pslab.connection import SerialHandler
 
 WRITE_DATA = 0x55
 TXD2 = "LA1"

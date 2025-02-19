@@ -10,7 +10,7 @@ import pytest
 
 from pslab.bus.i2c import I2CMaster, I2CSlave
 from pslab.instrument.logic_analyzer import LogicAnalyzer
-from pslab.serial_handler import SerialHandler
+from pslab.connection import SerialHandler
 
 ADDRESS = 0x52  # Not a real device.
 REGISTER_ADDRESS = 0x06

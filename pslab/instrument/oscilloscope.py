@@ -14,8 +14,9 @@ import numpy as np
 
 import pslab.protocol as CP
 from pslab.bus.spi import SPIMaster
+from pslab.connection import ConnectionHandler, autoconnect
 from pslab.instrument.analog import ANALOG_CHANNELS, AnalogInput, GAIN_VALUES
-from pslab.serial_handler import ADCBufferMixin, SerialHandler
+from pslab.instrument.buffer import ADCBufferMixin
 
 
 class Oscilloscope(ADCBufferMixin):
@@ -30,8 +31,8 @@ class Oscilloscope(ADCBufferMixin):
 
     _CH234 = ["CH2", "CH3", "MIC"]
 
-    def __init__(self, device: SerialHandler = None):
-        self._device = SerialHandler() if device is None else device
+    def __init__(self, device: ConnectionHandler | None = None):
+        self._device = device if device is not None else autoconnect()
         self._channels = {a: AnalogInput(a) for a in ANALOG_CHANNELS}
         self._channel_one_map = "CH1"
         self._trigger_voltage = None

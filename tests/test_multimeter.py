@@ -10,7 +10,7 @@ import pytest
 
 from pslab.instrument.multimeter import Multimeter
 from pslab.instrument.power_supply import PowerSupply
-from pslab.serial_handler import SerialHandler
+from pslab.connection import SerialHandler
 
 
 RELTOL = 0.05

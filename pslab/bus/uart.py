@@ -17,7 +17,7 @@ from typing import Tuple
 
 import pslab.protocol as CP
 from pslab.bus import classmethod_
-from pslab.serial_handler import SerialHandler
+from pslab.connection import ConnectionHandler, autoconnect
 
 __all__ = "UART"
 _BRGVAL = 0x22  # BaudRate = 460800.
@@ -41,8 +41,8 @@ class _UARTPrimitive:
     _brgval = _BRGVAL
     _mode = _MODE
 
-    def __init__(self, device: SerialHandler = None):
-        self._device = device if device is not None else SerialHandler()
+    def __init__(self, device: ConnectionHandler | None = None):
+        self._device = device if device is not None else autoconnect()
 
     @classmethod_
     @property
@@ -227,7 +227,7 @@ class UART(_UARTPrimitive):
         Serial connection to PSLab device. If not provided, a new one will be created.
     """
 
-    def __init__(self, device: SerialHandler = None):
+    def __init__(self, device: ConnectionHandler | None = None):
         super().__init__(device)
         # Reset baudrate and mode
         self.configure(self._get_uart_baudrate(_BRGVAL))

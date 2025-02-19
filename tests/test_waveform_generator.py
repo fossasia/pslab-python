@@ -19,7 +19,7 @@ from _pytest.logging import LogCaptureFixture
 from pslab.instrument.logic_analyzer import LogicAnalyzer
 from pslab.instrument.oscilloscope import Oscilloscope
 from pslab.instrument.waveform_generator import PWMGenerator, WaveformGenerator
-from pslab.serial_handler import SerialHandler
+from pslab.connection import SerialHandler
 
 
 MICROSECONDS = 1e-6

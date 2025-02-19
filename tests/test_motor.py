@@ -8,7 +8,7 @@ import pytest
 from pslab.external.motor import Servo
 from pslab.instrument.logic_analyzer import LogicAnalyzer
 from pslab.instrument.waveform_generator import PWMGenerator
-from pslab.serial_handler import SerialHandler
+from pslab.connection import SerialHandler
 
 RELTOL = 0.01
 
