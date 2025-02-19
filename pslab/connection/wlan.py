@@ -104,10 +104,4 @@ class WLANHandler(ConnectionHandler):
         return self._sock.sendall(data)
 
     def __repr__(self) -> str:  # noqa
-        return (
-            f"{self.__class__.__name__}"
-            "["
-            f"{self.host}:{self.port}, "
-            f"timeout {self.timeout} s"
-            "]"
-        )
+        return f"{self.__class__.__name__}[{self.host}:{self.port}]"

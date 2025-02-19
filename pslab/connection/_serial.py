@@ -153,7 +153,6 @@ class SerialHandler(ConnectionHandler):
             f"{self.__class__.__name__}"
             "["
             f"{self.port}, "
-            f"{self.baudrate} baud, "
-            f"timeout {self.timeout} s"
+            f"{self.baudrate} baud"
             "]"
         )
