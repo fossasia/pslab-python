@@ -175,7 +175,7 @@ class _SPIPrimitive:
         self._device.send_byte(CP.SET_SPI_PARAMETERS)
         # 0Bhgfedcba - > <g>: modebit CKP,<f>: modebit CKE, <ed>:primary prescaler,
         #                <cba>:secondary prescaler
-        self._device.send_byte(
+        self._device.send_int(
             secondary_prescaler
             | (primary_prescaler << 3)
             | (CKE << 5)
