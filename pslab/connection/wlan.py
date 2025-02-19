@@ -101,7 +101,16 @@ class WLANHandler(ConnectionHandler):
         numbytes : int
             Number of bytes written.
         """
-        return self._sock.sendall(data)
+        buf_size = 4096
+        remaining = len(data)
+        sent = 0
+
+        while remaining > 0:
+            chunk = data[sent : min(remaining, buf_size)]
+            sent += self._sock.send(chunk)
+            remaining -= len(chunk)
+
+        return sent
 
     def __repr__(self) -> str:  # noqa
         return f"{self.__class__.__name__}[{self.host}:{self.port}]"
