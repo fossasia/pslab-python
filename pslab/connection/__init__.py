@@ -4,6 +4,7 @@ from serial.tools import list_ports
 
 from .connection import ConnectionHandler
 from ._serial import SerialHandler
+from .wlan import WLANHandler
 
 
 def detect() -> list[ConnectionHandler]:
@@ -35,6 +36,16 @@ def detect() -> list[ConnectionHandler]:
             pslab_devices.append(device)
         finally:
             device.disconnect()
+
+    try:
+        device = WLANHandler()
+        device.connect()
+    except Exception:
+        pass  # nosec
+    else:
+        pslab_devices.append(device)
+    finally:
+        device.disconnect()
 
     return pslab_devices
 
