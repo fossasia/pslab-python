@@ -106,7 +106,7 @@ class WLANHandler(ConnectionHandler):
         sent = 0
 
         while remaining > 0:
-            chunk = data[sent : min(remaining, buf_size)]
+            chunk = data[sent : sent + min(remaining, buf_size)]
             sent += self._sock.send(chunk)
             remaining -= len(chunk)
 
