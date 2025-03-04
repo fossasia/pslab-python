@@ -70,6 +70,36 @@ class ConnectionHandler(ABC):
         """
         ...
 
+    def exchange(self, cmd: bytes, data: bytes = b"") -> bytes:
+        """Send command and input data to device, and return output data.
+
+        Parameters
+        ----------
+        cmd : int
+            Command code.
+        data : bytes, default b''
+            Input data for command, if any.
+
+        Returns
+        -------
+        bytes
+            Output data from command, if any.
+        """
+        (cmd_int,) = CP.ShortInt.unpack(cmd)
+        header = CP.Header.pack(cmd_int, len(data))
+        self.write(header + data)
+        status, response_size = CP.Header.unpack(self.read(CP.Header.size))
+
+        if status:
+            raise Exception(status)
+
+        response = self.read(response_size)
+
+        if len(response) < response_size:
+            raise TimeoutError
+
+        return response
+
     def get_byte(self) -> int:
         """Read a single one-byte of integer value.
 
@@ -164,10 +194,7 @@ class ConnectionHandler(ABC):
         str
             Version string.
         """
-        self.send_byte(CP.COMMON)
-        self.send_byte(CP.GET_VERSION)
-        version_length = 9
-        version = self.read(version_length)
+        version = self.exchange(CP.COMMON + CP.GET_VERSION)
 
         try:
             if b"PSLab" not in version:
@@ -177,23 +204,16 @@ class ConnectionHandler(ABC):
             msg = "device not found"
             raise ConnectionError(msg) from exc
 
-        return version.decode("utf-8")
+        return version.rstrip(b"\x00").decode("utf-8")
 
     def get_firmware_version(self) -> FirmwareVersion:
         """Get firmware version.
 
         Returns
         -------
-        tuple[int, int, int]
+        FirmwareVersion
             major, minor, patch.
 
         """
-        self.send_byte(CP.COMMON)
-        self.send_byte(CP.GET_FW_VERSION)
-
-        # Firmware version query was added in firmware version 3.0.0.
-        major = self.get_byte()
-        minor = self.get_byte()
-        patch = self.get_byte()
-
+        major, minor, patch = self.exchange(CP.COMMON + CP.GET_FW_VERSION)
         return FirmwareVersion(major, minor, patch)

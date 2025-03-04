@@ -9,6 +9,8 @@ Byte = struct.Struct("B")  # size 1
 ShortInt = struct.Struct("H")  # size 2
 Integer = struct.Struct("I")  # size 4
 
+Header = struct.Struct("<HHxxxx")
+
 ACKNOWLEDGE = Byte.pack(254)
 MAX_SAMPLES = 10000
 DATA_SPLITTING = 200
