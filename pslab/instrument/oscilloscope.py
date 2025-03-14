@@ -38,8 +38,8 @@ class Oscilloscope(ADCBufferMixin):
         self._trigger_voltage = None
         self._trigger_enabled = False
         self._trigger_channel = "CH1"
-        self._set_gain("CH1", 1)
-        self._set_gain("CH2", 1)
+        # self._set_gain("CH1", 1)
+        # self._set_gain("CH2", 1)
 
     def capture(
         self,
@@ -375,12 +375,6 @@ class Oscilloscope(ADCBufferMixin):
         self._set_gain(channel, gain)
 
     def _set_gain(self, channel: str, gain: int):
-        spi_config_supported = self._check_spi_config()
-
-        if not spi_config_supported:
-            spi_parameters = SPIMaster.get_parameters()
-            spi = SPIMaster(self._device)  # Initializing SPIMaster will reset config.
-
         self._channels[channel].gain = gain
         pga = self._channels[channel].programmable_gain_amplifier
         gain_idx = GAIN_VALUES.index(gain)
@@ -389,9 +383,6 @@ class Oscilloscope(ADCBufferMixin):
         self._device.send_byte(pga)
         self._device.send_byte(gain_idx)
         self._device.get_ack()
-
-        if not spi_config_supported:
-            spi.set_parameters(*spi_parameters)
 
     @staticmethod
     def _check_spi_config() -> bool:
