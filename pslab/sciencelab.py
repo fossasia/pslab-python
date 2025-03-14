@@ -36,6 +36,7 @@ class ScienceLab:
 
     def __init__(self, device: ConnectionHandler | None = None):
         self.device = device if device is not None else autoconnect()
+        self.version = self.device.get_version()
         self.logic_analyzer = LogicAnalyzer(device=self.device)
         self.oscilloscope = Oscilloscope(device=self.device)
         self.waveform_generator = WaveformGenerator(device=self.device)
@@ -163,8 +164,10 @@ class ScienceLab:
 
         >>> psl.rgb_led([[10,0,0],[0,10,10],[10,0,10]], output="SQ1", order="RGB")
         """
-        if "6" in self.device.version:
+        if "6" in self.version:
             pins = {"ONBOARD": 0, "SQ1": 1, "SQ2": 2, "SQ3": 3, "SQ4": 4}
+            if output == "RGB":
+                output = "ONBOARD"
         else:
             pins = {"RGB": CP.SET_RGB1, "PGC": CP.SET_RGB2, "SQ1": CP.SET_RGB3}
 
@@ -189,24 +192,13 @@ class ScienceLab:
                 f"Invalid order: {order}. order must contain 'R', 'G', and 'B'."
             )
 
-        self.device.send_byte(CP.COMMON)
-
-        if "6" in self.device.version:
-            self.device.send_byte(CP.SET_RGB_COMMON)
-        else:
-            self.device.send_byte(pin)
-
-        self.device.send_byte(len(colors) * 3)
-
-        for color in colors:
-            self.device.send_byte(color[order.index("R")])
-            self.device.send_byte(color[order.index("G")])
-            self.device.send_byte(color[order.index("B")])
-
-        if "6" in self.device.version:
-            self.device.send_byte(pin)
-
-        self.device.get_ack()
+        cmd = CP.COMMON + CP.SET_RGB_COMMON
+        args = CP.Byte.pack(pin)
+        args += CP.Byte.pack(len(colors) * 3)
+        args += bytes(
+            color[order.index(channel)] for channel in "RGB" for color in colors
+        )
+        self.device.exchange(cmd, args)
 
     def _read_program_address(self, address: int):
         """Return the value stored at the specified address in program memory.
