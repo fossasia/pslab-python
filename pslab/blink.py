@@ -17,20 +17,6 @@ def blink(psl: pslab.ScienceLab, color: tuple[int, int, int], period: int) -> No
     period : int
         Blink period in milliseconds.
     """
-    toggle = time.time()
-    state = 0
-
-    while True:
-        if period / 2 < (time.time() - toggle) * 1000:
-            if state:
-                # Turn off LED.
-                psl.rgb_led((0, 0, 0))
-            else:
-                # Turn on LED.
-                psl.rgb_led(color)
-
-            state = not state
-            toggle = time.time()
 
 
 def blink_c(psl: pslab.ScienceLab, color: tuple[int, int, int], period: int) -> None:
