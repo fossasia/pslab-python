@@ -36,6 +36,7 @@ class ScienceLab:
 
     def __init__(self, device: ConnectionHandler | None = None):
         self.device = device if device is not None else autoconnect()
+        self.firmware = self.device.get_firmware_version()
         self.logic_analyzer = LogicAnalyzer(device=self.device)
         self.oscilloscope = Oscilloscope(device=self.device)
         self.waveform_generator = WaveformGenerator(device=self.device)
@@ -293,7 +294,7 @@ class ScienceLab:
         self.device.send_byte(CP.PASSTHROUGHS)
         self.device.send_byte(CP.PASS_UART)
         self.device.send_int(self._get_brgval(baudrate))
-        self.device.interface.baudrate = baudrate
+        self.device.baudrate = baudrate
 
     def _uart_passthrough_legacy(self, baudrate: int) -> None:
         self.device.send_byte(CP.PASSTHROUGHS_LEGACY)
