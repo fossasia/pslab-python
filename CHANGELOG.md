@@ -4,7 +4,7 @@
 
 ### Fixed
 
-Fix UART passthrough ([`1346356`](https://github.com/fossasia/pslab-python/commit/1346356d3cf95691ea0e3e87be335659d5513ec8)) (Anashuman Singh)
+- Fix UART passthrough ([`1346356`](https://github.com/fossasia/pslab-python/commit/1346356d3cf95691ea0e3e87be335659d5513ec8)) (Anashuman Singh)
 
 ## [4.0.0] - 2025-02-19
 
