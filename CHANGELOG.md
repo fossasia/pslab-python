@@ -1,5 +1,11 @@
 # Changelog
 
+## [4.0.1] - 2025-06-16
+
+### Fixed
+
+Fix UART passthrough ([`1346356`](https://github.com/fossasia/pslab-python/commit/1346356d3cf95691ea0e3e87be335659d5513ec8)) (Anashuman Singh)
+
 ## [4.0.0] - 2025-02-19
 
 ### Changed
@@ -41,6 +47,7 @@
 
 _Changelog added in following release._
 
+[4.0.1]: https://github.com/fossasia/pslab-python/releases/tag/4.0.1
 [4.0.0]: https://github.com/fossasia/pslab-python/releases/tag/4.0.0
 [3.1.1]: https://github.com/fossasia/pslab-python/releases/tag/3.1.1
 [3.1.0]: https://github.com/fossasia/pslab-python/releases/tag/3.1.0
