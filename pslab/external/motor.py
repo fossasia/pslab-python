@@ -7,6 +7,8 @@ Examples
 >>> servo.angle = 30  # Turn motor to 30 degrees position.
 """
 
+import time
+from typing import List
 from typing import Union
 
 from pslab.instrument.waveform_generator import PWMGenerator
@@ -70,3 +72,21 @@ class Servo:
         angle *= self._max_angle_pulse - self._min_angle_pulse  # Scale
         angle += self._min_angle_pulse  # Offset
         return angle / (self._frequency**-1 * MICROSECONDS)
+
+
+class RoboticArm:
+    MAX_SERVOS = 4
+
+    def __init__(self, servos: List[Servo]) -> None:
+        if len(servos) > RoboticArm.MAX_SERVOS:
+            raise ValueError(
+                f"At most {RoboticArm.MAX_SERVOS} servos can be used, got {len(servos)}"
+            )
+        self.servos = servos
+
+    def run_schedule(self, timeline: List[List[int]]) -> None:
+        for i in range(len(timeline)):
+            for j in range(len(self.servos)):
+                angle = timeline[i][j]
+                self.servos[j].angle = angle
+            time.sleep(1)
