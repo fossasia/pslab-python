@@ -75,6 +75,8 @@ class Servo:
 
 
 class RoboticArm:
+    """Robotic arm controller for up to 4 servos."""
+
     MAX_SERVOS = 4
 
     def __init__(self, servos: List[Servo]) -> None:
@@ -85,6 +87,7 @@ class RoboticArm:
         self.servos = servos
 
     def run_schedule(self, timeline: List[List[int]]) -> None:
+        """Move servos based on a time-based angle schedule."""
         for i in range(len(timeline)):
             for j in range(len(self.servos)):
                 angle = timeline[i][j]
