@@ -87,12 +87,12 @@ class RoboticArm:
         self.servos = servos
 
     def run_schedule(self, timeline: List[List[int]], time_step: float = 1.0) -> None:
-     """Move servos based on a time-based angle schedule."""
-     tl_len = len(timeline[0])
-     if not all(len(tl) == tl_len for tl in timeline):
-        raise ValueError("All timeline entries must have the same length")
+        """Move servos based on a time-based angle schedule."""
+        tl_len = len(timeline[0])
+        if not all(len(tl) == tl_len for tl in timeline):
+            raise ValueError("All timeline entries must have the same length")
 
-     for tl in timeline:
-        for i, s in enumerate(self.servos):
-            s.angle = tl[i]
-        time.sleep(time_step) 
+        for tl in timeline:
+            for i, s in enumerate(self.servos):
+                s.angle = tl[i]
+            time.sleep(time_step)
