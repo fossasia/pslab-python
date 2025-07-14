@@ -87,7 +87,20 @@ class RoboticArm:
         self.servos = servos
 
     def run_schedule(self, timeline: List[List[int]], time_step: float = 1.0) -> None:
-        """Move servos based on a time-based angle schedule."""
+        """Run a time-based schedule to move servos.
+
+        Parameters
+        ----------
+        timeline : List[List[int]]
+            A list of timesteps,where each sublist represents one timestep,
+            with angles corresponding to each servo.
+
+        time_step : float, optional
+             Delay in seconds between each timestep. Default is 1.0.
+        """
+        if len(timeline[0]) != len(self.servos):
+            raise ValueError("Each timestep must specify an angle for every servo")
+
         tl_len = len(timeline[0])
         if not all(len(tl) == tl_len for tl in timeline):
             raise ValueError("All timeline entries must have the same length")
