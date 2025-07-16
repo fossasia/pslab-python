@@ -163,7 +163,7 @@ class RoboticArm:
 
         with open(filepath, mode="w", newline="") as csvfile:
             writer = csv.writer(csvfile)
-            writer.writerow(["Timestemp", "Servo1", "Servo2", "Servo3", "Servo4"])
+            writer.writerow(["Timestep", "Servo1", "Servo2", "Servo3", "Servo4"])
             for i, row in enumerate(timeline):
                 pos = ["null" if val is None else val for val in row]
                 writer.writerow([i] + pos)
