@@ -134,8 +134,8 @@ class RoboticArm:
             for row in reader:
                 angles = []
                 for key in ["Servo1", "Servo2", "Servo3", "Servo4"]:
-                    value = row.get(key, "").strip().lower()
-                    if value in ("", "null", "none"):
+                    value = row[key]
+                    if value == "null":
                         angles.append(None)
                     else:
                         angles.append(int(value))
