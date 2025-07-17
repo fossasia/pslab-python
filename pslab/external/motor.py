@@ -10,8 +10,11 @@ Examples
 import time
 from typing import List
 from typing import Union
+import csv
+import os
 
 from pslab.instrument.waveform_generator import PWMGenerator
+from datetime import datetime
 
 MICROSECONDS = 1e6
 
@@ -96,7 +99,7 @@ class RoboticArm:
             with angles corresponding to each servo.
 
         time_step : float, optional
-             Delay in seconds between each timestep. Default is 1.0.
+            Delay in seconds between each timestep. Default is 1.0.
         """
         if len(timeline[0]) != len(self.servos):
             raise ValueError("Each timestep must specify an angle for every servo")
@@ -107,5 +110,60 @@ class RoboticArm:
 
         for tl in timeline:
             for i, s in enumerate(self.servos):
-                s.angle = tl[i]
+                if tl[i] is not None:
+                    s.angle = tl[i]
             time.sleep(time_step)
+
+    def import_timeline_from_csv(self, filepath: str) -> List[List[int]]:
+        """Import timeline from a CSV file.
+
+        Parameters
+        ----------
+        filepath : str
+            Absolute or relative path to the CSV file to be read.
+
+        Returns
+        -------
+        List[List[int]]
+            A timeline consisting of servo angle values per timestep.
+        """
+        timeline = []
+
+        with open(filepath, mode="r", newline="") as csvfile:
+            reader = csv.DictReader(csvfile)
+            for row in reader:
+                angles = []
+                for key in ["Servo1", "Servo2", "Servo3", "Servo4"]:
+                    value = row[key]
+                    if value == "null":
+                        angles.append(None)
+                    else:
+                        angles.append(int(value))
+                timeline.append(angles)
+
+        return timeline
+
+    def export_timeline_to_csv(
+        self, timeline: List[List[Union[int, None]]], folderpath: str
+    ) -> None:
+        """Export timeline to a CSV file.
+
+        Parameters
+        ----------
+        timeline : List[List[Union[int, None]]]
+            A list of timesteps where each sublist contains servo angles.
+
+        folderpath : str
+            Directory path where the CSV file will be saved. The filename
+            will include a timestamp to ensure uniqueness.
+        """
+        timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        filename = f"Robotic_Arm{timestamp}.csv"
+        filepath = os.path.join(folderpath, filename)
+
+        with open(filepath, mode="w", newline="") as csvfile:
+            writer = csv.writer(csvfile)
+            writer.writerow(["Timestep", "Servo1", "Servo2", "Servo3", "Servo4"])
+            for i, row in enumerate(timeline):
+                pos = ["null" if val is None else val for val in row]
+                writer.writerow([i] + pos)
