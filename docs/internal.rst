@@ -28,20 +28,3 @@ Digital channels
     :undoc-members:
     :show-inheritance:
 
-Sources
--------
-
-.. autoclass:: pslab.instrument.power_supply.Source
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-.. autoclass:: pslab.instrument.power_supply.VoltageSource
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-.. autoclass:: pslab.instrument.power_supply.CurrentSource
-    :members:
-    :undoc-members:
-    :show-inheritance:
