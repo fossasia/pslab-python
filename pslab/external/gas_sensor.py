@@ -3,7 +3,7 @@
 from typing import Callable, Union
 
 from pslab import Multimeter
-from pslab.serial_handler import SerialHandler
+from pslab.connection import SerialHandler
 
 
 class MQ135:

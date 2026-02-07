@@ -35,7 +35,7 @@ from pslab import PowerSupply
 from pslab import PWMGenerator
 from pslab.instrument.waveform_generator import _get_wavelength
 from pslab.protocol import MAX_SAMPLES
-from pslab.serial_handler import SerialHandler
+from pslab.connection import SerialHandler
 
 
 class TCD1304:

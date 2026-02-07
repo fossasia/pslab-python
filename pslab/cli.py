@@ -32,7 +32,7 @@ import pslab.protocol as CP
 from pslab.instrument.logic_analyzer import LogicAnalyzer
 from pslab.instrument.oscilloscope import Oscilloscope
 from pslab.instrument.waveform_generator import WaveformGenerator, PWMGenerator
-from pslab.serial_handler import SerialHandler
+from pslab.connection import SerialHandler
 
 
 def logic_analyzer(
