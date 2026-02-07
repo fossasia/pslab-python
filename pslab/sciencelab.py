@@ -44,19 +44,26 @@ class ScienceLab:
         self.multimeter = Multimeter(device=self.device)
         self.power_supply = PowerSupply(device=self.device)
 
+    # Calibration parameters for CTMU temperature measurement.
+    # Format: {current_source: (offset, slope)}
+    _CTMU_TEMPERATURE_CALIBRATION = {
+        1: (646, 1.92),
+        2: (701.5, 1.74),
+        3: (760, 1.56),
+    }
+
     @property
     def temperature(self):
         """float: Temperature of the MCU in degrees Celsius."""
-        # TODO: Get rid of magic numbers.
         cs = 3
         V = self._get_ctmu_voltage(0b11110, cs, 0)
 
-        if cs == 1:
-            return (646 - V * 1000) / 1.92  # current source = 1
-        elif cs == 2:
-            return (701.5 - V * 1000) / 1.74  # current source = 2
-        elif cs == 3:
-            return (760 - V * 1000) / 1.56  # current source = 3
+        try:
+            offset, slope = self._CTMU_TEMPERATURE_CALIBRATION[cs]
+        except KeyError as exc:
+            msg = f"Unsupported CTMU current source: {cs}"
+            raise ValueError(msg) from exc
+        return (offset - V * 1000) / slope
 
     def _get_ctmu_voltage(self, channel: int, current_range: int, tgen: bool = True):
         """Control the Charge Time Measurement Unit (CTMU).
