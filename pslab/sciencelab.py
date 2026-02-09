@@ -8,8 +8,9 @@ collection.
 from __future__ import annotations
 
 import time
-from typing import Iterable, List
+from typing import Dict, Iterable, List, Tuple
 
+import numpy as np
 import pslab.protocol as CP
 from pslab.connection import ConnectionHandler, SerialHandler, autoconnect
 from pslab.instrument.logic_analyzer import LogicAnalyzer
@@ -44,28 +45,57 @@ class ScienceLab:
         self.multimeter = Multimeter(device=self.device)
         self.power_supply = PowerSupply(device=self.device)
 
-    # Calibration parameters for CTMU temperature measurement.
-    # Format: {current_source: (offset, slope)}
-    _CTMU_TEMPERATURE_CALIBRATION = {
+    # Calibration parameters for CTMU temperature measurement
+    # Format: {current_range_index: (offset_mV, slope)}
+    _CTMU_TEMPERATURE_CALIBRATION: Dict[int, Tuple[float, float]] = {
         1: (646, 1.92),
         2: (701.5, 1.74),
         3: (760, 1.56),
     }
 
+    # CTMU ADC channel used for internal temperature sensor
+    _CTMU_CHANNEL_TEMPERATURE = 0b11110
+
+    # Unit conversion factor
+    _VOLTS_TO_MILLIVOLTS = 1000
+
+    # Minimum valid CTMU voltage before switching current range (Volts)
+    _MIN_CTMU_VOLTAGE = 0.3
+
     @property
-    def temperature(self):
-        """float: Temperature of the MCU in degrees Celsius."""
-        cs = 3
-        V = self._get_ctmu_voltage(0b11110, cs, 0)
+    def temperature(self) -> float:
+        """Get the temperature of the MCU."""
+        # CTMU current range index (higher index = higher current)
+        current_range = 3
+
+        V = self._get_ctmu_voltage(
+            self._CTMU_CHANNEL_TEMPERATURE,
+            current_range,
+            0,
+        )
+
+        # If the voltage is too low, we might be using a too high current source
+        # range. Try to lower the range until we get a reasonable voltage.
+        while V < self._MIN_CTMU_VOLTAGE and current_range > 1:
+            current_range -= 1
+            V = self._get_ctmu_voltage(
+                self._CTMU_CHANNEL_TEMPERATURE,
+                current_range,
+                0,
+            )
 
         try:
-            offset, slope = self._CTMU_TEMPERATURE_CALIBRATION[cs]
+            offset, slope = self._CTMU_TEMPERATURE_CALIBRATION[current_range]
         except KeyError as exc:
-            msg = f"Unsupported CTMU current source: {cs}"
-            raise ValueError(msg) from exc
-        return (offset - V * 1000) / slope
+            raise ValueError(
+                f"Unsupported CTMU current range: {current_range}"
+            ) from exc
 
-    def _get_ctmu_voltage(self, channel: int, current_range: int, tgen: bool = True):
+        return (offset - V * self._VOLTS_TO_MILLIVOLTS) / slope
+
+    def _get_ctmu_voltage(
+        self, channel: int, current_range: int, tgen: bool = True
+    ) -> float:
         """Control the Charge Time Measurement Unit (CTMU).
 
         ctmu_voltage(5, 2) will activate a constant current source of 5.5 µA on
