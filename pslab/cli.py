@@ -32,7 +32,7 @@ import pslab.protocol as CP
 from pslab.instrument.logic_analyzer import LogicAnalyzer
 from pslab.instrument.oscilloscope import Oscilloscope
 from pslab.instrument.waveform_generator import WaveformGenerator, PWMGenerator
-from pslab.connection import SerialHandler
+from pslab.connection import SerialHandler, autoconnect
 
 
 def logic_analyzer(
@@ -222,6 +222,20 @@ def pwm(handler: SerialHandler, args: argparse.Namespace):
         )
 
 
+def _get_connected_handler(args: argparse.Namespace) -> SerialHandler:
+    """Get a connected SerialHandler based on arguments."""
+    try:
+        if args.port:
+            handler = SerialHandler(port=args.port)
+            handler.connect()
+        else:
+            handler = autoconnect()
+        return handler
+    except Exception as e:
+        print(f"Error: Could not connect to PSLab device. Details: {e}")
+        sys.exit(1)
+
+
 def main(args: argparse.Namespace):
     """Perform the given function on PSLab.
 
@@ -234,18 +248,21 @@ def main(args: argparse.Namespace):
         install(args)
         return
 
-    handler = SerialHandler(port=args.port)
-
     if args.function == "flash":
         flash(pslab.ScienceLab(args.port), args.hexfile)
         return
 
-    if args.function == "collect":
-        collect(handler, args)
-    elif args.function == "wave":
-        wave(handler, args)
-    elif args.function == "pwm":
-        pwm(handler, args)
+    handler = _get_connected_handler(args)
+
+    try:
+        if args.function == "collect":
+            collect(handler, args)
+        elif args.function == "wave":
+            wave(handler, args)
+        elif args.function == "pwm":
+            pwm(handler, args)
+    finally:
+        handler.disconnect()
 
 
 def get_parser() -> Tuple[argparse.ArgumentParser, argparse._SubParsersAction]:
