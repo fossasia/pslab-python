@@ -7,7 +7,7 @@ here.
 Serial handler
 ---------------
 
-.. automodule:: pslab.serial_handler
+.. automodule:: pslab.connection
     :members:
     :undoc-members:
     :show-inheritance:
