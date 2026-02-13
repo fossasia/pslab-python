@@ -22,16 +22,32 @@ from pslab.instrument.waveform_generator import PWMGenerator, WaveformGenerator
 class ScienceLab:
     """Aggregate interface for the PSLab's instruments.
 
+    Parameters
+    ----------
+    device : ConnectionHandler, optional
+        Connection handler for communicating with the PSLab device. If not
+        provided, a new one will be created via autoconnect. If both *device*
+        and *mock* are provided, *device* takes precedence and *mock* is
+        ignored.
+    mock : bool, optional
+        If True, use a MockHandler instead of connecting to physical hardware.
+        Instruments will not be instantiated in mock mode. The default is
+        False.
+
     Attributes
     ----------
-    logic_analyzer : pslab.LogicAnalyzer
-    oscilloscope : pslab.Oscilloscope
-    waveform_generator : pslab.WaveformGenerator
-    pwm_generator : pslab.PWMGenerator
-    multimeter : pslab.Multimeter
-    power_supply : pslab.PowerSupply
+    logic_analyzer : pslab.LogicAnalyzer or None
+    oscilloscope : pslab.Oscilloscope or None
+    waveform_generator : pslab.WaveformGenerator or None
+    pwm_generator : pslab.PWMGenerator or None
+    multimeter : pslab.Multimeter or None
+    power_supply : pslab.PowerSupply or None
     i2c : pslab.I2CMaster
     nrf : pslab.peripherals.NRF24L01
+
+    Notes
+    -----
+    Instrument attributes are None when initialized with mock=True.
     """
 
     def __init__(self, device: ConnectionHandler | None = None, mock: bool = False):
@@ -43,9 +59,7 @@ class ScienceLab:
             self.device = autoconnect()
         self.firmware = self.device.get_firmware_version()
 
-        # mock mode initializes without hardware; instruments are not initialized.
-
-        if not mock:
+        if not mock:  # In mock mode, skip instrument initialization to avoid hardware dependencies
             self.logic_analyzer = LogicAnalyzer(device=self.device)
             self.oscilloscope = Oscilloscope(device=self.device)
             self.waveform_generator = WaveformGenerator(device=self.device)

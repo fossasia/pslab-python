@@ -18,6 +18,15 @@ class MockHandler(ConnectionHandler):
     """
 
     def __init__(self, version: str = "PSLab V6 ", fw=(3, 0, 0)) -> None:
+        """Initialize MockHandler.
+
+        Parameters
+        ----------
+        version : str, optional
+            Version string to return when queried. Default is "PSLab V6 ".
+        fw : tuple of int, optional
+            Firmware version as a (major, minor, patch) tuple. Default is (3, 0, 0).
+        """
         self._rx = deque()  # bytes to be read
         self._tx = bytearray()  # bytes written by client
         self.version = version  # convenient attribute for callers
@@ -89,7 +98,7 @@ class MockHandler(ConnectionHandler):
         """
         # Detect “CP.COMMON, <cmd>” patterns
         while len(self._tx) >= 2:
-            if self._tx[0] != CP.COMMON:
+            if self._tx[0] != CP.COMMON[0]:
                 # Drop unknown leading bytes
                 self._tx.pop(0)
                 continue
@@ -98,13 +107,13 @@ class MockHandler(ConnectionHandler):
 
             # GET_VERSION: ConnectionHandler.get_version reads 9 bytes
             #  and checks b"PSLab"
-            if cmd == CP.GET_VERSION:
+            if cmd == CP.GET_VERSION[0]:
                 self._tx = self._tx[2:]
                 self._queue(self.version.encode("utf-8")[:9].ljust(9, b" "))
                 continue
 
             # GET_FW_VERSION: reads 3 bytes (major, minor, patch)
-            if cmd == CP.GET_FW_VERSION:
+            if cmd == CP.GET_FW_VERSION[0]:
                 self._tx = self._tx[2:]
                 major, minor, patch = self._fw
                 self._queue(bytes([major, minor, patch]))

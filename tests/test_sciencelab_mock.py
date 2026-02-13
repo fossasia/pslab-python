@@ -11,10 +11,10 @@ def test_sciencelab_mock_does_not_autoconnect():
     ):
         psl = ScienceLab(mock=True)
 
-    # It should initialize and provide a firmware version object.
-    assert psl.firmware.major >= 0
-    assert psl.firmware.minor >= 0
-    assert psl.firmware.patch >= 0
+    # It should initialize and provide the expected mock firmware version object.
+    assert psl.firmware.major == 3
+    assert psl.firmware.minor == 0
+    assert psl.firmware.patch == 0
 
     # In mock mode, instruments should not be instantiated (no hardware required).
     assert psl.logic_analyzer is None

@@ -5,7 +5,7 @@ from serial.tools import list_ports
 from .connection import ConnectionHandler
 from ._serial import SerialHandler
 from .wlan import WLANHandler
-from pslab.connection.mock import MockHandler
+from .mock import MockHandler
 
 __all__ = [
     "ConnectionHandler",
