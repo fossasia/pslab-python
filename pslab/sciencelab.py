@@ -11,7 +11,7 @@ import time
 from typing import Iterable, List
 
 import pslab.protocol as CP
-from pslab.connection import ConnectionHandler, SerialHandler, autoconnect
+from pslab.connection import ConnectionHandler, SerialHandler, MockHandler, autoconnect
 from pslab.instrument.logic_analyzer import LogicAnalyzer
 from pslab.instrument.multimeter import Multimeter
 from pslab.instrument.oscilloscope import Oscilloscope
@@ -34,15 +34,31 @@ class ScienceLab:
     nrf : pslab.peripherals.NRF24L01
     """
 
-    def __init__(self, device: ConnectionHandler | None = None):
-        self.device = device if device is not None else autoconnect()
+    def __init__(self, device: ConnectionHandler | None = None, mock: bool = False):
+        if device is not None:
+            self.device = device
+        elif mock:
+            self.device = MockHandler()
+        else:
+            self.device = autoconnect()
         self.firmware = self.device.get_firmware_version()
-        self.logic_analyzer = LogicAnalyzer(device=self.device)
-        self.oscilloscope = Oscilloscope(device=self.device)
-        self.waveform_generator = WaveformGenerator(device=self.device)
-        self.pwm_generator = PWMGenerator(device=self.device)
-        self.multimeter = Multimeter(device=self.device)
-        self.power_supply = PowerSupply(device=self.device)
+
+        # mock mode initializes without hardware; instruments are not initialized.
+
+        if not mock:
+            self.logic_analyzer = LogicAnalyzer(device=self.device)
+            self.oscilloscope = Oscilloscope(device=self.device)
+            self.waveform_generator = WaveformGenerator(device=self.device)
+            self.pwm_generator = PWMGenerator(device=self.device)
+            self.multimeter = Multimeter(device=self.device)
+            self.power_supply = PowerSupply(device=self.device)
+        else:
+            self.logic_analyzer = None
+            self.oscilloscope = None
+            self.waveform_generator = None
+            self.pwm_generator = None
+            self.multimeter = None
+            self.power_supply = None
 
     @property
     def temperature(self):
