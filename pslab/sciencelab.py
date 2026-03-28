@@ -19,31 +19,6 @@ from pslab.instrument.power_supply import PowerSupply
 from pslab.instrument.waveform_generator import PWMGenerator, WaveformGenerator
 
 
-class ScienceLab:
-    """Aggregate interface for the PSLab's instruments.
-
-    Attributes
-    ----------
-    logic_analyzer : pslab.LogicAnalyzer
-    oscilloscope : pslab.Oscilloscope
-    waveform_generator : pslab.WaveformGenerator
-    pwm_generator : pslab.PWMGenerator
-    multimeter : pslab.Multimeter
-    power_supply : pslab.PowerSupply
-    i2c : pslab.I2CMaster
-    nrf : pslab.peripherals.NRF24L01
-    """
-
-    def __init__(self, device: ConnectionHandler | None = None):
-        self.device = device if device is not None else autoconnect()
-        self.firmware = self.device.get_firmware_version()
-        self.logic_analyzer = LogicAnalyzer(device=self.device)
-        self.oscilloscope = Oscilloscope(device=self.device)
-        self.waveform_generator = WaveformGenerator(device=self.device)
-        self.pwm_generator = PWMGenerator(device=self.device)
-        self.multimeter = Multimeter(device=self.device)
-        self.power_supply = PowerSupply(device=self.device)
-
      # CTMU current range index for temperature measurement (0b11110 = 55 µA)
 _CTMU_CURRENT_RANGE_55UA = 0b11110
 
