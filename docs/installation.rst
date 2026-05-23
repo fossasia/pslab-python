@@ -12,7 +12,7 @@ pslab-python to be able to communicate with the PSLab device. The file
 should be copied to /etc/udev/rules.d/.
 
 **Note**: pslab-python does not provide a graphical user interface. If you want
-a GUI, install the [pslab-desktop app](https://github.com/fossasia/pslab-desktop).
+a GUI, install the `PSLab app <https://github.com/fossasia/pslab-app>`__.
 
 Dependencies
 ------------

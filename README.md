@@ -29,7 +29,7 @@ pslab-python can be installed from PyPI:
 
 **Note**: Windows users who use the PSLab v6 device must download and install the CP210x Windows Drivers from the [Silicon Labs website](https://www.silabs.com/developers/usb-to-uart-bridge-vcp-drivers?tab=downloads) in order for pslab-python to be able to communicate with the PSLab device.
 
-**Note**: If you are only interested in using PSLab as an acquisition device without a display/GUI, only pslab-python needs to be installed. If you would like a GUI, install the [pslab-desktop app](https://github.com/fossasia/pslab-desktop) and follow the instructions of the Readme in that repo.
+**Note**: If you are only interested in using PSLab as an acquisition device without a display/GUI, only pslab-python needs to be installed. If you would like a GUI, install the [PSLab app](https://github.com/fossasia/pslab-app) and follow the instructions of the Readme in that repo.
 
 
 ## Validate installation
