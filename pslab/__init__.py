@@ -5,12 +5,14 @@ from pslab.instrument.multimeter import Multimeter
 from pslab.instrument.oscilloscope import Oscilloscope
 from pslab.instrument.power_supply import PowerSupply
 from pslab.instrument.waveform_generator import PWMGenerator, WaveformGenerator
+from pslab.pico import PicoDevice
 from pslab.sciencelab import ScienceLab
 
 __all__ = (
     "LogicAnalyzer",
     "Multimeter",
     "Oscilloscope",
+    "PicoDevice",
     "PowerSupply",
     "PWMGenerator",
     "WaveformGenerator",
