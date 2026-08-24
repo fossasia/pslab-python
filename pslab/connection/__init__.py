@@ -5,6 +5,15 @@ from serial.tools import list_ports
 from .connection import ConnectionHandler
 from ._serial import SerialHandler
 from .wlan import WLANHandler
+from .mock import MockHandler
+
+__all__ = [
+    "ConnectionHandler",
+    "SerialHandler",
+    "WLANHandler",
+    "autoconnect",
+    "MockHandler",
+]
 
 
 def detect() -> list[ConnectionHandler]:

@@ -11,7 +11,7 @@ import time
 from typing import Iterable, List
 
 import pslab.protocol as CP
-from pslab.connection import ConnectionHandler, SerialHandler, autoconnect
+from pslab.connection import ConnectionHandler, SerialHandler, MockHandler, autoconnect
 from pslab.instrument.logic_analyzer import LogicAnalyzer
 from pslab.instrument.multimeter import Multimeter
 from pslab.instrument.oscilloscope import Oscilloscope
@@ -22,27 +22,57 @@ from pslab.instrument.waveform_generator import PWMGenerator, WaveformGenerator
 class ScienceLab:
     """Aggregate interface for the PSLab's instruments.
 
+    Parameters
+    ----------
+    device : ConnectionHandler, optional
+        Connection handler for communicating with the PSLab device. If not
+        provided, a new one will be created via autoconnect. If both *device*
+        and *mock* are provided, *device* takes precedence and *mock* is
+        ignored.
+    mock : bool, optional
+        If True, use a MockHandler instead of connecting to physical hardware.
+        Instruments will not be instantiated in mock mode. The default is
+        False.
+
     Attributes
     ----------
-    logic_analyzer : pslab.LogicAnalyzer
-    oscilloscope : pslab.Oscilloscope
-    waveform_generator : pslab.WaveformGenerator
-    pwm_generator : pslab.PWMGenerator
-    multimeter : pslab.Multimeter
-    power_supply : pslab.PowerSupply
+    logic_analyzer : pslab.LogicAnalyzer or None
+    oscilloscope : pslab.Oscilloscope or None
+    waveform_generator : pslab.WaveformGenerator or None
+    pwm_generator : pslab.PWMGenerator or None
+    multimeter : pslab.Multimeter or None
+    power_supply : pslab.PowerSupply or None
     i2c : pslab.I2CMaster
     nrf : pslab.peripherals.NRF24L01
+
+    Notes
+    -----
+    Instrument attributes are None when initialized with mock=True.
     """
 
-    def __init__(self, device: ConnectionHandler | None = None):
-        self.device = device if device is not None else autoconnect()
+    def __init__(self, device: ConnectionHandler | None = None, mock: bool = False):
+        if device is not None:
+            self.device = device
+        elif mock:
+            self.device = MockHandler()
+        else:
+            self.device = autoconnect()
         self.firmware = self.device.get_firmware_version()
-        self.logic_analyzer = LogicAnalyzer(device=self.device)
-        self.oscilloscope = Oscilloscope(device=self.device)
-        self.waveform_generator = WaveformGenerator(device=self.device)
-        self.pwm_generator = PWMGenerator(device=self.device)
-        self.multimeter = Multimeter(device=self.device)
-        self.power_supply = PowerSupply(device=self.device)
+
+        if not mock:  # In mock mode, skip instrument initialization to avoid hardware dependencies
+            self.logic_analyzer = LogicAnalyzer(device=self.device)
+            self.oscilloscope = Oscilloscope(device=self.device)
+            self.waveform_generator = WaveformGenerator(device=self.device)
+            self.pwm_generator = PWMGenerator(device=self.device)
+            self.multimeter = Multimeter(device=self.device)
+            self.power_supply = PowerSupply(device=self.device)
+        else:
+            self.logic_analyzer = None
+            self.oscilloscope = None
+            self.waveform_generator = None
+            self.pwm_generator = None
+            self.multimeter = None
+            self.power_supply = None
 
     @property
     def temperature(self):
