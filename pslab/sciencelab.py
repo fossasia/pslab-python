@@ -18,6 +18,17 @@ from pslab.instrument.oscilloscope import Oscilloscope
 from pslab.instrument.power_supply import PowerSupply
 from pslab.instrument.waveform_generator import PWMGenerator, WaveformGenerator
 
+# --- Hardware Constants ---
+ADC_VMAX = 3.3  # Maximum voltage for ADC
+ADC_RESOLUTION = 12  # ADC resolution in bits
+
+# --- Internal Temperature Sensor Calibration ---
+# Constants for different current sources (1, 2, and 3)
+TEMP_CALIB = {
+    1: {"offset": 646.0, "slope": 1.92},   #
+    2: {"offset": 701.5, "slope": 1.74},   #
+    3: {"offset": 760.0, "slope": 1.56},   #
+}
 
 class ScienceLab:
     """Aggregate interface for the PSLab's instruments.
@@ -47,16 +58,15 @@ class ScienceLab:
     @property
     def temperature(self):
         """float: Temperature of the MCU in degrees Celsius."""
-        # TODO: Get rid of magic numbers.
+        # Magic numbers resolved using global TEMP_CALIB dictionary
         cs = 3
         V = self._get_ctmu_voltage(0b11110, cs, 0)
-
-        if cs == 1:
-            return (646 - V * 1000) / 1.92  # current source = 1
-        elif cs == 2:
-            return (701.5 - V * 1000) / 1.74  # current source = 2
-        elif cs == 3:
-            return (760 - V * 1000) / 1.56  # current source = 3
+        
+        # Clean lookup from global constants
+        cal = TEMP_CALIB.get(cs)
+        if cal is None:
+         raise ValueError(f"Unsupported current source: {cs}")
+        return (cal["offset"] - V * 1000) / cal["slope"]
 
     def _get_ctmu_voltage(self, channel: int, current_range: int, tgen: bool = True):
         """Control the Charge Time Measurement Unit (CTMU).
@@ -94,9 +104,8 @@ class ScienceLab:
         self.device.send_byte((channel) | (current_range << 5) | (tgen << 7))
         raw_voltage = self.get_int() / 16  # 16*voltage across the current source
         self.device.get_ack()
-        vmax = 3.3
-        resolution = 12
-        voltage = vmax * raw_voltage / (2**resolution - 1)
+        # Use global hardware constants instead of local magic numbers
+        voltage = ADC_VMAX * raw_voltage / (2**ADC_RESOLUTION - 1)
         return voltage
 
     def _start_ctmu(self, current_range: int, trim: int, tgen: int = 1):
