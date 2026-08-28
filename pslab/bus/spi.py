@@ -51,9 +51,9 @@ class _SPIPrimitive:
     """
 
     _TRANSFER_COMMANDS_MAP = {
-        8: CP.SEND_SPI8,
-        16: CP.SEND_SPI16,
-    }  # PSLab only supports 8 and 16 bits.
+        8: CP.SEND_SPI8_BURST,
+        16: CP.SEND_SPI16_BURST,
+    } # PSLab only supports 8 and 16 bits.
     _INTEGER_TYPE_MAP = {
         8: CP.Byte,
         16: CP.ShortInt,
@@ -214,29 +214,6 @@ class _SPIPrimitive:
             cls._smp,
         )
 
-    def _start(self):
-        """Select SPI channel to enable.
-
-        Basically sets the relevant chip select pin to LOW.
-
-        External ChipSelect pins:
-            version < 5 : {6, 7} # RC5, RC4 (dropped support)
-            version == 5 : {} (don't have any external CS pins)
-            version == 6 : {7} # RC4
-        """
-        self._device.send_byte(CP.SPI_HEADER)
-        self._device.send_byte(CP.START_SPI)
-        self._device.send_byte(7)  # SPI.CS v6
-        # No ACK because `RESPONSE == DO_NOT_BOTHER` in firmware.
-
-    def _stop(self):
-        """Select SPI channel to disable.
-
-        Sets the relevant chip select pin to HIGH.
-        """
-        self._device.send_byte(CP.SPI_HEADER)
-        self._device.send_byte(CP.STOP_SPI)
-        self._device.send_byte(7)  # SPI.CS v6
 
     def _transfer(self, data: int, bits: int) -> int:
         """Send data over SPI and receive data from SPI simultaneously.
@@ -508,9 +485,7 @@ class SPISlave(_SPIPrimitive):
         data_in : int
             Data returned by slave device.
         """
-        self._start()
         data_in = self._transfer(data, 8)
-        self._stop()
 
         return data_in
 
@@ -527,9 +502,7 @@ class SPISlave(_SPIPrimitive):
         data_in : int
             Data returned by slave device.
         """
-        self._start()
         data_in = self._transfer(data, 16)
-        self._stop()
 
         return data_in
 
@@ -546,9 +519,7 @@ class SPISlave(_SPIPrimitive):
         data_in : list of int
             List of 8-bit data returned by slave device.
         """
-        self._start()
         data_in = self._transfer_bulk(data, 8)
-        self._stop()
 
         return data_in
 
@@ -565,9 +536,7 @@ class SPISlave(_SPIPrimitive):
         data_in : list of int
             List of 16-bit data returned by slave device.
         """
-        self._start()
         data_in = self._transfer_bulk(data, 16)
-        self._stop()
 
         return data_in
 
@@ -579,9 +548,7 @@ class SPISlave(_SPIPrimitive):
         int
             Data returned by slave device.
         """
-        self._start()
         data_in = self._read(8)
-        self._stop()
 
         return data_in
 
@@ -593,9 +560,7 @@ class SPISlave(_SPIPrimitive):
         int
             Data returned by slave device.
         """
-        self._start()
         data_in = self._read(16)
-        self._stop()
 
         return data_in
 
@@ -612,9 +577,7 @@ class SPISlave(_SPIPrimitive):
         list of int
             List of 8-bit data returned by slave device.
         """
-        self._start()
         data_in = self._read_bulk(data_to_read, 8)
-        self._stop()
 
         return data_in
 
@@ -631,9 +594,7 @@ class SPISlave(_SPIPrimitive):
         list of int
             List of 16-bit date returned by slave device.
         """
-        self._start()
         data_in = self._read_bulk(data_to_read, 16)
-        self._stop()
 
         return data_in
 

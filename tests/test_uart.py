@@ -16,7 +16,7 @@ from pslab.connection import SerialHandler
 WRITE_DATA = 0x55
 TXD2 = "LA1"
 RXD2 = "SQ1"
-PWM_FERQUENCY = UART._baudrate // 2
+# Static value 500kHz (half of default 1MHz baudrate) used as instance property cannot be accessed here.
 MICROSECONDS = 1e-6
 RELTOL = 0.05
 # Number of expected logic level changes.
@@ -36,10 +36,11 @@ def la(handler: SerialHandler) -> LogicAnalyzer:
 
 
 @pytest.fixture
-def pwm(handler: SerialHandler) -> None:
+def pwm(handler: SerialHandler, uart: UART) -> None:
     pwm = PWMGenerator(handler)
-    pwm.generate(RXD2, PWM_FERQUENCY, 0.5)
-
+    # 500000.0 ki jagah dynamic formula
+    pwm_frequency = uart._baudrate / 2.0
+    pwm.generate(RXD2, pwm_frequency, 0.5)
 
 def test_configure(la: LogicAnalyzer, uart: UART):
     baudrate = 1000000

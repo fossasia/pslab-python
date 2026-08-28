@@ -1,5 +1,11 @@
-"""TODO"""
+"""
+PSLab Communication Protocol Constants.
 
+This module defines the command headers, function codes, and constant 
+values used to communicate with the PSLab hardware. It serves as a 
+centralized registry for the byte-level protocol between the Python 
+library and the device firmware.
+"""
 import enum
 import struct
 
