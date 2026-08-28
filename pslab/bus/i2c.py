@@ -58,6 +58,7 @@ class _I2CPrimitive:
         self._device = device if device is not None else autoconnect()
         self._running = False
         self._mode = None
+        self._frequency = None
 
     def _init(self):
         self._device.send_byte(CP.I2C_HEADER)
@@ -84,6 +85,7 @@ class _I2CPrimitive:
             self._device.send_byte(CP.I2C_CONFIG)
             self._device.send_int(brgval)
             self._device.get_ack()
+            self._frequency = self._get_i2c_frequency(brgval)
         else:
             min_frequency = self._get_i2c_frequency(self._MAX_BRGVAL)
             max_frequency = self._get_i2c_frequency(self._MIN_BRGVAL)
@@ -451,6 +453,11 @@ class I2CMaster(_I2CPrimitive):
         super().__init__(device)
         self._init()
         self.configure(125e3)  # 125 kHz is as low as the PSLab can go.
+
+    @property
+    def frequency(self):
+        """float: The I2C bus frequency in Hz."""
+        return self._frequency
 
     def configure(self, frequency: float):
         """Configure bus frequency.
