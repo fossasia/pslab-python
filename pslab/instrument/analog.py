@@ -143,13 +143,20 @@ class AnalogInput:
         self._resolution = 2**value - 1
         self._calibrate()
 
-    def _calibrate(self):
-        A = INPUT_RANGES[self._name][0] / self._gain
-        B = INPUT_RANGES[self._name][1] / self._gain
-        slope = B - A
-        intercept = A
-        self._scale = np.poly1d([slope / self._resolution, intercept])
-        self._unscale = np.poly1d(
+   def _calibrate(self):
+    """
+    Calculates the scaling coefficients based on current gain and resolution.
+
+    This updates the internal _scale and _unscale callables as a side effect,
+    preparing them to convert between raw integer ADC values and floating
+    point voltages.
+    """
+    A = INPUT_RANGES[self._name][0] / self._gain
+    B = INPUT_RANGES[self._name][1] / self._gain
+    slope = B - A
+    intercept = A
+    self._scale = np.poly1d([slope / self._resolution, intercept])
+    self._unscale = np.poly1d(
             [self._resolution / slope, -self._resolution * intercept / slope]
         )
 
@@ -239,8 +246,7 @@ class AnalogOutput:
         """numpy.ndarray: 32-value waveform table loaded on this output."""
         # Max PWM duty cycle out of 64 clock  cycles.
         return self._range_normalize(self._waveform_table[::16], 63)
-
-    def _range_normalize(self, x: np.ndarray, norm: int = 1) -> np.ndarray:
-        """Normalize waveform table to the digital output range."""
-        x = (x - self.RANGE[0]) / (self.RANGE[1] - self.RANGE[0]) * norm
-        return np.int16(np.round(x)).tolist()
+def _range_normalize(self, x: np.ndarray, norm: int = 1) -> np.ndarray:
+    """Normalize waveform table to the digital output range."""
+    x = (x - self.RANGE[0]) / (self.RANGE[1] - self.RANGE[0]) * norm
+    return np.int16(np.round(x)).tolist()
