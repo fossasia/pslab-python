@@ -1,64 +1,136 @@
-from pslab.bus import I2CSlave
+"""MLX90614 infrared thermometer.
+
+This module provides an interface for the MLX90614 non-contact infrared
+temperature sensor, connected to the PSLab via I2C.
+
+Examples
+--------
+Read object (target) temperature:
+
+>>> from pslab.external.MLX90614 import MLX90614
+>>> sensor = MLX90614()
+>>> sensor.get_object_temperature()
+25.73
+
+Read ambient (sensor body) temperature:
+
+>>> sensor.get_ambient_temperature()
+24.18
+"""
+
+import logging
+from typing import List, Optional
+
+from pslab.bus.i2c import I2CSlave
+from pslab.connection import ConnectionHandler
+
+logger = logging.getLogger(__name__)
+
 
 class MLX90614(I2CSlave):
+    """MLX90614 non-contact infrared temperature sensor.
+
+    The MLX90614 is a passive infrared (PIR) sensor that measures
+    temperature without physical contact. It can measure both the
+    temperature of a target object and its own ambient temperature.
+
+    The sensor communicates over SMBus (a subset of I2C) at address 0x5A
+    and supports bus speeds up to 100 kHz.
+
+    Parameters
+    ----------
+    device : :class:`ConnectionHandler`, optional
+        Serial connection to PSLab device. If not provided, a new one
+        will be created.
+
+    Attributes
+    ----------
+    NUMPLOTS : int
+        Number of data plots for GUI integration.
+    PLOTNAMES : list of str
+        Labels for data plots.
+    name : str
+        Human-readable sensor name.
+    """
+
     _ADDRESS = 0x5A
-    _OBJADDR = 0x07
-    _AMBADDR = 0x06
+    _OBJ_REGISTER = 0x07
+    _AMB_REGISTER = 0x06
     NUMPLOTS = 1
-    PLOTNAMES = ['Temp']
-    name = 'PIR temperature'
+    PLOTNAMES = ["Temp"]
+    name = "PIR temperature"
 
-    def __init__(self):
-        super().__init__(self._ADDRESS)
+    def __init__(self, device: Optional[ConnectionHandler] = None):
+        super().__init__(self._ADDRESS, device=device)
+        self._source = self._OBJ_REGISTER
+        self.name = "Passive IR temperature sensor"
 
-        self.source = self._OBJADDR
+    def select_source(self, source: str):
+        """Select which temperature source to read.
 
-        self.name = 'Passive IR temperature sensor'
-        self.params = {'readReg': {'dataType': 'integer', 'min': 0, 'max': 0x20, 'prefix': 'Addr: '},
-                       'select_source': ['object temperature', 'ambient temperature']}
+        Parameters
+        ----------
+        source : str
+            Either ``'object temperature'`` or ``'ambient temperature'``.
+        """
+        if source == "object temperature":
+            self._source = self._OBJ_REGISTER
+        elif source == "ambient temperature":
+            self._source = self._AMB_REGISTER
 
-        # try:
-        #     print('switching baud to 100k')
-        #     self.I2C.configI2C(100e3)
-        # except Exception as e:
-        #     print('FAILED TO CHANGE BAUD RATE', e.message)
+    def read_reg(self, register: int):
+        """Read and log a 16-bit register value.
 
-    def select_source(self, source):
-        if source == 'object temperature':
-            self.source = self._OBJADDR
-        elif source == 'ambient temperature':
-            self.source = self._AMBADDR
+        Parameters
+        ----------
+        register : int
+            Register address to read (0x00–0x20).
+        """
+        data = self.read(2, register)
+        value = data[0] | (data[1] << 8)
+        logger.info("Register %s: %s", hex(register), hex(value))
 
-    def readReg(self, addr):
-        x = self.getVals(addr, 2)
-        print(hex(addr), hex(x[0] | (x[1] << 8)))
+    def get_raw(self) -> Optional[List[float]]:
+        """Read raw temperature from the currently selected source.
 
-    def getVals(self, addr, numbytes):
-        vals = self.read(numbytes, addr)
-        return vals
+        The raw value is read as a 3-byte SMBus word (LSB, MSB, PEC)
+        and converted from the sensor's internal unit (0.02 K per LSB)
+        to degrees Celsius.
 
-    def getRaw(self):
-        vals = self.getVals(self.source, 3)
-        if vals:
-            if len(vals) == 3:
-                return [((((vals[1] & 0x007f) << 8) + vals[0]) * 0.02) - 0.01 - 273.15]
-            else:
-                return False
-        else:
-            return False
+        Returns
+        -------
+        list of float or None
+            Single-element list with temperature in °C, or None if
+            the read failed.
+        """
+        data = self.read(3, self._source)
 
-    def getObjectTemperature(self):
-        self.source = self._OBJADDR
-        val = self.getRaw()
-        if val:
-            return val[0]
-        else:
-            return False
+        if data and len(data) == 3:
+            raw = (((data[1] & 0x007F) << 8) + data[0]) * 0.02 - 0.01
+            return [raw - 273.15]
 
-    def getAmbientTemperature(self):
-        self.source = self._AMBADDR
-        val = self.getRaw()
-        if val:
-            return val[0]
-        else:
-            return False
+        return None
+
+    def get_object_temperature(self) -> Optional[float]:
+        """Read the temperature of the target object.
+
+        Returns
+        -------
+        float or None
+            Object temperature in °C, or None if the read failed.
+        """
+        self._source = self._OBJ_REGISTER
+        result = self.get_raw()
+        return result[0] if result else None
+
+    def get_ambient_temperature(self) -> Optional[float]:
+        """Read the ambient (sensor body) temperature.
+
+        Returns
+        -------
+        float or None
+            Ambient temperature in °C, or None if the read failed.
+        """
+        self._source = self._AMB_REGISTER
+        result = self.get_raw()
+        return result[0] if result else None
