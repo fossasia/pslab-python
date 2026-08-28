@@ -144,6 +144,13 @@ class AnalogInput:
         self._calibrate()
 
     def _calibrate(self):
+        """
+        Calculates the scaling coefficients based on current gain and resolution.
+
+        This updates the internal _scale and _unscale callables as a side effect,
+        preparing them to convert between raw integer ADC values and floating
+        point voltages.
+        """
         A = INPUT_RANGES[self._name][0] / self._gain
         B = INPUT_RANGES[self._name][1] / self._gain
         slope = B - A
