@@ -1,7 +1,5 @@
 """Contains modules for interfacing with the PSLab's I2C, SPI, and UART buses."""
 
-import sys
-
 
 class classmethod_(classmethod):
     """Support chaining classmethod and property."""
@@ -11,11 +9,11 @@ class classmethod_(classmethod):
         super().__init__(f)
 
     def __get__(self, obj, cls=None):
-        # classmethod() to support chained decorators; new in python 3.9.
-        if sys.version_info < (3, 9) and isinstance(self.f, property):
+        if cls is None:
+            cls = type(obj)
+        if isinstance(self.f, property):
             return self.f.__get__(cls)
-        else:
-            return super().__get__(obj, cls)
+        return super().__get__(obj, cls)
 
 
 from pslab.bus.i2c import I2CMaster, I2CSlave  # noqa: E402

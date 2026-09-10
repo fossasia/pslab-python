@@ -30,7 +30,7 @@ SDI = ["LA4", "SQ1"]
 CS = "LA3"
 SPIMaster._primary_prescaler = PPRE = 0
 SPIMaster._secondary_prescaler = SPRE = 0
-PWM_FERQUENCY = SPIMaster._frequency * 2 / 3
+PWM_FREQUENCY = SPIMaster._frequency * 2 / 3
 MICROSECONDS = 1e-6
 RELTOL = 0.05
 # Number of expected logic level changes.
@@ -61,7 +61,7 @@ def slave(handler: SerialHandler) -> SPISlave:
 @pytest.fixture
 def la(handler: SerialHandler) -> LogicAnalyzer:
     pwm = PWMGenerator(handler)
-    pwm.generate(SDI[1], PWM_FERQUENCY, 0.5)
+    pwm.generate(SDI[1], PWM_FREQUENCY, 0.5)
     return LogicAnalyzer(handler)
 
 
@@ -73,7 +73,7 @@ def verify_value(
     smp: int = 0,
 ):
     sck_ts = sck_timestamps[smp::2]
-    pwm_half_period = ((1 / PWM_FERQUENCY) * 1e6) / 2  # microsecond
+    pwm_half_period = ((1 / PWM_FREQUENCY) * 1e6) / 2  # microsecond
 
     pattern = ""
     for t in sck_ts:
@@ -310,3 +310,27 @@ def test_transfer16_bulk(la: LogicAnalyzer, slave: SPISlave):
     assert len(sdo) == 0
     assert verify_value(value[0], sck, sdi_initstate, sdi[:32])
     assert verify_value(value[1], sck, sdi_initstate, sdi[32:])
+
+
+def test_frequency_property():
+    """Verify that SPIMaster._frequency returns a numeric float."""
+    assert isinstance(SPIMaster._frequency, float)
+    assert SPIMaster._frequency > 0
+    master = SPIMaster.__new__(SPIMaster)
+    assert isinstance(master._frequency, float)
+    assert master._frequency == SPIMaster._frequency
+
+
+def test_pwm_frequency_calculation():
+    """Verify that PWM_FREQUENCY is correctly calculated from SPIMaster._frequency."""
+    assert isinstance(PWM_FREQUENCY, float)
+    assert PWM_FREQUENCY == SPIMaster._frequency * 2 / 3
+
+
+def test_clock_phase_property():
+    """Verify that SPIMaster._clock_phase returns an integer."""
+    assert isinstance(SPIMaster._clock_phase, int)
+    assert SPIMaster._clock_phase in (0, 1)
+    master = SPIMaster.__new__(SPIMaster)
+    assert isinstance(master._clock_phase, int)
+    assert master._clock_phase == SPIMaster._clock_phase

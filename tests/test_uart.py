@@ -16,7 +16,7 @@ from pslab.connection import SerialHandler
 WRITE_DATA = 0x55
 TXD2 = "LA1"
 RXD2 = "SQ1"
-PWM_FERQUENCY = UART._baudrate // 2
+PWM_FREQUENCY = UART._baudrate // 2
 MICROSECONDS = 1e-6
 RELTOL = 0.05
 # Number of expected logic level changes.
@@ -38,7 +38,7 @@ def la(handler: SerialHandler) -> LogicAnalyzer:
 @pytest.fixture
 def pwm(handler: SerialHandler) -> None:
     pwm = PWMGenerator(handler)
-    pwm.generate(RXD2, PWM_FERQUENCY, 0.5)
+    pwm.generate(RXD2, PWM_FREQUENCY, 0.5)
 
 
 def test_configure(la: LogicAnalyzer, uart: UART):
@@ -82,3 +82,18 @@ def test_read_int(pwm: PWMGenerator, uart: UART):
     value = uart.read_int()
 
     assert value in (0x5555, 0x55AA, 0xAA55, 0xAAAA)
+
+
+def test_baudrate_property():
+    """Verify that UART._baudrate returns a numeric float."""
+    assert isinstance(UART._baudrate, float)
+    assert UART._baudrate > 0
+    uart = UART.__new__(UART)
+    assert isinstance(uart._baudrate, float)
+    assert uart._baudrate == UART._baudrate
+
+
+def test_pwm_frequency_calculation():
+    """Verify that PWM_FREQUENCY is correctly calculated from UART._baudrate."""
+    assert isinstance(PWM_FREQUENCY, float)
+    assert PWM_FREQUENCY == UART._baudrate // 2
