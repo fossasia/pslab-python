@@ -125,7 +125,8 @@ class RoboticArm:
         Returns
         -------
         List[List[int]]
-            A timeline consisting of servo angle values per timestep.
+            A timeline consisting of servo angle values per timestep, with one
+            angle per servo of this arm.
         """
         timeline = []
 
@@ -133,13 +134,18 @@ class RoboticArm:
             reader = csv.DictReader(csvfile)
             for row in reader:
                 angles = []
-                for key in ["Servo1", "Servo2", "Servo3", "Servo4"]:
-                    value = row[key]
-                    if value == "null":
+                for i in range(1, RoboticArm.MAX_SERVOS + 1):
+                    value = row.get(f"Servo{i}")
+                    # Short rows from older exports leave trailing servos unset.
+                    if value in (None, "", "null"):
                         angles.append(None)
                     else:
                         angles.append(int(value))
-                timeline.append(angles)
+                if any(angle is not None for angle in angles[len(self.servos) :]):
+                    raise ValueError(
+                        f"Timeline sets angles for more than {len(self.servos)} servos"
+                    )
+                timeline.append(angles[: len(self.servos)])
 
         return timeline
 
