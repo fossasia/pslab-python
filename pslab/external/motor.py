@@ -132,10 +132,15 @@ class RoboticArm:
 
         with open(filepath, mode="r", newline="") as csvfile:
             reader = csv.DictReader(csvfile)
+            columns = [f"Servo{i}" for i in range(1, RoboticArm.MAX_SERVOS + 1)]
+            if reader.fieldnames is None or any(
+                column not in reader.fieldnames for column in columns
+            ):
+                raise ValueError("CSV must contain the Servo1-Servo4 columns")
             for row in reader:
                 angles = []
-                for i in range(1, RoboticArm.MAX_SERVOS + 1):
-                    value = row.get(f"Servo{i}")
+                for column in columns:
+                    value = row.get(column)
                     # Short rows from older exports leave trailing servos unset.
                     if value in (None, "", "null"):
                         angles.append(None)
@@ -163,6 +168,12 @@ class RoboticArm:
             Directory path where the CSV file will be saved. The filename
             will include a timestamp to ensure uniqueness.
         """
+        for i, row in enumerate(timeline):
+            if len(row) > RoboticArm.MAX_SERVOS:
+                raise ValueError(
+                    f"Timestep {i} has more than {RoboticArm.MAX_SERVOS} angles"
+                )
+
         timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
         filename = f"Robotic_Arm{timestamp}.csv"
         filepath = os.path.join(folderpath, filename)
