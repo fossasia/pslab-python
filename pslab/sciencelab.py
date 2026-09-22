@@ -123,7 +123,7 @@ class ScienceLab:
             raise RuntimeError(msg)
 
         self.reset()
-        self.device.interface.baudrate = 460800
+        self.device.baudrate = 460800
         # The PSLab's RGB LED flashes some colors on boot.
         boot_lightshow_time = 0.6
         # Wait before sending magic number to make sure UART is initialized.
