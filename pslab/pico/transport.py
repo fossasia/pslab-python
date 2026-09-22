@@ -233,7 +233,8 @@ class ScpiClient:
 
         self._write_line(command)
         line = self.transport.readline()
-        if not line:
+        # pyserial returns a partial line without the terminator on timeout.
+        if not line.endswith(b"\n"):
             raise ScpiTimeoutError(f"Timed out waiting for response to {command!r}.")
         return line.decode("ascii", errors="replace").strip()
 
@@ -248,9 +249,10 @@ class ScpiClient:
 
         marker = self._read_exact(1)
         if marker != b"#":
-            rest = self.transport.readline()
-            message = (marker + rest).decode("ascii", errors="replace").strip()
-            raise ScpiError(message)
+            line = marker + self.transport.readline()
+            if not line.endswith(b"\n"):
+                raise ScpiTimeoutError("Timed out waiting for SCPI error response.")
+            raise ScpiError(line.decode("ascii", errors="replace").strip())
 
         digit_count_text = self._read_exact(1)
         try:
