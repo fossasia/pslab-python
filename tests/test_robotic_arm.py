@@ -62,3 +62,18 @@ def test_import_rejects_angles_for_missing_servos(tmp_path):
 
     with pytest.raises(ValueError, match="more than 2 servos"):
         make_arm(2).import_timeline_from_csv(path)
+
+
+def test_import_rejects_missing_servo_columns(tmp_path):
+    path = tmp_path / "t.csv"
+    path.write_text("Timestep,Servo1,Servo2\n0,10,20\n")
+
+    with pytest.raises(ValueError, match="Servo1-Servo4"):
+        make_arm(2).import_timeline_from_csv(str(path))
+
+
+def test_export_rejects_more_than_four_angles(tmp_path):
+    with pytest.raises(ValueError, match="more than 4 angles"):
+        make_arm(4).export_timeline_to_csv([[1, 2, 3, 4, 5]], str(tmp_path))
+
+    assert list(tmp_path.iterdir()) == []
