@@ -237,7 +237,7 @@ def main(args: argparse.Namespace):
     handler = SerialHandler(port=args.port)
 
     if args.function == "flash":
-        flash(pslab.ScienceLab(args.port), args.hexfile)
+        flash(pslab.ScienceLab(handler), args.hexfile)
         return
 
     if args.function == "collect":
