@@ -156,8 +156,12 @@ class PicoWifiTransport(PicoTransport):
         if self._socket is not None:
             return
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.settimeout(self.timeout)
-        sock.connect((self.host, self.port))
+        try:
+            sock.settimeout(self.timeout)
+            sock.connect((self.host, self.port))
+        except BaseException:
+            sock.close()
+            raise
         self._socket = sock
 
     def close(self) -> None:
