@@ -18,7 +18,8 @@ from pslab.connection import SerialHandler
 def handler() -> SerialHandler:
     sh = SerialHandler("loop://")
     sh._ser = serial.serial_for_url("loop://", baudrate=1000000, timeout=0.1)
-    return sh
+    yield sh
+    sh._ser.close()
 
 
 @pytest.fixture
