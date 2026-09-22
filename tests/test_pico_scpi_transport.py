@@ -234,3 +234,41 @@ def test_wifi_readline_wraps_socket_timeout():
 
     with pytest.raises(ScpiTimeoutError):
         transport.readline()
+
+
+class TruncatingTransport(FakeTransport):
+    """Return a response without its newline, as pyserial does on timeout."""
+
+    def write(self, data):
+        self.output.extend(b"12")
+        return len(data)
+
+
+def test_query_rejects_response_without_newline():
+    client = ScpiClient(TruncatingTransport())
+
+    with pytest.raises(ScpiTimeoutError):
+        client.error_count()
+
+
+def test_query_block_rejects_error_line_without_newline():
+    client = ScpiClient(TruncatingTransport())
+
+    with pytest.raises(ScpiTimeoutError):
+        client.query_block("LA:READ?")
+
+
+def test_wifi_connect_closes_socket_when_connect_fails(monkeypatch):
+    class RefusingSocket(FakeSocket):
+        def connect(self, address):
+            raise ConnectionRefusedError
+
+    sock = RefusingSocket([])
+    monkeypatch.setattr(socket, "socket", lambda *args: sock)
+    transport = PicoWifiTransport("example.test")
+
+    with pytest.raises(ConnectionRefusedError):
+        transport.connect()
+
+    assert sock.closed
+    assert not transport.is_open
