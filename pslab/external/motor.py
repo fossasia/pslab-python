@@ -165,5 +165,7 @@ class RoboticArm:
             writer = csv.writer(csvfile)
             writer.writerow(["Timestep", "Servo1", "Servo2", "Servo3", "Servo4"])
             for i, row in enumerate(timeline):
+                # Pad to four servos so every row matches the header.
+                row = list(row) + [None] * (RoboticArm.MAX_SERVOS - len(row))
                 pos = ["null" if val is None else val for val in row]
                 writer.writerow([i] + pos)
