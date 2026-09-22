@@ -125,21 +125,32 @@ class RoboticArm:
         Returns
         -------
         List[List[int]]
-            A timeline consisting of servo angle values per timestep.
+            A timeline consisting of servo angle values per timestep, with one
+            angle per servo of this arm.
         """
         timeline = []
 
         with open(filepath, mode="r", newline="") as csvfile:
             reader = csv.DictReader(csvfile)
+            columns = [f"Servo{i}" for i in range(1, RoboticArm.MAX_SERVOS + 1)]
+            if reader.fieldnames is None or any(
+                column not in reader.fieldnames for column in columns
+            ):
+                raise ValueError("CSV must contain the Servo1-Servo4 columns")
             for row in reader:
                 angles = []
-                for key in ["Servo1", "Servo2", "Servo3", "Servo4"]:
-                    value = row[key]
-                    if value == "null":
+                for column in columns:
+                    value = row.get(column)
+                    # Short rows from older exports leave trailing servos unset.
+                    if value in (None, "", "null"):
                         angles.append(None)
                     else:
                         angles.append(int(value))
-                timeline.append(angles)
+                if any(angle is not None for angle in angles[len(self.servos) :]):
+                    raise ValueError(
+                        f"Timeline sets angles for more than {len(self.servos)} servos"
+                    )
+                timeline.append(angles[: len(self.servos)])
 
         return timeline
 
@@ -157,6 +168,12 @@ class RoboticArm:
             Directory path where the CSV file will be saved. The filename
             will include a timestamp to ensure uniqueness.
         """
+        for i, row in enumerate(timeline):
+            if len(row) > RoboticArm.MAX_SERVOS:
+                raise ValueError(
+                    f"Timestep {i} has more than {RoboticArm.MAX_SERVOS} angles"
+                )
+
         timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
         filename = f"Robotic_Arm{timestamp}.csv"
         filepath = os.path.join(folderpath, filename)
@@ -165,5 +182,7 @@ class RoboticArm:
             writer = csv.writer(csvfile)
             writer.writerow(["Timestep", "Servo1", "Servo2", "Servo3", "Servo4"])
             for i, row in enumerate(timeline):
+                # Pad to four servos so every row matches the header.
+                row = list(row) + [None] * (RoboticArm.MAX_SERVOS - len(row))
                 pos = ["null" if val is None else val for val in row]
                 writer.writerow([i] + pos)
