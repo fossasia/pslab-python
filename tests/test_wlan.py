@@ -62,7 +62,8 @@ def test_socket_transfer(handler):
         peer.sendall(b"response")
         assert handler.read(8) == b"response"
         assert handler.write(b"request") == 7
-        assert peer.recv(7) == b"request"
+        with peer.makefile("rb") as stream:
+            assert stream.read(7) == b"request"
 
 
 def test_empty_transfer(handler):
