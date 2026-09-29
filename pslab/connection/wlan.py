@@ -77,6 +77,11 @@ class WLANHandler(ConnectionHandler):
         Returns
         -------
         data : bytes
+
+        Raises
+        ------
+        ConnectionError
+            If the connection closes before all requested bytes are received.
         """
         received = b""
         buf_size = 4096
@@ -84,6 +89,8 @@ class WLANHandler(ConnectionHandler):
 
         while remaining > 0:
             chunk = self._sock.recv(min(remaining, buf_size))
+            if not chunk:
+                raise ConnectionError("Connection closed while reading from PSLab.")
             received += chunk
             remaining -= len(chunk)
 
@@ -100,6 +107,11 @@ class WLANHandler(ConnectionHandler):
         -------
         numbytes : int
             Number of bytes written.
+
+        Raises
+        ------
+        ConnectionError
+            If the connection closes before all bytes are sent.
         """
         buf_size = 4096
         remaining = len(data)
@@ -107,8 +119,11 @@ class WLANHandler(ConnectionHandler):
 
         while remaining > 0:
             chunk = data[sent : sent + min(remaining, buf_size)]
-            sent += self._sock.send(chunk)
-            remaining -= len(chunk)
+            count = self._sock.send(chunk)
+            if not count:
+                raise ConnectionError("Connection closed while writing to PSLab.")
+            sent += count
+            remaining -= count
 
         return sent
 
