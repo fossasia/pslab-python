@@ -5,6 +5,7 @@ from unittest.mock import Mock
 import pytest
 
 from pslab.connection import SerialHandler
+from pslab.connection.connection import FirmwareVersion
 
 
 @pytest.fixture
@@ -41,3 +42,15 @@ def test_integer_reads_preserve_little_endian_order(handler, method, size):
     data = bytes(range(1, size + 1))
     handler._ser.read.return_value = data
     assert getattr(handler, method)() == int.from_bytes(data, "little")
+
+
+@pytest.mark.parametrize("received", [0, 1, 2])
+def test_firmware_version_rejects_missing_component(handler, received):
+    handler._ser.read.side_effect = [b"\x03", b"\x00", b"\x01"][:received] + [b""]
+    with pytest.raises(TimeoutError):
+        handler.get_firmware_version()
+
+
+def test_firmware_version_preserves_zero_component(handler):
+    handler._ser.read.side_effect = [b"\x03", b"\x00", b"\x01"]
+    assert handler.get_firmware_version() == FirmwareVersion(3, 0, 1)

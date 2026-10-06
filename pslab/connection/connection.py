@@ -209,9 +209,13 @@ class ConnectionHandler(ABC):
 
         Returns
         -------
-        tuple[int, int, int]
-            major, minor, patch.
+        FirmwareVersion
+            Firmware major, minor, and patch version.
 
+        Raises
+        ------
+        TimeoutError
+            If any firmware version component is missing from the response.
         """
         self.send_byte(CP.COMMON)
         self.send_byte(CP.GET_FW_VERSION)
