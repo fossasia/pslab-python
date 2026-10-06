@@ -76,8 +76,13 @@ class ConnectionHandler(ABC):
         Returns
         -------
         int
+
+        Raises
+        ------
+        TimeoutError
+            If the response contains fewer bytes than required.
         """
-        return int.from_bytes(self.read(1), byteorder="little")
+        return self._read_integer(1)
 
     def get_int(self) -> int:
         """Read a single two-byte integer value.
@@ -85,8 +90,13 @@ class ConnectionHandler(ABC):
         Returns
         -------
         int
+
+        Raises
+        ------
+        TimeoutError
+            If the response contains fewer bytes than required.
         """
-        return int.from_bytes(self.read(2), byteorder="little")
+        return self._read_integer(2)
 
     def get_long(self) -> int:
         """Read a single four-byte integer value.
@@ -94,8 +104,23 @@ class ConnectionHandler(ABC):
         Returns
         -------
         int
+
+        Raises
+        ------
+        TimeoutError
+            If the response contains fewer bytes than required.
         """
-        return int.from_bytes(self.read(4), byteorder="little")
+        return self._read_integer(4)
+
+    def _read_integer(self, number_of_bytes: int) -> int:
+        data = self.read(number_of_bytes)
+
+        if len(data) != number_of_bytes:
+            raise TimeoutError(
+                f"Expected {number_of_bytes} response bytes, received {len(data)}."
+            )
+
+        return int.from_bytes(data, byteorder="little")
 
     def send_byte(self, data: int | bytes) -> None:
         """Write a single one-byte integer value.
@@ -184,9 +209,13 @@ class ConnectionHandler(ABC):
 
         Returns
         -------
-        tuple[int, int, int]
-            major, minor, patch.
+        FirmwareVersion
+            Firmware major, minor, and patch version.
 
+        Raises
+        ------
+        TimeoutError
+            If any firmware version component is missing from the response.
         """
         self.send_byte(CP.COMMON)
         self.send_byte(CP.GET_FW_VERSION)
