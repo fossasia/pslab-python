@@ -69,19 +69,19 @@ class ADCBufferMixin:
             start at the beginning of the buffer.
         """
         buf_size = 128
-        idx = starting_position
+        offset = 0
         remaining = len(data)
 
         while remaining > 0:
             self._device.send_byte(CP.COMMON)
             self._device.send_byte(CP.FILL_BUFFER)
-            self._device.send_int(idx)
+            self._device.send_int(starting_position + offset)
             samps = min(remaining, buf_size)
             self._device.send_int(samps)
 
-            for value in data[idx : idx + samps]:
+            for value in data[offset : offset + samps]:
                 self._device.send_int(value)
 
             self._device.get_ack()
-            idx += samps
+            offset += samps
             remaining -= samps
