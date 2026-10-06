@@ -83,7 +83,8 @@ def test_logic_analyzer(la):
         assert len(timestamp) > EVENTS
 
 
-def test_oscilloscope(scope):
+def test_oscilloscope(scope, mocker):
+    mocker.patch("pslab.cli.time.time", side_effect=[0, 0.3, 0.3, 0.6])
     headers, values = cli.oscilloscope(scope, SCOPE_CHANNELS, SCOPE_DURATION)
     assert len(headers) == 1 + SCOPE_CHANNELS
     for value in values:
@@ -234,3 +235,49 @@ def test_wave_load_tablefile_expand(wave, tmp_path):
         json.dump(([0] * (512 // 2)) + ([1] * (512 // 2)), json_file)
     cli.cmdline(["wave", "load", "SI2", "--table-file", table2_tmp_json])
     assert AnalogOutput("SI1").waveform_table == AnalogOutput("SI2").waveform_table
+
+
+@pytest.mark.parametrize("channels", [1, 2, 4])
+@pytest.mark.parametrize("periods", [0.4, 2.4])
+def test_oscilloscope_preserves_batch_order_and_partial_capture(
+    mocker, channels, periods
+):
+    scope = mocker.patch("pslab.cli.Oscilloscope").return_value
+    scope._lookup_mininum_timegap.return_value = 0.5
+    scope._channel_one_map = "CH1"
+    scope._CH234 = ["CH2", "CH3", "MIC"]
+    mocker.patch.object(CP, "MAX_SAMPLES", 100)
+    max_samples = 100 // channels
+    period = max_samples * 0.5e-6
+    mocker.patch(
+        "pslab.cli.time.time",
+        side_effect=[0, period, period, 2 * period, 2 * period, 3 * period],
+    )
+    batches = []
+
+    def capture(count, samples, timegap):
+        batch = [np.arange(samples) * timegap]
+        batch += [np.full(samples, len(batches) * 10 + i) for i in range(count)]
+        batches.append(batch)
+        return batch
+
+    scope.capture.side_effect = capture
+    headers, values = cli.oscilloscope(None, channels, periods * period)
+    assert headers == ["Timestamp", "CH1", "CH2", "CH3", "MIC"][: channels + 1]
+    expected_samples = [max_samples] * int(periods) + [round(max_samples * 0.4)]
+    assert [call.args[1] for call in scope.capture.call_args_list] == expected_samples
+    for index in range(channels + 1):
+        expected = np.concatenate([batch[index] for batch in batches])
+        np.testing.assert_array_equal(values[index], expected)
+
+
+def test_oscilloscope_zero_duration_does_not_capture(mocker):
+    scope = mocker.patch("pslab.cli.Oscilloscope").return_value
+    scope._lookup_mininum_timegap.return_value = 0.5
+    scope._channel_one_map = "CH1"
+    scope._CH234 = ["CH2", "CH3", "MIC"]
+    headers, values = cli.oscilloscope(None, 1, 0)
+    assert headers == ["Timestamp", "CH1"]
+    assert len(values) == 2
+    assert all(value.size == 0 for value in values)
+    scope.capture.assert_not_called()
