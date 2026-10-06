@@ -140,7 +140,8 @@ class WaveformGenerator:
             Frequency in Hz. Can be a list containing two different values when
             'channel' is ['SI1', 'SI2']. Must be greater than 0.1 Hz. For
             frequencies below 1 Hz the signal is noticably attenuated by AC
-            coupling.
+            coupling. Input frequency lists are not modified; the actual
+            generated frequencies are returned separately.
         phase : float, optional
             Phase between waveforms when generating waveforms on both SI1 and
             SI2 in degrees. The default is 0.
@@ -157,6 +158,7 @@ class WaveformGenerator:
             channels = ["SI1", "SI2"][:channels]
 
         channels, frequency = _listify(channels, 2, frequency)
+        frequency = frequency.copy()
         table_size = len(channels) * [None]
         timegap = len(channels) * [None]
         prescaler = len(channels) * [None]
