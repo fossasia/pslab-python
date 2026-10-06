@@ -394,6 +394,12 @@ class PWMGenerator:
             If 'phases' is a list, the values in the list will be applied to
             the corresponding channel in the 'channels' list. The lists must
             have the same length.
+
+        Raises
+        ------
+        ValueError
+            If frequency is out of range or a duty-cycle or phase list does
+            not have one value per requested channel.
         """
         if isinstance(channels, int):
             channels = ["SQ1", "SQ2", "SQ3", "SQ4"][:channels]
@@ -410,12 +416,14 @@ class PWMGenerator:
                 f"Frequency must be at least {self._LOW_FREQUENCY_LIMIT} Hz."
             )
         else:
-            self._frequency = frequency
             channels, duty_cycles = _listify(channels, 4, duty_cycles)
 
             if not isinstance(phases, list):
                 phases = [i * phases for i in range(len(channels))]
+            elif len(phases) != len(channels):
+                raise ValueError("Dimension mismatch.")
 
+            self._frequency = frequency
             for channel, duty_cycle, phase in zip(channels, duty_cycles, phases):
                 self._channels[channel].duty_cycle = duty_cycle
                 self._channels[channel].phase = phase
