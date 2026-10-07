@@ -253,6 +253,11 @@ class WaveformGenerator:
             The minimum and maximum x values between which to evaluate
             'function'. Should typically correspond to one period. Omit if
             'function' is 'sine' or 'tria'.
+
+        Raises
+        ------
+        ValueError
+            If the function does not return 512 finite real voltage values.
         """
         if function == "sine":
 
@@ -261,7 +266,7 @@ class WaveformGenerator:
 
             function = sine
             span = [0, 2 * np.pi]
-            self._channels[channel].wavetype = "sine"
+            mode = "sine"
         elif function == "tria":
 
             def tria(x):
@@ -269,15 +274,13 @@ class WaveformGenerator:
 
             function = tria
             span = [0, 4]
-            self._channels[channel].wavetype = "tria"
+            mode = "tria"
         else:
-            self._channels[channel].wavetype = "custom"
+            mode = "custom"
 
         x = np.arange(span[0], span[1], (span[1] - span[0]) / 512)
         y = function(x)
-        self._load_table(
-            channel=channel, points=y, mode=self._channels[channel].wavetype
-        )
+        self._load_table(channel=channel, points=y, mode=mode)
 
     def load_table(self, channel: str, points: np.ndarray):
         """Load a custom waveform as a table.
@@ -289,13 +292,25 @@ class WaveformGenerator:
         points : np.ndarray
             Array of voltage values which make up the waveform. Array length
             must be 512. Values outside the range -3.3 V to 3.3 V will be
-            clipped.
+            clipped. All values must be finite real numbers.
+
+        Raises
+        ------
+        ValueError
+            If the table is not a one-dimensional array of 512 finite real
+            voltage values. Invalid tables are rejected before device writes.
         """
         self._load_table(channel, points, "custom")
 
     def _load_table(self, channel, points, mode="custom"):
-        self._channels[channel].wavetype = mode
+        points = np.asarray(points)
+        if points.ndim != 1 or points.size != self._HIGHRES_TABLE_SIZE:
+            raise ValueError("Waveform table must contain exactly 512 values.")
+        if np.iscomplexobj(points) or not np.isfinite(points).all():
+            raise ValueError("Waveform voltages must be finite real values.")
+
         self._channels[channel].waveform_table = points
+        self._channels[channel].wavetype = mode
         logger.info(f"Reloaded waveform table for {channel}: {mode}.")
         self._device.send_byte(CP.WAVEGEN)
 
