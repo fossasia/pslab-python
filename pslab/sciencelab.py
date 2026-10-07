@@ -19,7 +19,7 @@ from pslab.instrument.power_supply import PowerSupply
 from pslab.instrument.waveform_generator import PWMGenerator, WaveformGenerator
 
 
-     # CTMU current range index for temperature measurement (0b11110 = 55 µA)
+# CTMU current range index for temperature measurement (0b11110 = 55 µA)
 _CTMU_CURRENT_RANGE_55UA = 0b11110
 
 # Temperature calibration constants per current source setting.
