@@ -14,8 +14,8 @@ The following assumes that the commands are executed from the root of the reposi
 
 The project can be built with:
 
-    pip install wheel
-    python setup.py sdist bdist_wheel
+    python -m pip install build
+    python -m build
 
 The project can be installed in editable mode with:
 
