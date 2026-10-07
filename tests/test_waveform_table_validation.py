@@ -27,6 +27,7 @@ from pslab.instrument.waveform_generator import WaveformGenerator
         np.full(512, "not-a-voltage"),
         np.full(512, None, dtype=object),
         np.full(512, {}, dtype=object),
+        np.resize(np.array([False, True]), 512),
     ],
 )
 def test_invalid_table_does_not_write_or_change_channel(points, loader):
