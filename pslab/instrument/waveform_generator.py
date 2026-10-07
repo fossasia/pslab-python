@@ -306,7 +306,16 @@ class WaveformGenerator:
         points = np.asarray(points)
         if points.ndim != 1 or points.size != self._HIGHRES_TABLE_SIZE:
             raise ValueError("Waveform table must contain exactly 512 values.")
-        if np.iscomplexobj(points) or not np.isfinite(points).all():
+        if points.dtype.kind not in "biufOUS":
+            raise ValueError("Waveform voltages must be finite real values.")
+        if points.dtype.kind in "OUS":
+            try:
+                points = points.astype(float)
+            except (TypeError, ValueError, OverflowError) as error:
+                raise ValueError(
+                    "Waveform voltages must be finite real values."
+                ) from error
+        if not np.isfinite(points).all():
             raise ValueError("Waveform voltages must be finite real values.")
 
         self._channels[channel].waveform_table = points

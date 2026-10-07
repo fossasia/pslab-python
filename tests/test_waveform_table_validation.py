@@ -24,6 +24,9 @@ from pslab.instrument.waveform_generator import WaveformGenerator
         np.full(512, np.inf),
         np.full(512, -np.inf),
         np.full(512, 1j),
+        np.full(512, "not-a-voltage"),
+        np.full(512, None, dtype=object),
+        np.full(512, {}, dtype=object),
     ],
 )
 def test_invalid_table_does_not_write_or_change_channel(points, loader):
@@ -42,14 +45,14 @@ def test_invalid_table_does_not_write_or_change_channel(points, loader):
 
 
 @pytest.mark.parametrize("channel", ["SI1", "SI2"])
-@pytest.mark.parametrize("dtype", [np.float64, np.int16])
+@pytest.mark.parametrize("dtype", [np.float64, np.int16, object])
 def test_valid_table_preserves_upload_framing(channel, dtype):
     device = Mock(spec=ConnectionHandler)
     generator = WaveformGenerator(device)
     points = np.linspace(-5, 5, 512).astype(dtype)
     original = points.copy()
     generator.load_table(channel, points)
-    clipped = np.clip(points, -3.3, 3.3)
+    clipped = np.clip(np.asarray(points, dtype=float), -3.3, 3.3)
     expected = np.round((clipped + 3.3) / 6.6 * 511).astype(np.int16).tolist()
     assert [call.args[0] for call in device.send_int.call_args_list] == expected
     commands = [call.args[0] for call in device.send_byte.call_args_list]
