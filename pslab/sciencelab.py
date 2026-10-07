@@ -19,6 +19,18 @@ from pslab.instrument.power_supply import PowerSupply
 from pslab.instrument.waveform_generator import PWMGenerator, WaveformGenerator
 
 
+# CTMU current range index for temperature measurement (0b11110 = 55 µA)
+_CTMU_CURRENT_RANGE_55UA = 0b11110
+
+# Temperature calibration constants per current source setting.
+# Format: (offset_mV, slope_mV_per_degree_celsius)
+_TEMP_CALIB = {
+    1: (646.0, 1.92),    # current source 1: offset=646mV, slope=1.92mV/°C
+    2: (701.5, 1.74),    # current source 2: offset=701.5mV, slope=1.74mV/°C
+    3: (760.0, 1.56),    # current source 3: offset=760mV, slope=1.56mV/°C
+}
+
+
 class ScienceLab:
     """Aggregate interface for the PSLab's instruments.
 
@@ -46,18 +58,26 @@ class ScienceLab:
 
     @property
     def temperature(self):
-        """float: Temperature of the MCU in degrees Celsius."""
-        # TODO: Get rid of magic numbers.
-        cs = 3
-        V = self._get_ctmu_voltage(0b11110, cs, 0)
+        """float: Temperature of the MCU in degrees Celsius.
 
-        if cs == 1:
-            return (646 - V * 1000) / 1.92  # current source = 1
-        elif cs == 2:
-            return (701.5 - V * 1000) / 1.74  # current source = 2
-        elif cs == 3:
-            return (760 - V * 1000) / 1.56  # current source = 3
+        Uses the CTMU (Charge Time Measurement Unit) with a 55 µA current
+        source (current_range index 0b11110) on channel 3 to measure the
+        internal temperature sensor voltage.
 
+        The voltage is converted to Celsius using calibration constants
+        defined in _TEMP_CALIB for each current source setting.
+
+        Returns
+        -------
+        float
+            Temperature in degrees Celsius.
+        """
+        cs = 3  # current source index used for temperature measurement
+        tgen = 0  # disable time delay mode for direct voltage measurement
+        V = self._get_ctmu_voltage(_CTMU_CURRENT_RANGE_55UA, cs, tgen)
+        offset, slope = _TEMP_CALIB[cs]
+        return (offset - V * 1000) / slope
+    
     def _get_ctmu_voltage(self, channel: int, current_range: int, tgen: bool = True):
         """Control the Charge Time Measurement Unit (CTMU).
 
