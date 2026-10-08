@@ -61,7 +61,8 @@ class Oscilloscope(ADCBufferMixin):
             first one, two, three, or four channels in the aforementioned list.
         samples : int
             Number of samples to fetch. Maximum 10000 divided by number of
-            channels.
+            channels. Three-channel captures also sample MIC internally,
+            so their maximum is 2500 samples per channel.
         timegap : float
             Time gap between samples in microseconds. Will be rounded to the
             closest 1 / 8 µs. The minimum time gap depends on the type of
@@ -114,7 +115,7 @@ class Oscilloscope(ADCBufferMixin):
         ValueError
             If :channels: is not 1, 2, 3, 4, or one of CH1, CH2, CH3, MIC, CAP,
             RES, VOL, or
-            :samples: > 10000 / :channels:, or
+            :samples: exceeds the buffer capacity (2500 for three channels), or
             :timegap: is too low.
         """
         if isinstance(channels, str):
@@ -159,7 +160,9 @@ class Oscilloscope(ADCBufferMixin):
         if channels not in (1, 2, 3, 4):
             raise ValueError("Number of channels to sample must be 1, 2, 3, or 4.")
 
-        max_samples = CP.MAX_SAMPLES // channels
+        # Three-channel captures use CAPTURE_FOUR and discard MIC.
+        capture_channels = 4 if channels == 3 else channels
+        max_samples = CP.MAX_SAMPLES // capture_channels
         if not 0 < samples <= max_samples:
             e1 = f"Cannot collect more than {max_samples} when sampling from "
             e2 = f"{channels} channels."
