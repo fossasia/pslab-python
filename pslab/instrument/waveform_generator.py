@@ -292,8 +292,8 @@ class WaveformGenerator:
         points : np.ndarray
             Array of voltage values which make up the waveform. Array length
             must be 512. Values outside the range -3.3 V to 3.3 V will be
-            clipped. All values must be finite real numbers. Complex and
-            boolean-dtype arrays are rejected.
+            clipped. All values must be finite real numbers. Complex values and
+            booleans are rejected.
 
         Raises
         ------
@@ -307,7 +307,10 @@ class WaveformGenerator:
         points = np.asarray(points)
         if points.ndim != 1 or points.size != self._HIGHRES_TABLE_SIZE:
             raise ValueError("Waveform table must contain exactly 512 values.")
-        if points.dtype.kind not in "iufOUS":
+        if points.dtype.kind not in "iufOUS" or (
+            points.dtype.kind == "O"
+            and any(isinstance(value, (bool, np.bool_)) for value in points)
+        ):
             raise ValueError("Waveform voltages must be finite real values.")
         if points.dtype.kind in "OUS":
             try:
