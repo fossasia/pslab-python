@@ -18,7 +18,9 @@ import pytest
 
 import pslab.protocol as CP
 from pslab import cli
+from pslab.connection import ConnectionHandler
 from pslab.instrument.analog import AnalogOutput
+from pslab.instrument.oscilloscope import Oscilloscope
 from pslab.instrument.waveform_generator import WaveformGenerator
 
 LA_CHANNELS = 4
@@ -88,6 +90,31 @@ def test_oscilloscope(scope):
     assert len(headers) == 1 + SCOPE_CHANNELS
     for value in values:
         assert len(value) > SAMPLES
+
+
+@pytest.mark.parametrize(
+    "channels,capacity", [(1, 10000), (2, 5000), (3, 2500), (4, 2500)]
+)
+@pytest.mark.parametrize("duration", [0.001, 0.1])
+def test_oscilloscope_capture_capacity(mocker, channels, capacity, duration):
+    instrument = Oscilloscope(mocker.Mock(spec=ConnectionHandler))
+    timegap = instrument._lookup_mininum_timegap(channels)
+    samples = min(capacity, round(duration * 1e6 / timegap))
+    voltages = [np.full(samples, channel) for channel in range(4)]
+    mocker.patch("pslab.cli.Oscilloscope", return_value=instrument)
+    mocker.patch.object(instrument, "progress", return_value=(True, samples))
+    mocker.patch.object(instrument, "fetch_data", return_value=voltages)
+    mocker.patch("pslab.cli.time.time", side_effect=[0, duration + 1])
+    mocker.patch("pslab.cli.time.sleep")
+    capture = mocker.spy(instrument, "capture")
+
+    headers, values = cli.oscilloscope(mocker.Mock(), channels, duration)
+
+    capture.assert_called_once_with(channels, samples, timegap)
+    assert headers == ["Timestamp", "CH1", "CH2", "CH3", "MIC"][: channels + 1]
+    np.testing.assert_array_equal(values[0], timegap * np.arange(samples))
+    for channel in range(channels):
+        np.testing.assert_array_equal(values[channel + 1], voltages[channel])
 
 
 def test_collect_csv_stdout(collect, capsys):

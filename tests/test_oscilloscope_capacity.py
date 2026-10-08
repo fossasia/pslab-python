@@ -56,3 +56,37 @@ def test_three_channel_capture_uses_four_channel_command(scope, monkeypatch):
     scope._device.send_byte.assert_any_call(CP.CAPTURE_FOUR)
     assert scope._channels["MIC"].buffer_idx == 7500
     assert scope._channels["MIC"].samples_in_buffer == 2500
+
+
+@pytest.mark.parametrize("trigger", [None, False, 0.5])
+def test_oversized_capture_preserves_trigger_configuration(scope, trigger):
+    scope.configure_trigger(channel="CH2", voltage=1.1)
+    scope._device.reset_mock()
+    previous = (scope.trigger_enabled, scope.trigger_channel, scope.trigger_voltage)
+
+    with pytest.raises(ValueError, match="Cannot collect more than 2500"):
+        scope.capture(3, 2501, timegap=2, trigger=trigger, trigger_channel="CH3")
+
+    assert (
+        scope.trigger_enabled,
+        scope.trigger_channel,
+        scope.trigger_voltage,
+    ) == previous
+    assert scope._device.mock_calls == []
+
+
+def test_oversized_named_channel_capture_preserves_channel_map(scope):
+    with pytest.raises(ValueError, match="Cannot collect more than 10000"):
+        scope.capture("VOL", 10001, timegap=2, block=False)
+
+    assert scope._channel_one_map == "CH1"
+    assert scope._device.mock_calls == []
+
+
+def test_valid_capture_can_disable_trigger_for_shorter_timegap(scope):
+    scope.configure_trigger(voltage=1.1)
+
+    timestamps = scope.capture(1, 2, timegap=0.5, trigger=False, block=False)[0]
+
+    assert not scope.trigger_enabled
+    np.testing.assert_array_equal(timestamps, [0, 0.5])

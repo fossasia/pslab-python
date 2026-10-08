@@ -60,9 +60,9 @@ class Oscilloscope(ADCBufferMixin):
             from. If channel is an integer, the oscilloscope will sample the
             first one, two, three, or four channels in the aforementioned list.
         samples : int
-            Number of samples to fetch. Maximum 10000 divided by number of
-            channels. Three-channel captures also sample MIC internally,
-            so their maximum is 2500 samples per channel.
+            Number of samples per channel. Maximum 10000 for one channel,
+            5000 for two channels, and 2500 for three or four channels.
+            Three-channel captures also sample MIC internally.
         timegap : float
             Time gap between samples in microseconds. Will be rounded to the
             closest 1 / 8 µs. The minimum time gap depends on the type of
@@ -118,6 +118,8 @@ class Oscilloscope(ADCBufferMixin):
             :samples: exceeds the buffer capacity (2500 for three channels), or
             :timegap: is too low.
         """
+        self._check_capture_size(1 if isinstance(channels, str) else channels, samples)
+
         if isinstance(channels, str):
             self._channel_one_map = channels
             channels = 1
@@ -133,7 +135,7 @@ class Oscilloscope(ADCBufferMixin):
             if trigger != self._trigger_voltage:
                 self.configure_trigger(voltage=trigger)
 
-        self._check_args(channels, samples, timegap)
+        self._check_args(channels, timegap)
         timegap = int(timegap * 8) / 8
 
         for channel in ("CH1", "CH2"):
@@ -156,7 +158,7 @@ class Oscilloscope(ADCBufferMixin):
         else:
             return x
 
-    def _check_args(self, channels: int, samples: int, timegap: float):
+    def _check_capture_size(self, channels: int, samples: int):
         if channels not in (1, 2, 3, 4):
             raise ValueError("Number of channels to sample must be 1, 2, 3, or 4.")
 
@@ -168,6 +170,7 @@ class Oscilloscope(ADCBufferMixin):
             e2 = f"{channels} channels."
             raise ValueError(e1 + e2)
 
+    def _check_args(self, channels: int, timegap: float):
         min_timegap = self._lookup_mininum_timegap(channels)
         if timegap < min_timegap:
             raise ValueError(f"timegap must be at least {min_timegap}.")
