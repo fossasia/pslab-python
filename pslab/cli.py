@@ -83,7 +83,7 @@ def oscilloscope(
     ----------
     device : :class:`Handler`
         Serial interface for communicating with the PSLab device.
-    channels : {1, 2, 4}
+    channels : {1, 2, 3, 4}
         Number of channels to sample from simultaneously. By default, samples are
         captured from CH1, CH2, CH3 and MIC.
     duration : float
@@ -99,7 +99,8 @@ def oscilloscope(
         additional to the number of channels that were used to capture samples.
     """
     scope = Oscilloscope(device)
-    max_samples = CP.MAX_SAMPLES // channels
+    capture_channels = 4 if channels == 3 else channels
+    max_samples = CP.MAX_SAMPLES // capture_channels
     min_timegap = scope._lookup_mininum_timegap(channels)
     max_duration = max_samples * min_timegap * 1e-6
     active_channels = ([scope._channel_one_map] + scope._CH234)[:channels]
