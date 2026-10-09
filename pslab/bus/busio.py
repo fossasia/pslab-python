@@ -90,7 +90,7 @@ class I2C(_I2CPrimitive):
         addrs : list of int
             List of 7-bit addresses on which slave devices replied.
         """
-        return self._scan(0x08, 0x77)
+        return self._scan(0x08, 0x78)
 
     def try_lock(self) -> bool:  # pylint: disable=no-self-use
         """Just a dummy method."""
