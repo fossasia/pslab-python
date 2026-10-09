@@ -1,6 +1,7 @@
 """Wireless interface for communicating with PSLab devices equiped with ESP8266."""
 
 import socket
+from typing import Optional
 
 from pslab.connection.connection import ConnectionHandler
 
@@ -13,14 +14,15 @@ class WLANHandler(ConnectionHandler):
     host : str, default 192.168.4.1
         Network address of the PSLab.
     port : int, default 80
-    timeout : float, default 1 s
+    timeout : float or None, default 1 s
+        Use None to disable the socket timeout.
     """
 
     def __init__(
         self,
         host: str = "192.168.4.1",
         port: int = 80,
-        timeout: float = 1.0,
+        timeout: Optional[float] = 1.0,
     ) -> None:
         self._host = host
         self._port = port
@@ -39,12 +41,12 @@ class WLANHandler(ConnectionHandler):
         return self._port
 
     @property
-    def timeout(self) -> float:
+    def timeout(self) -> Optional[float]:
         """Timeout in seconds."""
         return self._timeout
 
     @timeout.setter
-    def timeout(self, value: float) -> None:
+    def timeout(self, value: Optional[float]) -> None:
         self._sock.settimeout(value)
         self._timeout = value
 
