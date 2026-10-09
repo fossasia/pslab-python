@@ -275,7 +275,7 @@ class _SPIPrimitive:
         self._device.send_byte(CP.SPI_HEADER)
         self._device.send_byte(command)
         self._device.write(interger_type.pack(data))
-        data_in = interger_type.unpack(self._device.read(bits))[0]
+        data_in = interger_type.unpack(self._device.read(interger_type.size))[0]
         self._device.get_ack()
 
         return data_in
