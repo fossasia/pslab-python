@@ -46,6 +46,7 @@ class WLANHandler(ConnectionHandler):
     @timeout.setter
     def timeout(self, value: float) -> None:
         self._sock.settimeout(value)
+        self._timeout = value
 
     def connect(self) -> None:
         """Connect to PSLab."""
