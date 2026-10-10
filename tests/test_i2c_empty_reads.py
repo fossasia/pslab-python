@@ -78,3 +78,34 @@ def test_nonempty_read_keeps_ack_nack_sequence_and_slice(combined, count):
     assert connection.commands.count(CP.I2C_READ_MORE) == count - 1
     assert connection.commands.count(CP.I2C_READ_END) == 1
     assert connection.commands[-2:] == [CP.I2C_HEADER, CP.I2C_STOP]
+
+
+@pytest.mark.parametrize("combined", [False, True])
+@pytest.mark.parametrize("view", [False, True])
+@pytest.mark.parametrize("start, end", [(5, 6), (1, 8), (-2, None), (-8, 2)])
+def test_read_uses_effective_python_slice(combined, view, start, end):
+    connection = I2CConnection()
+    bus = I2C(connection)
+    storage = bytearray(b"abc")
+    output = memoryview(storage) if view else storage
+    selected = storage[start:end]
+    expected = storage.copy()
+    connection.commands.clear()
+
+    def read():
+        if combined:
+            bus.writeto_then_readfrom(0x40, b"\x10", output, in_start=start, in_end=end)
+        else:
+            bus.readfrom_into(0x40, output, start=start, end=end)
+
+    if not selected:
+        with pytest.raises(ValueError, match="at least one byte"):
+            read()
+        assert connection.commands == []
+    else:
+        read()
+        expected[start:end] = bytes(range(0x41, 0x41 + len(selected)))
+        assert connection.commands[-2:] == [CP.I2C_HEADER, CP.I2C_STOP]
+    assert storage == expected
+    assert connection.bytes_read == len(selected)
+    assert bus._running is False

@@ -119,6 +119,7 @@ class I2C(_I2CPrimitive):
             Index to write up to but not include. Defaults to length of `buffer`.
         """
         end = len(buffer) if end is None else end
+        start, end, _ = slice(start, end).indices(len(buffer))
         bytes_to_read = end - start
 
         if bytes_to_read < 1:
@@ -194,6 +195,7 @@ class I2C(_I2CPrimitive):
         """
         out_end = len(buffer_out) if out_end is None else out_end
         in_end = len(buffer_in) if in_end is None else in_end
+        in_start, in_end, _ = slice(in_start, in_end).indices(len(buffer_in))
         bytes_to_read = in_end - in_start
 
         if bytes_to_read < 1:
