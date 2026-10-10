@@ -308,13 +308,13 @@ class LogicAnalyzer(ADCBufferMixin):
         ValueError if too many events are requested, or
         ValueError if too many channels are selected.
         """
+        modes = [MODES[m] for m in modes]
         channels = self._check_arguments(channels, events)
         self.stop()
         self._prescaler = 0
         self.clear_buffer(CP.MAX_SAMPLES)
         self._invalidate_buffer()
         self._configure_trigger(channels)
-        modes = [MODES[m] for m in modes]
         start_time = time.time()
 
         for e, c in enumerate(
