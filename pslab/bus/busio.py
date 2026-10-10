@@ -105,6 +105,8 @@ class I2C(_I2CPrimitive):
     ) -> None:
         """Read from a device at specified address into a buffer.
 
+        The selected buffer slice must contain at least one byte.
+
         Parameters
         ----------
         address : int
@@ -117,7 +119,12 @@ class I2C(_I2CPrimitive):
             Index to write up to but not include. Defaults to length of `buffer`.
         """
         end = len(buffer) if end is None else end
+        start, end, _ = slice(start, end).indices(len(buffer))
         bytes_to_read = end - start
+
+        if bytes_to_read < 1:
+            raise ValueError("Read buffer must contain at least one byte.")
+
         self._start(address, 1)
         buffer[start:end] = self._read(bytes_to_read)
         self._stop()
@@ -167,6 +174,8 @@ class I2C(_I2CPrimitive):
     ):
         """Write to then read from a device at specified address.
 
+        The selected input buffer slice must contain at least one byte.
+
         Parameters
         ----------
         address : int
@@ -186,7 +195,12 @@ class I2C(_I2CPrimitive):
         """
         out_end = len(buffer_out) if out_end is None else out_end
         in_end = len(buffer_in) if in_end is None else in_end
+        in_start, in_end, _ = slice(in_start, in_end).indices(len(buffer_in))
         bytes_to_read = in_end - in_start
+
+        if bytes_to_read < 1:
+            raise ValueError("Read buffer must contain at least one byte.")
+
         self._start(address, 0)
         self._send(buffer_out[out_start:out_end])
         self._restart(address, 1)
