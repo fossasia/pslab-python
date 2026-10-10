@@ -105,8 +105,10 @@ class HCSR04:
             duty_cycles=self._trigger_pulse_length / self._measure_period,
         )
         # Wait one extra period to make sure we don't miss the final edge.
-        time.sleep(self._measure_period * (average + 1))
-        self._pwm.set_state(**{self._trig.lower(): 0})
+        try:
+            time.sleep(self._measure_period * (average + 1))
+        finally:
+            self._pwm.set_state(**{self._trig.lower(): 0})
         (t,) = self._la.fetch_data()
         self._sanity_check(len(t), 2 * average)
         high_times = t[1::2] - t[::2]
