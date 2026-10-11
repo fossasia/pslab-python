@@ -21,6 +21,7 @@ import shutil
 import struct
 import sys
 import time
+from contextlib import suppress
 from itertools import zip_longest
 from typing import List, Tuple
 
@@ -146,24 +147,26 @@ def collect(handler: SerialHandler, args: argparse.Namespace):
 
     output = instrument(handler, args.channels, args.duration)
 
-    if args.file_path is not None:
-        file = open(args.file_path, "w")
+    file = open(args.file_path, "w") if args.file_path is not None else sys.stdout
+    try:
+        if not args.json:
+            csv_file = csv.writer(file)
+            csv_file.writerow(output[0])
+            for row in zip_longest(*output[1]):
+                csv_file.writerow(row)
+        else:
+            output_dict = dict()
+            for key, val in zip_longest(*output):
+                output_dict[key] = val.tolist()
+            json.dump(output_dict, file)
+    except BaseException:
+        if args.file_path is not None:
+            with suppress(OSError):
+                file.close()
+        raise
     else:
-        file = sys.stdout
-
-    if not args.json:
-        csv_file = csv.writer(file)
-        csv_file.writerow(output[0])
-        for row in zip_longest(*output[1]):
-            csv_file.writerow(row)
-    else:
-        output_dict = dict()
-        for key, val in zip_longest(*output):
-            output_dict[key] = val.tolist()
-        json.dump(output_dict, file)
-
-    if args.file_path is not None:
-        file.close()
+        if args.file_path is not None:
+            file.close()
 
 
 def wave(handler: SerialHandler, args: argparse.Namespace):
