@@ -440,7 +440,8 @@ class UART(_UARTPrimitive):
         if stop not in (1, 2):
             raise ValueError("Invalid number of stop bits")
 
-        pd += parity.value
+        if parity is not None:
+            pd += parity.value
 
         try:
             self._set_uart_mode(pd, stop - 1)
