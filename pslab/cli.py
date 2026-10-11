@@ -66,8 +66,10 @@ def logic_analyzer(
     """
     la = LogicAnalyzer(device)
     la.capture(channels, block=False)
-    time.sleep(duration)
-    la.stop()
+    try:
+        time.sleep(duration)
+    finally:
+        la.stop()
     timestamps = la.fetch_data()
     channels_name = [la._channel_one_map, la._channel_two_map, "LA3", "LA4"]
 
