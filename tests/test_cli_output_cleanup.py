@@ -32,6 +32,18 @@ class FailingOutput:
         self.close()
 
 
+class FailingCloseOutput(FailingOutput):
+    """Expose a close failure after releasing the underlying file."""
+
+    def __init__(self, file):
+        super().__init__(file)
+        self.close_error = OSError("output close failed")
+
+    def close(self):
+        super().close()
+        raise self.close_error
+
+
 @pytest.fixture
 def output_args(monkeypatch):
     monkeypatch.setitem(
@@ -89,3 +101,34 @@ def test_successful_file_output_is_closed(tmp_path, monkeypatch, output_args, as
         assert json.loads(destination.read_text()) == {"CH1": [1.0, 2.0]}
     else:
         assert destination.read_text().splitlines() == ["CH1", "1.0", "2.0"]
+
+
+@pytest.mark.parametrize("as_json", [False, True])
+def test_close_failure_does_not_replace_write_error(
+    tmp_path, monkeypatch, output_args, as_json
+):
+    file = builtins.open(tmp_path / "capture", "w")
+    output = FailingCloseOutput(file)
+    monkeypatch.setattr(cli, "open", lambda *args: output, raising=False)
+    output_args.file_path = str(tmp_path / "capture")
+    output_args.json = as_json
+    with pytest.raises(OSError) as raised:
+        cli.collect(None, output_args)
+    assert raised.value is output.error
+    assert file.closed
+
+
+@pytest.mark.parametrize("as_json", [False, True])
+def test_close_failure_after_successful_write_is_visible(
+    tmp_path, monkeypatch, output_args, as_json
+):
+    file = builtins.open(tmp_path / "capture", "w")
+    output = FailingCloseOutput(file)
+    monkeypatch.setattr(output, "write", file.write)
+    monkeypatch.setattr(cli, "open", lambda *args: output, raising=False)
+    output_args.file_path = str(tmp_path / "capture")
+    output_args.json = as_json
+    with pytest.raises(OSError) as raised:
+        cli.collect(None, output_args)
+    assert raised.value is output.close_error
+    assert file.closed
