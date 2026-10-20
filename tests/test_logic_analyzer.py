@@ -280,3 +280,93 @@ def test_count_pulses(la):
     pulses = la.count_pulses("LA2", interval)
     expected_pulses = FREQUENCY * interval
     assert expected_pulses == pytest.approx(pulses, rel=0.1)  # Pretty bad accuracy.
+
+
+# The tests below do not need a connected PSLab, since the capture is mocked.
+
+
+class FakeDevice:
+    """Stand-in for a SerialHandler, recording the commands it receives."""
+
+    def __init__(self):
+        self.commands = []
+
+    def send_byte(self, value):
+        self.commands.append(value)
+
+    def send_int(self, value):
+        self.commands.append(value)
+
+    def get_ack(self):
+        return True
+
+    def get_byte(self):
+        return 0
+
+    def get_int(self):
+        return 0
+
+
+def test_count_pulses_from_the_measured_period(mocker):
+    la = LogicAnalyzer(FakeDevice())
+    # A 100 kHz signal, sampled every 16th rising edge.
+    mocker.patch.object(la, "capture", return_value=[np.array([0, 160])])
+    assert la.count_pulses("LA2", 0.2) == FREQUENCY * 0.2
+
+
+@pytest.mark.parametrize("timestamps", [np.array([]), np.array([500, 500])])
+def test_count_pulses_without_a_measurable_period(mocker, timestamps):
+    la = LogicAnalyzer(FakeDevice())
+    mocker.patch.object(la, "capture", return_value=[timestamps])
+    assert la.count_pulses("LA2", 0.2) == 0
+
+
+def test_count_pulses_does_not_use_the_firmware_counter(mocker):
+    device = FakeDevice()
+    la = LogicAnalyzer(device)
+    mocker.patch.object(la, "capture", return_value=[np.array([0, 160])])
+    la.count_pulses("LA2", 0.2)
+    assert CP.START_COUNTING not in device.commands
+    assert CP.FETCH_COUNT not in device.commands
+
+
+def capture_updating_the_channel_map(la, timestamps):
+    """Stand-in for capture(), which maps a channel name to channel one."""
+
+    def capture(channels, events, **kwargs):
+        la._check_arguments(channels, events)
+        return [timestamps]
+
+    return capture
+
+
+def test_count_pulses_restores_the_channel_map(mocker):
+    la = LogicAnalyzer(FakeDevice())
+    mocker.patch.object(
+        la,
+        "capture",
+        side_effect=capture_updating_the_channel_map(la, np.array([0, 160])),
+    )
+    assert la.count_pulses("LA2", 0.2) == FREQUENCY * 0.2
+    assert la._channel_one_map == "LA1"
+
+
+def test_count_pulses_restores_the_channel_map_when_capture_fails(mocker):
+    la = LogicAnalyzer(FakeDevice())
+
+    def capture(channels, events, **kwargs):
+        la._check_arguments(channels, events)
+        raise ValueError("capture failed")
+
+    mocker.patch.object(la, "capture", side_effect=capture)
+    with pytest.raises(ValueError):
+        la.count_pulses("LA2", 0.2)
+    assert la._channel_one_map == "LA1"
+
+
+def test_count_pulses_rejects_a_negative_interval(mocker):
+    la = LogicAnalyzer(FakeDevice())
+    capture = mocker.patch.object(la, "capture", return_value=[np.array([0, 160])])
+    with pytest.raises(ValueError):
+        la.count_pulses("LA2", -0.2)
+    assert not capture.called
