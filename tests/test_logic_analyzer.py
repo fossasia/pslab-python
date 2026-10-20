@@ -328,3 +328,45 @@ def test_count_pulses_does_not_use_the_firmware_counter(mocker):
     la.count_pulses("LA2", 0.2)
     assert CP.START_COUNTING not in device.commands
     assert CP.FETCH_COUNT not in device.commands
+
+
+def capture_updating_the_channel_map(la, timestamps):
+    """Stand-in for capture(), which maps a channel name to channel one."""
+
+    def capture(channels, events, **kwargs):
+        la._check_arguments(channels, events)
+        return [timestamps]
+
+    return capture
+
+
+def test_count_pulses_restores_the_channel_map(mocker):
+    la = LogicAnalyzer(FakeDevice())
+    mocker.patch.object(
+        la,
+        "capture",
+        side_effect=capture_updating_the_channel_map(la, np.array([0, 160])),
+    )
+    assert la.count_pulses("LA2", 0.2) == FREQUENCY * 0.2
+    assert la._channel_one_map == "LA1"
+
+
+def test_count_pulses_restores_the_channel_map_when_capture_fails(mocker):
+    la = LogicAnalyzer(FakeDevice())
+
+    def capture(channels, events, **kwargs):
+        la._check_arguments(channels, events)
+        raise ValueError("capture failed")
+
+    mocker.patch.object(la, "capture", side_effect=capture)
+    with pytest.raises(ValueError):
+        la.count_pulses("LA2", 0.2)
+    assert la._channel_one_map == "LA1"
+
+
+def test_count_pulses_rejects_a_negative_interval(mocker):
+    la = LogicAnalyzer(FakeDevice())
+    capture = mocker.patch.object(la, "capture", return_value=[np.array([0, 160])])
+    with pytest.raises(ValueError):
+        la.count_pulses("LA2", -0.2)
+    assert not capture.called

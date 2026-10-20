@@ -718,7 +718,7 @@ class LogicAnalyzer(ADCBufferMixin):
         """Count pulses on a digital input.
 
         The number of pulses is calculated from the period of the signal, which
-        is measured by capturing logic events. This method can be used at the
+        is measured by capturing logic events. This method cannot be used at the
         same time as the oscilloscope. The signal must be slow enough for the
         capture to resolve the time between two events, and fast enough for two
         events to be captured within the timeout.
@@ -739,10 +739,22 @@ class LogicAnalyzer(ADCBufferMixin):
         int
             Number of pulses counted during the interval, or 0 if the signal is
             too slow, or too fast, to be measured.
+
+        Raises
+        ------
+        ValueError if the interval is negative.
         """
-        timestamps = self.capture(
-            channel, 2, modes=["sixteen rising"], timeout=timeout
-        )[0]
+        if interval < 0:
+            raise ValueError("Interval cannot be negative.")
+
+        tmp = self._channel_one_map
+        self._channel_one_map = channel
+        try:
+            timestamps = self.capture(
+                channel, 2, modes=["sixteen rising"], timeout=timeout
+            )[0]
+        finally:
+            self._channel_one_map = tmp
 
         try:
             # Sixteen rising edges are captured, so the time between two
