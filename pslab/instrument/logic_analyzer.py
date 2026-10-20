@@ -713,12 +713,15 @@ class LogicAnalyzer(ADCBufferMixin):
         }
 
     def count_pulses(
-        self, channel: str = "FRQ", interval: float = 1, block: bool = True
-    ) -> Union[int, None]:
+        self, channel: str = "FRQ", interval: float = 1, timeout: float = 1
+    ) -> int:
         """Count pulses on a digital input.
 
-        The counter is 16 bits, so it will roll over after 65535 pulses. This
-        method can be used at the same time as the oscilloscope.
+        The number of pulses is calculated from the period of the signal, which
+        is measured by capturing logic events. This method can be used at the
+        same time as the oscilloscope. The signal must be slow enough for the
+        capture to resolve the time between two events, and fast enough for two
+        events to be captured within the timeout.
 
         Parameters
         ----------
@@ -727,46 +730,31 @@ class LogicAnalyzer(ADCBufferMixin):
         interval : float, optional
             Time in seconds during which to count pulses. The default value is
             1 second.
-        block : bool, optional
-            Whether to block while counting pulses or not. If False, this
-            method will return None, and the pulses must be manually fetched
-            using :meth:`fetch_pulse_count`. Additionally, the interval
-            argument has no meaning if block is False; the counter will keep
-            counting even after the interval time has expired. The default
-            value is True.
-
-        Returns
-        -------
-        Union[int, None]
-            Number of pulses counted during the interval, or None if block is
-            False.
-        """
-        self._reset_prescaler()
-        self._device.send_byte(CP.COMMON)
-        self._device.send_byte(CP.START_COUNTING)
-        self._device.send_byte(self._channels[channel].number)
-        self._device.get_ack()
-
-        if block:
-            time.sleep(interval)
-        else:
-            return
-
-        return self.fetch_pulse_count()
-
-    def fetch_pulse_count(self) -> int:
-        """Return the number of pulses counted since calling :meth:`count_pulses`.
+        timeout : float, optional
+            Timeout in seconds before cancelling the capture. The default value
+            is 1 second.
 
         Returns
         -------
         int
-            Number of pulses counted since calling :meth:`count_pulses`.
+            Number of pulses counted during the interval, or 0 if the signal is
+            too slow, or too fast, to be measured.
         """
-        self._device.send_byte(CP.COMMON)
-        self._device.send_byte(CP.FETCH_COUNT)
-        count = self._device.get_int()
-        self._device.get_ack()
-        return count
+        timestamps = self.capture(
+            channel, 2, modes=["sixteen rising"], timeout=timeout
+        )[0]
+
+        try:
+            # Sixteen rising edges are captured, so the time between two
+            # captured events covers 16 periods of the signal.
+            period = (timestamps[1] - timestamps[0]) * 1e-6 / 16
+        except IndexError:
+            return 0
+
+        if period <= 0:
+            return 0
+
+        return int(round(interval / period))
 
     def _reset_prescaler(self):
         self._device.send_byte(CP.TIMING)
