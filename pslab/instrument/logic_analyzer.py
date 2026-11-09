@@ -58,6 +58,7 @@ class LogicAnalyzer(ADCBufferMixin):
         self._channel_one_map = "LA1"
         self._channel_two_map = "LA2"
         self._trimmed = 0
+        self._pulse_count_capture = None
 
     def measure_frequency(
         self, channel: str, simultaneous_oscilloscope: bool = False, timeout: float = 1
@@ -713,12 +714,22 @@ class LogicAnalyzer(ADCBufferMixin):
         }
 
     def count_pulses(
-        self, channel: str = "FRQ", interval: float = 1, block: bool = True
+        self,
+        channel: str = "FRQ",
+        interval: float = 1,
+        timeout: float = 1,
+        *,
+        block: bool = True,
     ) -> Union[int, None]:
         """Count pulses on a digital input.
 
-        The counter is 16 bits, so it will roll over after 65535 pulses. This
-        method can be used at the same time as the oscilloscope.
+        The number of pulses is calculated from the period of the signal, which
+        is measured by capturing logic events. This method cannot be used at the
+        same time as the oscilloscope. The signal must be slow enough for the
+        capture to resolve the time between two events, and fast enough for two
+        events to be captured within the timeout. Captures lasting a full
+        32-bit counter cycle (about 67 seconds) return 0 because the number of
+        wraps between events cannot be determined.
 
         Parameters
         ----------
@@ -727,46 +738,118 @@ class LogicAnalyzer(ADCBufferMixin):
         interval : float, optional
             Time in seconds during which to count pulses. The default value is
             1 second.
+        timeout : float, optional
+            Timeout in seconds before cancelling a blocking capture. The default
+            value is 1 second. It does not delay a nonblocking call. A boolean
+            in this position is treated as the original API's blocking flag.
         block : bool, optional
-            Whether to block while counting pulses or not. If False, this
-            method will return None, and the pulses must be manually fetched
-            using :meth:`fetch_pulse_count`. Additionally, the interval
-            argument has no meaning if block is False; the counter will keep
-            counting even after the interval time has expired. The default
-            value is True.
+            If False, return None without waiting for capture. Use
+            :meth:`fetch_pulse_count` to estimate pulses since this call; the
+            interval argument is ignored in that case. The default is True.
 
         Returns
         -------
         Union[int, None]
-            Number of pulses counted during the interval, or None if block is
-            False.
+            Estimated number of pulses, or 0 if the signal cannot be measured.
+            Return None if block is False.
+
+        Raises
+        ------
+        ValueError if the interval is negative.
         """
-        self._reset_prescaler()
-        self._device.send_byte(CP.COMMON)
-        self._device.send_byte(CP.START_COUNTING)
-        self._device.send_byte(self._channels[channel].number)
-        self._device.get_ack()
+        if isinstance(timeout, bool):
+            # The original API used the third argument as the blocking flag.
+            block, timeout = timeout, 1
+        if interval < 0:
+            raise ValueError("Interval cannot be negative.")
 
-        if block:
-            time.sleep(interval)
-        else:
-            return
+        self._pulse_count_capture = None
+        started = time.monotonic()
+        tmp = self._channel_one_map
+        self._channel_one_map = channel
+        try:
+            timestamps = self.capture(
+                channel, 2, modes=["sixteen rising"], block=block, timeout=timeout
+            )
+        finally:
+            self._channel_one_map = tmp
 
-        return self.fetch_pulse_count()
+        if not block:
+            self._pulse_count_capture = (
+                channel,
+                started,
+                self._get_buffer_generation(),
+            )
+            return None
+
+        return self._count_pulses_from_timestamps(
+            timestamps[0], interval, time.monotonic() - started
+        )
 
     def fetch_pulse_count(self) -> int:
-        """Return the number of pulses counted since calling :meth:`count_pulses`.
+        """Estimate pulses since starting a nonblocking pulse count.
+
+        The estimate uses the measured period and elapsed time, not a firmware
+        counter. Fetching does not wait for another event or stop the capture.
+        The signal must remain periodic. A capture, buffer clear, or buffer fill
+        on any instrument sharing this connection invalidates the pending count.
+        This method cannot run alongside the oscilloscope. Fetch within one
+        32-bit counter cycle (about 67 seconds) of starting the count; later
+        fetches return 0 because multiple counter wraps cannot be ruled out,
+        even if an earlier fetch succeeded.
 
         Returns
         -------
         int
-            Number of pulses counted since calling :meth:`count_pulses`.
+            Estimated pulse count, or 0 if two distinct events are unavailable.
+
+        Raises
+        ------
+        RuntimeError
+            If no nonblocking pulse count is active.
         """
-        self._device.send_byte(CP.COMMON)
-        self._device.send_byte(CP.FETCH_COUNT)
-        count = self._device.get_int()
-        self._device.get_ack()
-        return count
+        if self._pulse_count_capture is None:
+            raise RuntimeError("No nonblocking pulse count is active.")
+
+        channel, started, generation = self._pulse_count_capture
+        if generation != self._get_buffer_generation():
+            self._pulse_count_capture = None
+            raise RuntimeError("No nonblocking pulse count is active.")
+
+        tmp = self._channel_one_map
+        self._channel_one_map = channel
+        try:
+            timestamps = self.fetch_data()[0]
+        finally:
+            self._channel_one_map = tmp
+
+        elapsed = time.monotonic() - started
+        return self._count_pulses_from_timestamps(timestamps, elapsed, elapsed)
+
+    @staticmethod
+    def _count_pulses_from_timestamps(
+        timestamps: np.ndarray, interval: float, capture_duration: float
+    ) -> int:
+        # After a full counter cycle, even an increasing pair may hide wraps.
+        if capture_duration >= 2**32 / CP.CLOCK_RATE:
+            return 0
+
+        try:
+            # Sixteen rising edges are captured, so the time between two
+            # captured events covers 16 periods of the signal.
+            delta = timestamps[1] - timestamps[0]
+            if delta < 0:
+                # The capture counter is 32 bits and wraps after 67 seconds,
+                # so the difference has to be taken modulo its range.
+                delta += 2**32 / CP.CLOCK_RATE * 1e6
+            period = delta * 1e-6 / 16
+        except IndexError:
+            return 0
+
+        if period <= 0:
+            return 0
+
+        return int(round(interval / period))
 
     def _reset_prescaler(self):
         self._device.send_byte(CP.TIMING)
@@ -780,6 +863,7 @@ class LogicAnalyzer(ADCBufferMixin):
         self._prescaler = 0
 
     def _invalidate_buffer(self):
+        self._pulse_count_capture = None
         for c in self._channels.values():
             c.events_in_buffer = 0
             c.buffer_idx = None

@@ -6,6 +6,12 @@ import pslab.protocol as CP
 class ADCBufferMixin:
     """Mixin for classes that need to read or write to the ADC buffer."""
 
+    def _get_buffer_generation(self) -> int:
+        return getattr(self._device, "_adc_buffer_generation", 0)
+
+    def _mark_buffer_write(self):
+        self._device._adc_buffer_generation = self._get_buffer_generation() + 1
+
     def fetch_buffer(self, samples: int, starting_position: int = 0):
         """Fetch a section of the ADC buffer.
 
@@ -51,6 +57,8 @@ class ADCBufferMixin:
             Location in the ADC buffer to start from. By default samples will
             be cleared from the beginning of the buffer.
         """
+        if samples:
+            self._mark_buffer_write()
         self._device.send_byte(CP.COMMON)
         self._device.send_byte(CP.CLEAR_BUFFER)
         self._device.send_int(starting_position)
@@ -71,6 +79,8 @@ class ADCBufferMixin:
         buf_size = 128
         idx = starting_position
         remaining = len(data)
+        if remaining:
+            self._mark_buffer_write()
 
         while remaining > 0:
             self._device.send_byte(CP.COMMON)

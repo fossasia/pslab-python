@@ -186,6 +186,7 @@ class Oscilloscope(ADCBufferMixin):
         return min_timegaps[channels_idx[channels]][self.trigger_enabled]
 
     def _capture(self, channels: int, samples: int, timegap: float):
+        self._mark_buffer_write()
         self._invalidate_buffer()
         chosa = self._channels[self._channel_one_map].chosa
         self._channels[self._channel_one_map].resolution = 10
