@@ -111,39 +111,47 @@ class _FakeUARTDevice:
         return 0
 
 
+def _make_uart(device: _FakeUARTDevice, timeout: float = 0.1) -> busio.UART:
+    """Helper to initialize a UART instance for read testing without hardware setup."""
+    uart = busio.UART.__new__(busio.UART)
+    uart._device = device
+    uart._timeout = timeout
+    return uart
+
+
 def test_busio_uart_readline_preserves_newline():
     device = _FakeUARTDevice(b"hello\r\n")
-    uart = busio.UART(device=device, timeout=0.05)
+    uart = _make_uart(device)
     assert uart.readline() == b"hello\r\n"
 
 
 def test_busio_uart_readline_blank_line():
     device = _FakeUARTDevice(b"\n")
-    uart = busio.UART(device=device, timeout=0.05)
+    uart = _make_uart(device)
     assert uart.readline() == b"\n"
 
 
 def test_busio_uart_readline_successive_lines():
     device = _FakeUARTDevice(b"first\r\nsecond\n")
-    uart = busio.UART(device=device, timeout=0.05)
+    uart = _make_uart(device)
     assert uart.readline() == b"first\r\n"
     assert uart.readline() == b"second\n"
 
 
 def test_busio_uart_readline_timeout_empty():
     device = _FakeUARTDevice(b"")
-    uart = busio.UART(device=device, timeout=0.01)
+    uart = _make_uart(device, timeout=0.05)
     assert uart.readline() is None
 
 
 def test_busio_uart_readline_timeout_partial():
     device = _FakeUARTDevice(b"partial")
-    uart = busio.UART(device=device, timeout=0.02)
+    uart = _make_uart(device, timeout=0.05)
     assert uart.readline() == b"partial"
 
 
 def test_busio_uart_read_nbytes():
     device = _FakeUARTDevice(b"12345678")
-    uart = busio.UART(device=device, timeout=0.05)
+    uart = _make_uart(device)
     assert uart.read(4) == b"1234"
 
