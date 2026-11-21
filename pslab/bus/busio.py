@@ -493,11 +493,11 @@ class UART(_UARTPrimitive):
                 char = self._read_byte()
                 start_time = time.time()
 
-                if line and char == 0xA:
-                    break
-
                 data.append(char)
                 total_read += 1
+
+                if line and char == 0xA:
+                    break
 
             if nbytes and total_read == nbytes:
                 break
